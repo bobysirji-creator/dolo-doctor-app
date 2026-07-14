@@ -1,7 +1,7 @@
 # DO-LO Doctor App Roadmap
 
 - [x] Stage 1 - lightweight Compose project, Doctor/Assistant login, navigation and feature skeletons
-- [x] Stage 2 - process-safe local session, Patient-aligned light/dark themes, permission-aware assistant access and Doctor-only removal
+- [x] Stage 2 - process-safe authentication and workflow state, Patient-aligned light/dark themes, permission-aware assistant access and Doctor-only removal
 - [ ] Stage 3 - doctor profile, clinic and consultation schedule management
 - [ ] Stage 4 - functional appointment list and queue lifecycle with audit events
 - [ ] Stage 5 - appointment availability blocks and affected-patient workflow

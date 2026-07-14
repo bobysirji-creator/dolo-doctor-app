@@ -47,3 +47,8 @@ The light palette now matches the Patient App navy, teal, mint and neutral backg
 Version 0.2.3-stage2 (version code 5) follows a second Vivo/Samsung physical-device test. Dark-mode persistence proved that `dolo_doctor_settings` survives both task finish and removal from Android Recents on those devices. The authenticated session payload is now stored primarily in that same proven preference file. The atomic file and original auth preferences remain fallback and migration sources. All three copies are cleared only by the explicit repository logout operation.
 
 The Home logout icon now opens a confirmation dialog. Android Back and task removal do not call logout or clear any session store.
+## Stage 2 workflow-state correction
+
+Version 0.2.4-stage2 (version code 6) clarifies the physical-device report: authentication was retained, but `DoctorViewModel` recreated `DummyData` after process death. A dedicated `SharedPreferencesDoctorStateStore` now restores and saves the current token, queue status, every appointment status, active announcements, appointment-availability toggles and assistant permissions. Every permitted mutation is committed immediately. Logout changes authentication only and does not reset the clinic workflow.
+
+A ViewModel recreation unit test advances the queue, changes an announcement, constructs a new ViewModel with the same store and verifies the operational state is restored.

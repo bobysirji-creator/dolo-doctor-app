@@ -10,7 +10,9 @@ import androidx.navigation.compose.rememberNavController
 import com.dolo.doctor.auth.AuthRepository
 import com.dolo.doctor.auth.AuthViewModel
 import com.dolo.doctor.auth.AuthViewModelFactory
+import com.dolo.doctor.data.DoctorStateStore
 import com.dolo.doctor.data.DoctorViewModel
+import com.dolo.doctor.data.DoctorViewModelFactory
 import com.dolo.doctor.data.model.UserRole
 import com.dolo.doctor.ui.screens.*
 
@@ -29,9 +31,10 @@ private object Routes {
 
 @Composable fun DoloDoctorApp(
     authRepository: AuthRepository,
+    doctorStateStore: DoctorStateStore,
     darkTheme: Boolean,
     onToggleTheme: () -> Unit,
-    doctorViewModel: DoctorViewModel = viewModel(),
+    doctorViewModel: DoctorViewModel = viewModel(factory = DoctorViewModelFactory(doctorStateStore)),
     authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(authRepository))
 ) {
     val nav = rememberNavController()

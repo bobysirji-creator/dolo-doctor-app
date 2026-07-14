@@ -6,9 +6,9 @@ Run on both Vivo and Samsung devices.
 
 1. Login as Doctor.
 2. Open Queue, press Call next, then use Android Back until the app closes.
-3. Relaunch from the launcher; Doctor Home must open without login.
+3. Note the new current token and appointment statuses, then relaunch from the launcher; Doctor Home must open without login and show the same token/status values.
 4. Remove DO-LO Doctor from Android Recents.
-5. Relaunch; Doctor Home must still open without login.
+5. Relaunch; Doctor Home must still open without login and the queue must remain at the same saved state.
 6. Repeat steps 1-5 with each Assistant account.
 7. Tap Logout, dismiss the confirmation, remove the app from Recents, and relaunch; the session must remain.
 8. Tap Logout again, explicitly confirm, remove the app from Recents, and relaunch; login must be required.

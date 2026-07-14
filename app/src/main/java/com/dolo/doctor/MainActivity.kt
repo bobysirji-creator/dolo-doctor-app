@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
 import com.dolo.doctor.auth.LocalAuthRepository
 import com.dolo.doctor.auth.SessionFileStore
+import com.dolo.doctor.data.SharedPreferencesDoctorStateStore
 import com.dolo.doctor.settings.AppPreferences
 import com.dolo.doctor.ui.DoloDoctorApp
 import com.dolo.doctor.ui.theme.DoloDoctorTheme
@@ -28,6 +29,7 @@ class MainActivity : ComponentActivity() {
             settingsPreferences
         )
         val appPreferences = AppPreferences(settingsPreferences)
+        val doctorStateStore = SharedPreferencesDoctorStateStore(settingsPreferences)
 
         setContent {
             var darkTheme by remember { mutableStateOf(appPreferences.isDarkTheme()) }
@@ -43,6 +45,7 @@ class MainActivity : ComponentActivity() {
                 }
                 DoloDoctorApp(
                     authRepository = authRepository,
+                    doctorStateStore = doctorStateStore,
                     darkTheme = darkTheme,
                     onToggleTheme = {
                         val updated = !darkTheme

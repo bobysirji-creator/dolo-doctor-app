@@ -2,13 +2,13 @@
 
 DO-LO Doctor is the dedicated lightweight Android app for doctors and permission-limited assistants in the DO-LO walk-in appointment ecosystem.
 
-Current prototype: **0.2.3-stage2** (version code 5).
+Current prototype: **0.2.4-stage2** (version code 6).
 
 ## Stage 2 includes
 
 - validated Doctor and Assistant mobile/PIN login with a settings-store primary session plus atomic-file and legacy preference recovery;
 - Patient App-aligned light theme, saved low-glare dark theme, doctor dashboard and role-aware navigation;
-- today's appointments and interactive queue skeleton;
+- persisted current token, queue state, appointment statuses and interactive queue controls;
 - pause/resume queue, call-next and patient-status demo controls;
 - clinic and consultation schedule screen;
 - appointment availability blocks;
@@ -40,6 +40,6 @@ gradle --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
 2. Doctor login exposes queue, appointments, clinic, availability, announcements, assistants and profile.
 3. The queue-enabled and view-only Assistant accounts demonstrate different per-user permissions.
 4. Restart the app to confirm the local session is restored, then use Logout to clear it.
-5. Queue controls still operate only on local dummy state in Stage 2.
+5. Queue controls operate on local prototype data and now resume their latest saved state after relaunch.
 
 See `docs/roadmap.md` and `docs/handoff-summary.md` for staged development.

@@ -16,6 +16,21 @@ class DoctorViewModelTest {
         assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.token == 10 }.status)
     }
 
+    @Test fun workflowStateSurvivesViewModelRecreation() {
+        val store = MemoryDoctorStateStore()
+        val first = DoctorViewModel(store)
+        first.login(UserRole.DOCTOR)
+        first.callNext()
+        first.toggleAnnouncement("n1")
+
+        val restored = DoctorViewModel(store)
+        restored.login(UserRole.DOCTOR)
+        assertEquals(10, restored.uiState.currentToken)
+        assertEquals(AppointmentStatus.COMPLETED, restored.uiState.appointments.single { it.token == 9 }.status)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, restored.uiState.appointments.single { it.token == 10 }.status)
+        assertFalse(restored.uiState.announcements.single { it.id == "n1" }.active)
+    }
+
     @Test fun pausedQueueDoesNotAdvance() {
         val model = DoctorViewModel()
         model.login(UserRole.DOCTOR)
@@ -74,5 +89,14 @@ class DoctorViewModelTest {
         model.login(UserRole.ASSISTANT, assistant.id)
         model.togglePermission(assistant.id, Permission.MANAGE_ANNOUNCEMENTS)
         assertTrue(Permission.MANAGE_ANNOUNCEMENTS in model.uiState.assistants.first().permissions)
+    }
+
+    private class MemoryDoctorStateStore : DoctorStateStore {
+        private var saved: DoctorUiState? = null
+        override fun restore(defaultState: DoctorUiState): DoctorUiState = saved ?: defaultState
+        override fun save(state: DoctorUiState): Boolean {
+            saved = state
+            return true
+        }
     }
 }
