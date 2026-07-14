@@ -2,11 +2,11 @@
 
 DO-LO Doctor is the dedicated lightweight Android app for doctors and permission-limited assistants in the DO-LO walk-in appointment ecosystem.
 
-Current prototype: **0.2.2-stage2** (version code 4).
+Current prototype: **0.2.3-stage2** (version code 5).
 
 ## Stage 2 includes
 
-- validated Doctor and Assistant mobile/PIN login with preference plus atomic-file session recovery after process removal;
+- validated Doctor and Assistant mobile/PIN login with a settings-store primary session plus atomic-file and legacy preference recovery;
 - Patient App-aligned light theme, saved low-glare dark theme, doctor dashboard and role-aware navigation;
 - today's appointments and interactive queue skeleton;
 - pause/resume queue, call-next and patient-status demo controls;

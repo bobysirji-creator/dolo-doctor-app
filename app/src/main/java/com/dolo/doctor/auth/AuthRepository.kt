@@ -40,15 +40,26 @@ interface AuthRepository {
 
 class LocalAuthRepository(
     private val preferences: SharedPreferences,
-    private val sessionFileStore: SessionFileStore
+    private val sessionFileStore: SessionFileStore,
+    private val durablePreferences: SharedPreferences
 ) : AuthRepository {
     override fun restoredSession(): AuthSession? {
-        sessionFileStore.read()?.let { return it }
+        durablePreferences.getString(KEY_DURABLE_SESSION, null)?.let(SessionCodec::decode)?.let { session ->
+            sessionFileStore.write(session)
+            return session
+        }
+        sessionFileStore.read()?.let { session ->
+            durablePreferences.edit().putString(KEY_DURABLE_SESSION, SessionCodec.encode(session)).commit()
+            return session
+        }
         val role = preferences.getString(KEY_ROLE, null)?.let { runCatching { UserRole.valueOf(it) }.getOrNull() } ?: return null
         val userId = preferences.getString(KEY_USER_ID, null) ?: return null
         val displayName = preferences.getString(KEY_DISPLAY_NAME, null) ?: return null
         val phone = preferences.getString(KEY_PHONE, null) ?: return null
-        return AuthSession(role, userId, displayName, phone).also(sessionFileStore::write)
+        return AuthSession(role, userId, displayName, phone).also { session ->
+            sessionFileStore.write(session)
+            durablePreferences.edit().putString(KEY_DURABLE_SESSION, SessionCodec.encode(session)).commit()
+        }
     }
 
     override fun login(role: UserRole, phone: String, pin: String): AuthResult {
@@ -63,12 +74,14 @@ class LocalAuthRepository(
             .putString(KEY_PHONE, session.phone)
             .commit()
         val fileSaved = sessionFileStore.write(session)
-        return if (preferencesSaved || fileSaved) AuthResult.Success(session) else AuthResult.Failure("Unable to save this session. Please try again.")
+        val durableSaved = durablePreferences.edit().putString(KEY_DURABLE_SESSION, SessionCodec.encode(session)).commit()
+        return if (durableSaved || preferencesSaved || fileSaved) AuthResult.Success(session) else AuthResult.Failure("Unable to save this session. Please try again.")
     }
 
     override fun logout() {
         preferences.edit().remove(KEY_ROLE).remove(KEY_USER_ID).remove(KEY_DISPLAY_NAME).remove(KEY_PHONE).commit()
         sessionFileStore.clear()
+        durablePreferences.edit().remove(KEY_DURABLE_SESSION).commit()
     }
 
     override fun removedAssistantIds(): Set<String> = preferences.getStringSet(KEY_REMOVED_ASSISTANTS, emptySet()).orEmpty().toSet()
@@ -84,5 +97,6 @@ class LocalAuthRepository(
         const val KEY_DISPLAY_NAME = "auth_display_name"
         const val KEY_PHONE = "auth_phone"
         const val KEY_REMOVED_ASSISTANTS = "removed_assistant_ids"
+        const val KEY_DURABLE_SESSION = "authenticated_session_v1"
     }
 }

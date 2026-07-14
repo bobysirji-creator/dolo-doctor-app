@@ -97,13 +97,14 @@ import com.dolo.doctor.ui.components.*
     val assistantName = state.assistants.firstOrNull { it.id == state.activeAssistantId }?.name ?: "Assistant"
     val canViewQueue = doctorMode || Permission.VIEW_QUEUE in permissions
     val canViewAppointments = doctorMode || Permission.VIEW_TODAY_APPOINTMENTS in permissions
+    var confirmLogout by remember { mutableStateOf(false) }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.HOME, {}, onQueue, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { DoctorBrand(); Text(if (doctorMode) state.profile.name else assistantName, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold); Text(if (doctorMode) state.profile.specialty else "Assistant • ${permissions.size} permissions", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     IconButton(onToggleTheme) { Icon(if (darkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (darkTheme) "Use light theme" else "Use dark theme") }
-                    IconButton(onLogout) { Icon(Icons.Outlined.Logout, "Logout") }
+                    IconButton(onClick = { confirmLogout = true }) { Icon(Icons.Outlined.Logout, "Logout") }
                 }
             }
             item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("Current token", state.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Waiting", state.appointments.count { it.status in listOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
@@ -121,6 +122,16 @@ import com.dolo.doctor.ui.components.*
                 items(state.announcements.filter { it.active }.take(2), key = { it.id }) { AnnouncementCard(it, null) }
             }
         }
+    }
+    if (confirmLogout) {
+        AlertDialog(
+            onDismissRequest = { confirmLogout = false },
+            icon = { Icon(Icons.Outlined.Logout, null) },
+            title = { Text("Logout from DO-LO Doctor?") },
+            text = { Text("Your saved session will be cleared only after you confirm logout.") },
+            confirmButton = { TextButton(onClick = { confirmLogout = false; onLogout() }) { Text("Logout") } },
+            dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text("Stay logged in") } }
+        )
     }
 }
 @Composable private fun ToolRow(first: () -> Unit, second: () -> Unit, firstEnabled: Boolean, secondEnabled: Boolean, firstLabel: String = "Appointments", secondLabel: String = "Clinic", firstIcon: ImageVector = Icons.Outlined.CalendarMonth, secondIcon: ImageVector = Icons.Outlined.Business) {

@@ -21,11 +21,13 @@ import java.io.File
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val settingsPreferences = getSharedPreferences("dolo_doctor_settings", MODE_PRIVATE)
         val authRepository = LocalAuthRepository(
             getSharedPreferences("dolo_doctor_auth", MODE_PRIVATE),
-            SessionFileStore(File(filesDir, "doctor_session_v1"))
+            SessionFileStore(File(filesDir, "doctor_session_v1")),
+            settingsPreferences
         )
-        val appPreferences = AppPreferences(getSharedPreferences("dolo_doctor_settings", MODE_PRIVATE))
+        val appPreferences = AppPreferences(settingsPreferences)
 
         setContent {
             var darkTheme by remember { mutableStateOf(appPreferences.isDarkTheme()) }

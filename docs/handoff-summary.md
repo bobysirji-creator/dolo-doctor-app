@@ -42,3 +42,8 @@ Doctors can now delete an assistant from the local clinic workspace after an exp
 Version 0.2.2-stage2 (version code 4) addresses physical-device reports from Vivo and Samsung phones. Authentication is reconstructed from an atomic internal session file, with SharedPreferences retained as a migration fallback. A restored session now selects the authenticated home route before the navigation graph starts, so removing the task from Android Recents does not intentionally route through login. Logout clears both persistence copies.
 
 The light palette now matches the Patient App navy, teal, mint and neutral background colors. Cards, navigation, text and status surfaces use Material color roles instead of hard-coded white values. A moon/sun control on the dashboard enables a saved low-glare dark navy theme, including matching Android status and navigation bars.
+## Stage 2 durable-session follow-up
+
+Version 0.2.3-stage2 (version code 5) follows a second Vivo/Samsung physical-device test. Dark-mode persistence proved that `dolo_doctor_settings` survives both task finish and removal from Android Recents on those devices. The authenticated session payload is now stored primarily in that same proven preference file. The atomic file and original auth preferences remain fallback and migration sources. All three copies are cleared only by the explicit repository logout operation.
+
+The Home logout icon now opens a confirmation dialog. Android Back and task removal do not call logout or clear any session store.

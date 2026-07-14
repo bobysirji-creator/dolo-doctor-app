@@ -10,7 +10,8 @@ Run on both Vivo and Samsung devices.
 4. Remove DO-LO Doctor from Android Recents.
 5. Relaunch; Doctor Home must still open without login.
 6. Repeat steps 1-5 with each Assistant account.
-7. Press Logout, remove the app from Recents, and relaunch; login must be required.
+7. Tap Logout, dismiss the confirmation, remove the app from Recents, and relaunch; the session must remain.
+8. Tap Logout again, explicitly confirm, remove the app from Recents, and relaunch; login must be required.
 
 ## Theme
 
