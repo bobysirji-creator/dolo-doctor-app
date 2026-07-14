@@ -16,6 +16,12 @@ class AuthRulesTest {
         assertFalse(CredentialValidator.isValidPin("12a4"))
     }
 
+    @Test fun sessionCodecSurvivesProcessReconstruction() {
+        val session = AuthSession(UserRole.DOCTOR, "doctor-1", "Dr. Aisha Mehta", "9999999999")
+        assertEquals(session, SessionCodec.decode(SessionCodec.encode(session)))
+        assertNull(SessionCodec.decode("invalid-session"))
+    }
+
     @Test fun demoCredentialsRespectSelectedRole() {
         assertEquals("doctor-1", DemoCredentials.authenticate(UserRole.DOCTOR, "9999999999", "1234")?.userId)
         assertEquals("staff-1", DemoCredentials.authenticate(UserRole.ASSISTANT, "9876543210", "1234")?.userId)

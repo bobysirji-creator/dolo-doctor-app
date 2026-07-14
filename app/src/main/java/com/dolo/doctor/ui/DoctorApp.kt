@@ -2,6 +2,7 @@ package com.dolo.doctor.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -28,6 +29,8 @@ private object Routes {
 
 @Composable fun DoloDoctorApp(
     authRepository: AuthRepository,
+    darkTheme: Boolean,
+    onToggleTheme: () -> Unit,
     doctorViewModel: DoctorViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(authRepository))
 ) {
@@ -35,6 +38,7 @@ private object Routes {
     val state = doctorViewModel.uiState
     val authState = authViewModel.uiState
     val permissions = doctorViewModel.permissions()
+    val startDestination = remember { if (authState.session == null) Routes.SPLASH else Routes.HOME }
 
     LaunchedEffect(authState.session) {
         val session = authState.session
@@ -52,18 +56,10 @@ private object Routes {
         if (state.role == UserRole.DOCTOR) nav.navigate(route)
     }
 
-    NavHost(navController = nav, startDestination = Routes.SPLASH) {
+    NavHost(navController = nav, startDestination = startDestination) {
         composable(Routes.SPLASH) {
-            LaunchedEffect(authState.session) {
-                authState.session?.let { session ->
-                    doctorViewModel.login(session.role, session.userId.takeIf { session.role == UserRole.ASSISTANT }, authRepository.removedAssistantIds())
-                    nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
-                }
-            }
             SplashScreen {
-                nav.navigate(if (authState.session == null) Routes.LOGIN else Routes.HOME) {
-                    popUpTo(Routes.SPLASH) { inclusive = true }
-                }
+                nav.navigate(Routes.LOGIN) { popUpTo(Routes.SPLASH) { inclusive = true } }
             }
         }
         composable(Routes.LOGIN) {
@@ -73,7 +69,7 @@ private object Routes {
             LoginScreen(authState, authViewModel::selectRole, authViewModel::updatePhone, authViewModel::updatePin, authViewModel::login)
         }
         composable(Routes.HOME) {
-            DashboardScreen(state, permissions, ::queue, ::appointments, { protectedDoctorRoute(Routes.CLINIC) }, { protectedDoctorRoute(Routes.AVAILABILITY) }, { protectedDoctorRoute(Routes.ANNOUNCEMENTS) }, { protectedDoctorRoute(Routes.ASSISTANTS) }, ::profile, {
+            DashboardScreen(state, permissions, darkTheme, onToggleTheme, ::queue, ::appointments, { protectedDoctorRoute(Routes.CLINIC) }, { protectedDoctorRoute(Routes.AVAILABILITY) }, { protectedDoctorRoute(Routes.ANNOUNCEMENTS) }, { protectedDoctorRoute(Routes.ASSISTANTS) }, ::profile, {
                 authViewModel.logout(); doctorViewModel.logout(authRepository.removedAssistantIds()); nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
             })
         }

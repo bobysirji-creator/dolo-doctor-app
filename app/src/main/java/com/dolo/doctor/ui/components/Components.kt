@@ -3,7 +3,6 @@ package com.dolo.doctor.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -22,71 +21,80 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.dolo.doctor.ui.theme.*
-
-private val doctorGradient = Brush.horizontalGradient(listOf(DoctorTeal, DoctorMint))
 
 @Composable fun DoctorBrand(modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
     Row(modifier.semantics(mergeDescendants = true) { contentDescription = "DO-LO Doctor" }, verticalAlignment = Alignment.CenterVertically) {
-        Text("DO-", color = DoctorNavy, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
-        Text("LO", color = DoctorTeal, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
-        Text(" DOCTOR", color = DoctorBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text("DO-", color = colors.onSurface, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
+        Text("LO", color = colors.primary, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
+        Text(" DOCTOR", color = colors.tertiary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable fun PageHeader(title: String, onBack: (() -> Unit)? = null) {
+    val colors = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().heightIn(min = 58.dp), verticalAlignment = Alignment.CenterVertically) {
         if (onBack != null) {
-            Surface(shape = RoundedCornerShape(15.dp), color = Color.White, shadowElevation = 7.dp) {
+            Surface(shape = RoundedCornerShape(15.dp), color = colors.surface, shadowElevation = 7.dp) {
                 IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, "Back from $title") }
             }
             Spacer(Modifier.width(14.dp))
         }
-        Column(Modifier.weight(1f)) { DoctorBrand(); Text(title, color = DoctorMuted, fontSize = 13.sp) }
+        Column(Modifier.weight(1f)) { DoctorBrand(); Text(title, color = colors.onSurfaceVariant, fontSize = 13.sp) }
     }
 }
 
 @Composable fun PrimaryAction(label: String, onClick: () -> Unit, enabled: Boolean = true, icon: ImageVector = Icons.Outlined.ArrowForward) {
+    val colors = MaterialTheme.colorScheme
+    val gradient = if (enabled) Brush.horizontalGradient(listOf(colors.primary, colors.secondary)) else Brush.horizontalGradient(listOf(colors.outline, colors.outline))
+    val contentColor = if (enabled) colors.onPrimary else colors.onSurface
     Box(
         Modifier.fillMaxWidth().heightIn(min = 58.dp).shadow(9.dp, RoundedCornerShape(22.dp))
-            .background(if (enabled) doctorGradient else Brush.horizontalGradient(listOf(Color.LightGray, Color.LightGray)), RoundedCornerShape(22.dp))
+            .background(gradient, RoundedCornerShape(22.dp))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = Color.White); Spacer(Modifier.width(10.dp)); Text(label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = contentColor)
+            Spacer(Modifier.width(10.dp))
+            Text(label, color = contentColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
     }
 }
 
-@Composable fun MetricTile(label: String, value: String, modifier: Modifier = Modifier, accent: Color = DoctorTeal) {
-    Card(modifier.shadow(8.dp, RoundedCornerShape(22.dp)), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
+@Composable fun MetricTile(label: String, value: String, modifier: Modifier = Modifier, accent: Color? = null) {
+    val colors = MaterialTheme.colorScheme
+    Card(modifier.shadow(8.dp, RoundedCornerShape(22.dp)), colors = CardDefaults.cardColors(containerColor = colors.surface), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
         Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(value, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = accent)
-            Text(label, fontSize = 12.sp, color = DoctorMuted, textAlign = TextAlign.Center)
+            Text(value, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = accent ?: colors.primary)
+            Text(label, fontSize = 12.sp, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
         }
     }
 }
 
 @Composable fun ElevatedSection(title: String, subtitle: String? = null, content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(22.dp)), colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FCFF)), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
+    val colors = MaterialTheme.colorScheme
+    Card(Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(22.dp)), colors = CardDefaults.cardColors(containerColor = colors.surface), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
         Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            if (subtitle != null) Text(subtitle, color = DoctorMuted, fontSize = 13.sp)
+            if (subtitle != null) Text(subtitle, color = colors.onSurfaceVariant, fontSize = 13.sp)
             content()
         }
     }
 }
 
 @Composable fun StatusPill(text: String, active: Boolean = true) {
-    Surface(color = if (active) DoctorSurfaceAlt else Color(0xFFFFE9ED), shape = RoundedCornerShape(50)) {
-        Text(text, Modifier.padding(horizontal = 11.dp, vertical = 6.dp), color = if (active) DoctorTeal else DoctorCoral, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    val colors = MaterialTheme.colorScheme
+    Surface(color = if (active) colors.surfaceVariant else colors.errorContainer, shape = RoundedCornerShape(50)) {
+        Text(text, Modifier.padding(horizontal = 11.dp, vertical = 6.dp), color = if (active) colors.primary else colors.error, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 enum class DoctorBottomDestination { HOME, QUEUE, APPOINTMENTS, PROFILE }
 
 @Composable fun DoctorBottomBar(selected: DoctorBottomDestination, onHome: () -> Unit, onQueue: () -> Unit, onAppointments: () -> Unit, onProfile: () -> Unit, profileEnabled: Boolean = true) {
-    Surface(color = Color.White, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), shadowElevation = 14.dp) {
+    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), shadowElevation = 14.dp) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
             BottomItem(Icons.Outlined.Home, "Home", selected == DoctorBottomDestination.HOME, onHome)
             BottomItem(Icons.Outlined.FormatListNumbered, "Queue", selected == DoctorBottomDestination.QUEUE, onQueue)
@@ -97,8 +105,9 @@ enum class DoctorBottomDestination { HOME, QUEUE, APPOINTMENTS, PROFILE }
 }
 
 @Composable private fun BottomItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit, enabled: Boolean = true) {
+    val colors = MaterialTheme.colorScheme
     Column(Modifier.sizeIn(minWidth = 72.dp, minHeight = 54.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = label + if (enabled) "" else ", unavailable" }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        val color = if (!enabled) DoctorBorder else if (selected) DoctorTeal else DoctorMuted
+        val color = if (!enabled) colors.outline else if (selected) colors.primary else colors.onSurfaceVariant
         Icon(icon, null, tint = color)
         Text(label, fontSize = 9.sp, color = color)
     }

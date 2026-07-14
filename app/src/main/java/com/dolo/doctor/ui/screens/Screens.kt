@@ -17,7 +17,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -28,21 +27,20 @@ import androidx.compose.ui.unit.sp
 import com.dolo.doctor.auth.AuthUiState
 import com.dolo.doctor.data.model.*
 import com.dolo.doctor.ui.components.*
-import com.dolo.doctor.ui.theme.*
 
-private val page = Modifier.fillMaxSize().background(DoctorBackground)
+@Composable private fun page() = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
 
 @Composable fun SplashScreen(onContinue: () -> Unit) {
-    Box(page.padding(28.dp), contentAlignment = Alignment.Center) {
+    Box(page().padding(28.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             DoctorBrand()
             Spacer(Modifier.height(30.dp))
-            Surface(shape = CircleShape, color = DoctorSurfaceAlt, shadowElevation = 12.dp, modifier = Modifier.size(150.dp)) {
-                Icon(Icons.Outlined.MedicalServices, null, tint = DoctorTeal, modifier = Modifier.padding(38.dp))
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, shadowElevation = 12.dp, modifier = Modifier.size(150.dp)) {
+                Icon(Icons.Outlined.MedicalServices, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(38.dp))
             }
             Spacer(Modifier.height(28.dp))
             Text("Clinic control, simplified.", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
-            Text("Queue, appointments and staff in one place.", color = DoctorMuted, textAlign = TextAlign.Center)
+            Text("Queue, appointments and staff in one place.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             Spacer(Modifier.height(34.dp))
             PrimaryAction("Get started", onContinue)
         }
@@ -56,11 +54,11 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
     onPin: (String) -> Unit,
     onLogin: () -> Unit
 ) {
-    Column(page.imePadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.Center) {
+    Column(page().imePadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.Center) {
         DoctorBrand()
         Spacer(Modifier.height(24.dp))
         Text("Secure clinic access", style = MaterialTheme.typography.headlineLarge)
-        Text("Use your individual Doctor or Assistant credentials.", color = DoctorMuted)
+        Text("Use your individual Doctor or Assistant credentials.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(20.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FilterChip(state.selectedRole == UserRole.DOCTOR, { onRole(UserRole.DOCTOR) }, { Text("Doctor") }, leadingIcon = { Icon(Icons.Outlined.MedicalServices, null) }, modifier = Modifier.weight(1f))
@@ -75,15 +73,17 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
         Spacer(Modifier.height(16.dp))
         ElevatedSection("Stage 2 demo credentials") {
-            Text("Doctor: 9999999999 • PIN 1234", color = DoctorMuted)
-            Text("Assistant (queue controls): 9876543210 • PIN 1234", color = DoctorMuted)
-            Text("Assistant (view only): 9876501234 • PIN 1234", color = DoctorMuted)
+            Text("Doctor: 9999999999 • PIN 1234", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Assistant (queue controls): 9876543210 • PIN 1234", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Assistant (view only): 9876501234 • PIN 1234", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 @Composable fun DashboardScreen(
     state: DoctorUiState,
     permissions: Set<Permission>,
+    darkTheme: Boolean,
+    onToggleTheme: () -> Unit,
     onQueue: () -> Unit,
     onAppointments: () -> Unit,
     onClinic: () -> Unit,
@@ -97,23 +97,24 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
     val assistantName = state.assistants.firstOrNull { it.id == state.activeAssistantId }?.name ?: "Assistant"
     val canViewQueue = doctorMode || Permission.VIEW_QUEUE in permissions
     val canViewAppointments = doctorMode || Permission.VIEW_TODAY_APPOINTMENTS in permissions
-    Scaffold(containerColor = DoctorBackground, bottomBar = { DoctorBottomBar(DoctorBottomDestination.HOME, {}, onQueue, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.HOME, {}, onQueue, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) { DoctorBrand(); Text(if (doctorMode) state.profile.name else assistantName, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold); Text(if (doctorMode) state.profile.specialty else "Assistant • ${permissions.size} permissions", color = DoctorMuted) }
+                    Column(Modifier.weight(1f)) { DoctorBrand(); Text(if (doctorMode) state.profile.name else assistantName, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold); Text(if (doctorMode) state.profile.specialty else "Assistant • ${permissions.size} permissions", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    IconButton(onToggleTheme) { Icon(if (darkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (darkTheme) "Use light theme" else "Use dark theme") }
                     IconButton(onLogout) { Icon(Icons.Outlined.Logout, "Logout") }
                 }
             }
-            item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("Current token", state.currentToken.toString(), Modifier.weight(1f), DoctorCoral); MetricTile("Waiting", state.appointments.count { it.status in listOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }.toString(), Modifier.weight(1f), DoctorBlue) } }
-            item { ElevatedSection("Today's queue", state.clinics.first().name) { Row(verticalAlignment = Alignment.CenterVertically) { StatusPill(state.queueState.name.replace("_", " "), state.queueState == QueueState.ACTIVE); Spacer(Modifier.weight(1f)); Text("Avg. ${state.clinics.first().averageConsultationMinutes} min", color = DoctorMuted) }; PrimaryAction("Open live queue", onQueue, enabled = canViewQueue, icon = Icons.Outlined.FormatListNumbered) } }
+            item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("Current token", state.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Waiting", state.appointments.count { it.status in listOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
+            item { ElevatedSection("Today's queue", state.clinics.first().name) { Row(verticalAlignment = Alignment.CenterVertically) { StatusPill(state.queueState.name.replace("_", " "), state.queueState == QueueState.ACTIVE); Spacer(Modifier.weight(1f)); Text("Avg. ${state.clinics.first().averageConsultationMinutes} min", color = MaterialTheme.colorScheme.onSurfaceVariant) }; PrimaryAction("Open live queue", onQueue, enabled = canViewQueue, icon = Icons.Outlined.FormatListNumbered) } }
             item { Text("Clinic tools", style = MaterialTheme.typography.titleLarge) }
             item { ToolRow(onAppointments, onClinic, canViewAppointments, doctorMode) }
             if (doctorMode) {
                 item { ToolRow(onAvailability, onAnnouncements, true, true, "Availability", "Updates", Icons.Outlined.EventBusy, Icons.Outlined.Campaign) }
                 item { ToolRow(onAssistants, onProfile, true, true, "Assistants", "Profile", Icons.Outlined.Groups, Icons.Outlined.Person) }
             } else {
-                item { ElevatedSection("Assistant access") { permissions.sortedBy { it.name }.forEach { Text("• ${it.name.replace("_", " ").lowercase().replaceFirstChar(Char::uppercase)}", color = DoctorMuted, fontSize = 12.sp) } } }
+                item { ElevatedSection("Assistant access") { permissions.sortedBy { it.name }.forEach { Text("• ${it.name.replace("_", " ").lowercase().replaceFirstChar(Char::uppercase)}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) } } }
             }
             if (doctorMode || Permission.MANAGE_ANNOUNCEMENTS in permissions) {
                 item { Text("Active doctor updates", style = MaterialTheme.typography.titleLarge) }
@@ -129,8 +130,8 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
     }
 }
 @Composable private fun ToolCard(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier, enabled: Boolean) {
-    Card(modifier.height(112.dp).shadow(8.dp, RoundedCornerShape(22.dp)).clickable(enabled = enabled, onClick = onClick), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
-        Column(Modifier.fillMaxSize().padding(15.dp), verticalArrangement = Arrangement.SpaceBetween) { Icon(icon, null, tint = if (enabled) DoctorTeal else DoctorMuted, modifier = Modifier.size(32.dp)); Text(label, fontWeight = FontWeight.Bold) }
+    Card(modifier.height(112.dp).shadow(8.dp, RoundedCornerShape(22.dp)).clickable(enabled = enabled, onClick = onClick), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
+        Column(Modifier.fillMaxSize().padding(15.dp), verticalArrangement = Arrangement.SpaceBetween) { Icon(icon, null, tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(32.dp)); Text(label, fontWeight = FontWeight.Bold) }
     }
 }
 
@@ -141,13 +142,13 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
     val canCallNext = doctorMode || Permission.CALL_NEXT_PATIENT in permissions
     val canMarkArrived = doctorMode || Permission.MARK_PATIENT_ARRIVED in permissions
     val canMarkAbsent = doctorMode || Permission.MARK_PATIENT_ABSENT in permissions
-    Scaffold(containerColor = DoctorBackground, bottomBar = { DoctorBottomBar(DoctorBottomDestination.QUEUE, onHome, {}, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.QUEUE, onHome, {}, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Live queue", onBack) }
-            if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_QUEUE permission.", color = DoctorCoral) } }
+            if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_QUEUE permission.", color = MaterialTheme.colorScheme.error) } }
             else {
-                item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("In consultation", state.currentToken.toString(), Modifier.weight(1f), DoctorCoral); MetricTile("Remaining", state.appointments.count { it.token > state.currentToken && it.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.COMPLETED) }.toString(), Modifier.weight(1f), DoctorBlue) } }
-                item { ElevatedSection("Queue controls", "Status: ${state.queueState.name.lowercase().replaceFirstChar(Char::uppercase)}") { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Button(onToggleQueue, Modifier.weight(1f), enabled = canUpdate, elevation = ButtonDefaults.buttonElevation(7.dp)) { Text(if (state.queueState == QueueState.ACTIVE) "Pause" else "Resume") }; Button(onCallNext, Modifier.weight(1f), enabled = state.queueState == QueueState.ACTIVE && canCallNext, elevation = ButtonDefaults.buttonElevation(7.dp)) { Text("Call next") } }; if (!canUpdate || !canCallNext) Text("Some controls are disabled by assistant permissions.", color = DoctorMuted, fontSize = 12.sp) } }
+                item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("In consultation", state.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Remaining", state.appointments.count { it.token > state.currentToken && it.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.COMPLETED) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
+                item { ElevatedSection("Queue controls", "Status: ${state.queueState.name.lowercase().replaceFirstChar(Char::uppercase)}") { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Button(onToggleQueue, Modifier.weight(1f), enabled = canUpdate, elevation = ButtonDefaults.buttonElevation(7.dp)) { Text(if (state.queueState == QueueState.ACTIVE) "Pause" else "Resume") }; Button(onCallNext, Modifier.weight(1f), enabled = state.queueState == QueueState.ACTIVE && canCallNext, elevation = ButtonDefaults.buttonElevation(7.dp)) { Text("Call next") } }; if (!canUpdate || !canCallNext) Text("Some controls are disabled by assistant permissions.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) } }
                 items(state.appointments.sortedBy { it.token }, key = { it.id }) { appointment -> QueueAppointmentCard(appointment, canMarkArrived, canMarkAbsent, canUpdate, onUpdate) }
             }
         }
@@ -163,19 +164,19 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
 @Composable fun AppointmentsScreen(state: DoctorUiState, permissions: Set<Permission>, onBack: () -> Unit, onHome: () -> Unit, onQueue: () -> Unit, onProfile: () -> Unit) {
     val doctorMode = state.role == UserRole.DOCTOR
     val canView = doctorMode || Permission.VIEW_TODAY_APPOINTMENTS in permissions
-    Scaffold(containerColor = DoctorBackground, bottomBar = { DoctorBottomBar(DoctorBottomDestination.APPOINTMENTS, onHome, onQueue, {}, onProfile, profileEnabled = doctorMode) }) { padding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.APPOINTMENTS, onHome, onQueue, {}, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Today's appointments", onBack) }
-            if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_TODAY_APPOINTMENTS permission.", color = DoctorCoral) } }
+            if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_TODAY_APPOINTMENTS permission.", color = MaterialTheme.colorScheme.error) } }
             else {
-                item { ElevatedSection("Morning session") { Text("${state.appointments.size} booked patients • maximum ${state.clinics.first().maxTokensPerSession} tokens", color = DoctorMuted) } }
-                items(state.appointments.sortedBy { it.token }, key = { it.id }) { appointment -> ElevatedSection("Token ${appointment.token} • ${appointment.patientName}", "${appointment.patientType} • ${appointment.bookedAt}") { Row { StatusPill(appointment.status.name.replace("_", " "), appointment.status != AppointmentStatus.ABSENT); Spacer(Modifier.weight(1f)); Text(appointment.session, color = DoctorMuted) } } }
+                item { ElevatedSection("Morning session") { Text("${state.appointments.size} booked patients • maximum ${state.clinics.first().maxTokensPerSession} tokens", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+                items(state.appointments.sortedBy { it.token }, key = { it.id }) { appointment -> ElevatedSection("Token ${appointment.token} • ${appointment.patientName}", "${appointment.patientType} • ${appointment.bookedAt}") { Row { StatusPill(appointment.status.name.replace("_", " "), appointment.status != AppointmentStatus.ABSENT); Spacer(Modifier.weight(1f)); Text(appointment.session, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
             }
         }
     }
 }
 @Composable fun ClinicScreen(state: DoctorUiState, onBack: () -> Unit) {
-    LazyColumn(page.padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+    LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
         item { PageHeader("Clinic & schedule", onBack) }
         items(state.clinics, key = { it.id }) { clinic ->
             ElevatedSection(clinic.name, clinic.address) {
@@ -190,7 +191,7 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
 }
 
 @Composable fun AvailabilityScreen(state: DoctorUiState, onBack: () -> Unit, onToggle: (String) -> Unit) {
-    LazyColumn(page.padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+    LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
         item { PageHeader("Availability", onBack) }
         item { ElevatedSection("Booking control", "Disable appointments for a date, session or date range.") { PrimaryAction("Add availability block", {}, icon = Icons.Outlined.EventBusy) } }
         items(state.availabilityBlocks, key = { it.id }) { block -> ElevatedSection("${block.fromDate} - ${block.toDate}", "${block.sessions} • ${block.reason}") { Row(verticalAlignment = Alignment.CenterVertically) { StatusPill(if (block.appointmentsEnabled) "Appointments enabled" else "Appointments disabled", block.appointmentsEnabled); Spacer(Modifier.weight(1f)); Switch(block.appointmentsEnabled, { onToggle(block.id) }) } } }
@@ -198,7 +199,7 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
 }
 
 @Composable fun AnnouncementsScreen(state: DoctorUiState, onBack: () -> Unit, onToggle: (String) -> Unit) {
-    LazyColumn(page.padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+    LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
         item { PageHeader("Doctor updates", onBack) }
         item { ElevatedSection("Patient profile feed", "Availability notices, camps and offers appear under the doctor's Patient App profile.") { PrimaryAction("Create announcement", {}, icon = Icons.Outlined.Add) } }
         items(state.announcements, key = { it.id }) { AnnouncementCard(it) { onToggle(it.id) } }
@@ -208,7 +209,7 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
 @Composable private fun AnnouncementCard(announcement: Announcement, onToggle: (() -> Unit)?) {
     val icon = when (announcement.type) { AnnouncementType.CAMP -> Icons.Outlined.HealthAndSafety; AnnouncementType.OFFER -> Icons.Outlined.LocalOffer; AnnouncementType.AVAILABILITY -> Icons.Outlined.EventBusy; AnnouncementType.GENERAL -> Icons.Outlined.Campaign }
     ElevatedSection(announcement.title, "${announcement.startsOn} - ${announcement.endsOn}") {
-        Row { Icon(icon, null, tint = DoctorTeal); Spacer(Modifier.width(10.dp)); Text(announcement.message, Modifier.weight(1f), color = DoctorMuted) }
+        Row { Icon(icon, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(10.dp)); Text(announcement.message, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Row(verticalAlignment = Alignment.CenterVertically) { StatusPill(if (announcement.active) "Visible to patients" else "Hidden", announcement.active); if (onToggle != null) { Spacer(Modifier.weight(1f)); Switch(announcement.active, { onToggle() }) } }
     }
 }
@@ -221,7 +222,7 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
 ) {
     var pendingDeletion by remember { mutableStateOf<Assistant?>(null) }
 
-    LazyColumn(page.padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+    LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
         item { PageHeader("Assistants", onBack) }
         item { ElevatedSection("Staff access", "Each assistant uses individual credentials and backend-enforced permissions.") { PrimaryAction("Add assistant", {}, icon = Icons.Outlined.PersonAdd) } }
         items(state.assistants, key = { it.id }) { assistant ->
@@ -229,7 +230,7 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     StatusPill(if (assistant.active) "Active" else "Disabled", assistant.active)
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { pendingDeletion = assistant }, colors = ButtonDefaults.textButtonColors(contentColor = DoctorCoral)) {
+                    TextButton(onClick = { pendingDeletion = assistant }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
                         Icon(Icons.Outlined.DeleteOutline, null)
                         Spacer(Modifier.width(5.dp))
                         Text("Delete")
@@ -244,32 +245,32 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
             }
         }
         if (state.assistants.isEmpty()) {
-            item { ElevatedSection("No assistants") { Text("Add an assistant when clinic staff access is needed.", color = DoctorMuted) } }
+            item { ElevatedSection("No assistants") { Text("Add an assistant when clinic staff access is needed.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         }
     }
 
     pendingDeletion?.let { assistant ->
         AlertDialog(
             onDismissRequest = { pendingDeletion = null },
-            icon = { Icon(Icons.Outlined.PersonRemove, null, tint = DoctorCoral) },
+            icon = { Icon(Icons.Outlined.PersonRemove, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Delete ${assistant.name}?") },
             text = { Text("This removes the assistant profile and its permissions from the local clinic workspace. This action cannot be undone in this prototype without clearing the app data.") },
             confirmButton = {
-                TextButton(onClick = { onDeleteAssistant(assistant.id); pendingDeletion = null }, colors = ButtonDefaults.textButtonColors(contentColor = DoctorCoral)) { Text("Delete assistant") }
+                TextButton(onClick = { onDeleteAssistant(assistant.id); pendingDeletion = null }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete assistant") }
             },
             dismissButton = { TextButton(onClick = { pendingDeletion = null }) { Text("Keep assistant") } }
         )
     }
 }
 @Composable fun ProfileScreen(state: DoctorUiState, onBack: () -> Unit, onHome: () -> Unit, onQueue: () -> Unit, onAppointments: () -> Unit) {
-    Scaffold(containerColor = DoctorBackground, bottomBar = { DoctorBottomBar(DoctorBottomDestination.PROFILE, onHome, onQueue, onAppointments, {}) }) { padding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.PROFILE, onHome, onQueue, onAppointments, {}) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
             item { PageHeader("Doctor profile", onBack) }
-            item { ElevatedSection(state.profile.name, state.profile.specialty) { Row(verticalAlignment = Alignment.CenterVertically) { StatusPill(if (state.profile.verified) "Verified profile" else "Verification pending", state.profile.verified); Spacer(Modifier.weight(1f)); Icon(Icons.Outlined.Verified, null, tint = DoctorTeal) }; DetailLine(Icons.Outlined.School, state.profile.qualification); DetailLine(Icons.Outlined.Badge, state.profile.registrationNumber); DetailLine(Icons.Outlined.WorkHistory, "${state.profile.experienceYears} years experience"); DetailLine(Icons.Outlined.Payments, "₹${state.profile.consultationFee} consultation fee") } }
-            item { ElevatedSection("About") { Text(state.profile.about, color = DoctorMuted); PrimaryAction("Edit profile information", {}, icon = Icons.Outlined.Edit) } }
-            item { ElevatedSection("Verification rule") { Text("Changes to registration number, specialty or credentials will require Admin review.", color = DoctorMuted) } }
+            item { ElevatedSection(state.profile.name, state.profile.specialty) { Row(verticalAlignment = Alignment.CenterVertically) { StatusPill(if (state.profile.verified) "Verified profile" else "Verification pending", state.profile.verified); Spacer(Modifier.weight(1f)); Icon(Icons.Outlined.Verified, null, tint = MaterialTheme.colorScheme.primary) }; DetailLine(Icons.Outlined.School, state.profile.qualification); DetailLine(Icons.Outlined.Badge, state.profile.registrationNumber); DetailLine(Icons.Outlined.WorkHistory, "${state.profile.experienceYears} years experience"); DetailLine(Icons.Outlined.Payments, "₹${state.profile.consultationFee} consultation fee") } }
+            item { ElevatedSection("About") { Text(state.profile.about, color = MaterialTheme.colorScheme.onSurfaceVariant); PrimaryAction("Edit profile information", {}, icon = Icons.Outlined.Edit) } }
+            item { ElevatedSection("Verification rule") { Text("Changes to registration number, specialty or credentials will require Admin review.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         }
     }
 }
 
-@Composable private fun DetailLine(icon: ImageVector, text: String) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = DoctorTeal); Spacer(Modifier.width(11.dp)); Text(text, color = DoctorMuted) } }
+@Composable private fun DetailLine(icon: ImageVector, text: String) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(11.dp)); Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant) } }

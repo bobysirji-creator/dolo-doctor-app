@@ -38,13 +38,17 @@ interface AuthRepository {
     fun removeAssistant(assistantId: String): Boolean
 }
 
-class LocalAuthRepository(private val preferences: SharedPreferences) : AuthRepository {
+class LocalAuthRepository(
+    private val preferences: SharedPreferences,
+    private val sessionFileStore: SessionFileStore
+) : AuthRepository {
     override fun restoredSession(): AuthSession? {
+        sessionFileStore.read()?.let { return it }
         val role = preferences.getString(KEY_ROLE, null)?.let { runCatching { UserRole.valueOf(it) }.getOrNull() } ?: return null
         val userId = preferences.getString(KEY_USER_ID, null) ?: return null
         val displayName = preferences.getString(KEY_DISPLAY_NAME, null) ?: return null
         val phone = preferences.getString(KEY_PHONE, null) ?: return null
-        return AuthSession(role, userId, displayName, phone)
+        return AuthSession(role, userId, displayName, phone).also(sessionFileStore::write)
     }
 
     override fun login(role: UserRole, phone: String, pin: String): AuthResult {
@@ -52,17 +56,19 @@ class LocalAuthRepository(private val preferences: SharedPreferences) : AuthRepo
         if (!CredentialValidator.isValidPin(pin)) return AuthResult.Failure("Enter the 4-digit demo PIN.")
         val session = DemoCredentials.authenticate(role, phone, pin) ?: return AuthResult.Failure("Credentials do not match the selected role.")
         if (session.role == UserRole.ASSISTANT && session.userId in removedAssistantIds()) return AuthResult.Failure("This assistant account has been removed by the doctor.")
-        val saved = preferences.edit()
+        val preferencesSaved = preferences.edit()
             .putString(KEY_ROLE, session.role.name)
             .putString(KEY_USER_ID, session.userId)
             .putString(KEY_DISPLAY_NAME, session.displayName)
             .putString(KEY_PHONE, session.phone)
             .commit()
-        return if (saved) AuthResult.Success(session) else AuthResult.Failure("Unable to save this session. Please try again.")
+        val fileSaved = sessionFileStore.write(session)
+        return if (preferencesSaved || fileSaved) AuthResult.Success(session) else AuthResult.Failure("Unable to save this session. Please try again.")
     }
 
     override fun logout() {
         preferences.edit().remove(KEY_ROLE).remove(KEY_USER_ID).remove(KEY_DISPLAY_NAME).remove(KEY_PHONE).commit()
+        sessionFileStore.clear()
     }
 
     override fun removedAssistantIds(): Set<String> = preferences.getStringSet(KEY_REMOVED_ASSISTANTS, emptySet()).orEmpty().toSet()
