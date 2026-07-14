@@ -78,6 +78,7 @@ data class AvailabilityBlock(
 
 data class DoctorUiState(
     val role: UserRole? = null,
+    val activeAssistantId: String? = null,
     val profile: DoctorProfile,
     val clinics: List<Clinic>,
     val appointments: List<Appointment>,

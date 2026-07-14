@@ -1,11 +1,16 @@
 package com.dolo.doctor.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.dolo.doctor.auth.AuthRepository
+import com.dolo.doctor.auth.AuthViewModel
+import com.dolo.doctor.auth.AuthViewModelFactory
 import com.dolo.doctor.data.DoctorViewModel
+import com.dolo.doctor.data.model.UserRole
 import com.dolo.doctor.ui.screens.*
 
 private object Routes {
@@ -21,24 +26,57 @@ private object Routes {
     const val PROFILE = "profile"
 }
 
-@Composable fun DoloDoctorApp(viewModel: DoctorViewModel = viewModel()) {
+@Composable fun DoloDoctorApp(
+    authRepository: AuthRepository,
+    doctorViewModel: DoctorViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(authRepository))
+) {
     val nav = rememberNavController()
-    val state = viewModel.uiState
+    val state = doctorViewModel.uiState
+    val authState = authViewModel.uiState
+    val permissions = doctorViewModel.permissions()
+
+    LaunchedEffect(authState.session) {
+        val session = authState.session
+        if (session == null) doctorViewModel.logout()
+        else doctorViewModel.login(session.role, session.userId.takeIf { session.role == UserRole.ASSISTANT })
+    }
+
     fun home() = nav.navigate(Routes.HOME) { launchSingleTop = true }
     fun queue() = nav.navigate(Routes.QUEUE) { launchSingleTop = true }
     fun appointments() = nav.navigate(Routes.APPOINTMENTS) { launchSingleTop = true }
-    fun profile() = nav.navigate(Routes.PROFILE) { launchSingleTop = true }
+    fun profile() {
+        if (state.role == UserRole.DOCTOR) nav.navigate(Routes.PROFILE) { launchSingleTop = true }
+    }
+    fun protectedDoctorRoute(route: String) {
+        if (state.role == UserRole.DOCTOR) nav.navigate(route)
+    }
 
     NavHost(navController = nav, startDestination = Routes.SPLASH) {
-        composable(Routes.SPLASH) { SplashScreen { nav.navigate(Routes.LOGIN) { popUpTo(Routes.SPLASH) { inclusive = true } } } }
-        composable(Routes.LOGIN) { LoginScreen { role -> viewModel.login(role); nav.navigate(Routes.HOME) { popUpTo(Routes.LOGIN) { inclusive = true } } } }
-        composable(Routes.HOME) { DashboardScreen(state, ::queue, ::appointments, { nav.navigate(Routes.CLINIC) }, { nav.navigate(Routes.AVAILABILITY) }, { nav.navigate(Routes.ANNOUNCEMENTS) }, { nav.navigate(Routes.ASSISTANTS) }, ::profile, { viewModel.logout(); nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } } }) }
-        composable(Routes.QUEUE) { QueueScreen(state, nav::popBackStack, ::home, ::appointments, ::profile, viewModel::toggleQueue, viewModel::callNext, viewModel::updateAppointment) }
-        composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, nav::popBackStack, ::home, ::queue, ::profile) }
+        composable(Routes.SPLASH) {
+            SplashScreen {
+                nav.navigate(if (authState.session == null) Routes.LOGIN else Routes.HOME) {
+                    popUpTo(Routes.SPLASH) { inclusive = true }
+                }
+            }
+        }
+        composable(Routes.LOGIN) {
+            LaunchedEffect(authState.session) {
+                if (authState.session != null) nav.navigate(Routes.HOME) { popUpTo(Routes.LOGIN) { inclusive = true } }
+            }
+            LoginScreen(authState, authViewModel::selectRole, authViewModel::updatePhone, authViewModel::updatePin, authViewModel::login)
+        }
+        composable(Routes.HOME) {
+            DashboardScreen(state, permissions, ::queue, ::appointments, { protectedDoctorRoute(Routes.CLINIC) }, { protectedDoctorRoute(Routes.AVAILABILITY) }, { protectedDoctorRoute(Routes.ANNOUNCEMENTS) }, { protectedDoctorRoute(Routes.ASSISTANTS) }, ::profile, {
+                authViewModel.logout(); doctorViewModel.logout(); nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
+            })
+        }
+        composable(Routes.QUEUE) { QueueScreen(state, permissions, nav::popBackStack, ::home, ::appointments, ::profile, doctorViewModel::toggleQueue, doctorViewModel::callNext, doctorViewModel::updateAppointment) }
+        composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::queue, ::profile) }
         composable(Routes.CLINIC) { ClinicScreen(state, nav::popBackStack) }
-        composable(Routes.AVAILABILITY) { AvailabilityScreen(state, nav::popBackStack, viewModel::toggleAppointments) }
-        composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen(state, nav::popBackStack, viewModel::toggleAnnouncement) }
-        composable(Routes.ASSISTANTS) { AssistantsScreen(state, nav::popBackStack, viewModel::togglePermission) }
+        composable(Routes.AVAILABILITY) { AvailabilityScreen(state, nav::popBackStack, doctorViewModel::toggleAppointments) }
+        composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen(state, nav::popBackStack, doctorViewModel::toggleAnnouncement) }
+        composable(Routes.ASSISTANTS) { AssistantsScreen(state, nav::popBackStack, doctorViewModel::togglePermission) }
         composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::queue, ::appointments) }
     }
 }

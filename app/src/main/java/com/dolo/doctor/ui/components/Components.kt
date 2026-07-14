@@ -85,20 +85,21 @@ private val doctorGradient = Brush.horizontalGradient(listOf(DoctorTeal, DoctorM
 
 enum class DoctorBottomDestination { HOME, QUEUE, APPOINTMENTS, PROFILE }
 
-@Composable fun DoctorBottomBar(selected: DoctorBottomDestination, onHome: () -> Unit, onQueue: () -> Unit, onAppointments: () -> Unit, onProfile: () -> Unit) {
+@Composable fun DoctorBottomBar(selected: DoctorBottomDestination, onHome: () -> Unit, onQueue: () -> Unit, onAppointments: () -> Unit, onProfile: () -> Unit, profileEnabled: Boolean = true) {
     Surface(color = Color.White, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), shadowElevation = 14.dp) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
             BottomItem(Icons.Outlined.Home, "Home", selected == DoctorBottomDestination.HOME, onHome)
             BottomItem(Icons.Outlined.FormatListNumbered, "Queue", selected == DoctorBottomDestination.QUEUE, onQueue)
             BottomItem(Icons.Outlined.CalendarMonth, "Appointments", selected == DoctorBottomDestination.APPOINTMENTS, onAppointments)
-            BottomItem(Icons.Outlined.Person, "Profile", selected == DoctorBottomDestination.PROFILE, onProfile)
+            BottomItem(Icons.Outlined.Person, "Profile", selected == DoctorBottomDestination.PROFILE, onProfile, profileEnabled)
         }
     }
 }
 
-@Composable private fun BottomItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    Column(Modifier.sizeIn(minWidth = 72.dp, minHeight = 54.dp).clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = label }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Icon(icon, null, tint = if (selected) DoctorTeal else DoctorMuted)
-        Text(label, fontSize = 9.sp, color = if (selected) DoctorTeal else DoctorMuted)
+@Composable private fun BottomItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit, enabled: Boolean = true) {
+    Column(Modifier.sizeIn(minWidth = 72.dp, minHeight = 54.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = label + if (enabled) "" else ", unavailable" }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        val color = if (!enabled) DoctorBorder else if (selected) DoctorTeal else DoctorMuted
+        Icon(icon, null, tint = color)
+        Text(label, fontSize = 9.sp, color = color)
     }
 }

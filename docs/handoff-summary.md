@@ -15,7 +15,7 @@ Backend-ready contracts reserve doctor profile, clinic, appointment, queue, anno
 - no production login or OTP;
 - no shared backend or server authorization;
 - no real patient or medical data;
-- no persistent changes yet;
+- no persistent business-data changes yet (only the Stage 2 login session persists);
 - no SMS, push, maps or payment providers;
 - no Doctor/Admin broadcast delivery;
 - no production signing.
@@ -23,3 +23,12 @@ Backend-ready contracts reserve doctor profile, clinic, appointment, queue, anno
 ## Next recommended stage
 
 Stage 2: persisted local role/session, input validation and a permission-aware Assistant UI foundation before expanding editable doctor and clinic data.
+## Stage 2 status
+
+Version 0.2.0-stage2 (version code 2) replaces one-tap role selection with validated mobile-number and four-digit PIN credentials. Doctor, queue-enabled Assistant and view-only Assistant test identities are available. Successful sessions persist locally across app restarts and logout removes the stored session.
+
+Assistant identity now selects an individual permission set. Queue visibility, appointment visibility, queue pause/resume, call-next, arrival and absence controls are permission-aware. The same permissions are checked again inside `DoctorViewModel`, so invoking an action without its required permission has no effect. Doctor-only profile, clinic, availability, announcements and staff routes remain inaccessible to Assistants.
+
+Unit tests cover credential validation, role matching, Doctor actions, permitted Assistant actions, view-only restrictions and Doctor-only permission administration.
+
+Next recommended stage: Stage 3 doctor profile, clinic and consultation schedule management with validated persisted edits and sensitive-field Admin-review flags.
