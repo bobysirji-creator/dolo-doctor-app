@@ -91,6 +91,30 @@ class DoctorViewModelTest {
         assertTrue(Permission.MANAGE_ANNOUNCEMENTS in model.uiState.assistants.first().permissions)
     }
 
+    @Test fun loginRoleChangeKeepsCurrentWorkflowState() {
+        val model = DoctorViewModel()
+        model.login(UserRole.DOCTOR)
+        model.callNext()
+
+        model.login(UserRole.ASSISTANT, "staff-1")
+
+        assertEquals(10, model.uiState.currentToken)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.token == 10 }.status)
+    }
+
+    @Test fun logoutClearsRoleWithoutResettingWorkflowState() {
+        val model = DoctorViewModel()
+        model.login(UserRole.DOCTOR)
+        model.callNext()
+
+        model.logout()
+
+        assertEquals(null, model.uiState.role)
+        assertEquals(null, model.uiState.activeAssistantId)
+        assertEquals(10, model.uiState.currentToken)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.token == 10 }.status)
+    }
+
     private class MemoryDoctorStateStore : DoctorStateStore {
         private var saved: DoctorUiState? = null
         override fun restore(defaultState: DoctorUiState): DoctorUiState = saved ?: defaultState

@@ -11,10 +11,8 @@ class DoctorViewModel(private val stateStore: DoctorStateStore = NoOpDoctorState
     var uiState by mutableStateOf(stateStore.restore(DummyData.initialState()))
         private set
 
-    private fun restoredState(removedAssistantIds: Set<String> = emptySet()): DoctorUiState {
-        val restored = stateStore.restore(DummyData.initialState())
-        return restored.copy(assistants = restored.assistants.filterNot { it.id in removedAssistantIds })
-    }
+    private fun currentStateWithout(removedAssistantIds: Set<String>): DoctorUiState =
+        uiState.copy(assistants = uiState.assistants.filterNot { it.id in removedAssistantIds })
 
     private fun persist(state: DoctorUiState) {
         uiState = state
@@ -22,14 +20,17 @@ class DoctorViewModel(private val stateStore: DoctorStateStore = NoOpDoctorState
     }
 
     fun login(role: UserRole, assistantId: String? = null, removedAssistantIds: Set<String> = emptySet()) {
-        uiState = restoredState(removedAssistantIds).copy(
+        uiState = currentStateWithout(removedAssistantIds).copy(
             role = role,
             activeAssistantId = if (role == UserRole.ASSISTANT) assistantId else null
         )
     }
 
     fun logout(removedAssistantIds: Set<String> = emptySet()) {
-        uiState = restoredState(removedAssistantIds)
+        uiState = currentStateWithout(removedAssistantIds).copy(
+            role = null,
+            activeAssistantId = null
+        )
     }
 
     fun permissions(): Set<Permission> = when (uiState.role) {
