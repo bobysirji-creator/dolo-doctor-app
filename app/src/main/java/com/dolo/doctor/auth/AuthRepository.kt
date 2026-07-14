@@ -34,6 +34,8 @@ interface AuthRepository {
     fun restoredSession(): AuthSession?
     fun login(role: UserRole, phone: String, pin: String): AuthResult
     fun logout()
+    fun removedAssistantIds(): Set<String>
+    fun removeAssistant(assistantId: String): Boolean
 }
 
 class LocalAuthRepository(private val preferences: SharedPreferences) : AuthRepository {
@@ -49,17 +51,25 @@ class LocalAuthRepository(private val preferences: SharedPreferences) : AuthRepo
         if (!CredentialValidator.isValidPhone(phone)) return AuthResult.Failure("Enter a valid 10-digit mobile number.")
         if (!CredentialValidator.isValidPin(pin)) return AuthResult.Failure("Enter the 4-digit demo PIN.")
         val session = DemoCredentials.authenticate(role, phone, pin) ?: return AuthResult.Failure("Credentials do not match the selected role.")
-        preferences.edit()
+        if (session.role == UserRole.ASSISTANT && session.userId in removedAssistantIds()) return AuthResult.Failure("This assistant account has been removed by the doctor.")
+        val saved = preferences.edit()
             .putString(KEY_ROLE, session.role.name)
             .putString(KEY_USER_ID, session.userId)
             .putString(KEY_DISPLAY_NAME, session.displayName)
             .putString(KEY_PHONE, session.phone)
-            .apply()
-        return AuthResult.Success(session)
+            .commit()
+        return if (saved) AuthResult.Success(session) else AuthResult.Failure("Unable to save this session. Please try again.")
     }
 
     override fun logout() {
-        preferences.edit().remove(KEY_ROLE).remove(KEY_USER_ID).remove(KEY_DISPLAY_NAME).remove(KEY_PHONE).apply()
+        preferences.edit().remove(KEY_ROLE).remove(KEY_USER_ID).remove(KEY_DISPLAY_NAME).remove(KEY_PHONE).commit()
+    }
+
+    override fun removedAssistantIds(): Set<String> = preferences.getStringSet(KEY_REMOVED_ASSISTANTS, emptySet()).orEmpty().toSet()
+
+    override fun removeAssistant(assistantId: String): Boolean {
+        val updated = removedAssistantIds() + assistantId
+        return preferences.edit().putStringSet(KEY_REMOVED_ASSISTANTS, updated).commit()
     }
 
     private companion object {
@@ -67,5 +77,6 @@ class LocalAuthRepository(private val preferences: SharedPreferences) : AuthRepo
         const val KEY_USER_ID = "auth_user_id"
         const val KEY_DISPLAY_NAME = "auth_display_name"
         const val KEY_PHONE = "auth_phone"
+        const val KEY_REMOVED_ASSISTANTS = "removed_assistant_ids"
     }
 }

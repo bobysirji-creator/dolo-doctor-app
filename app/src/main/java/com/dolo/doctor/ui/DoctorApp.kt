@@ -38,8 +38,8 @@ private object Routes {
 
     LaunchedEffect(authState.session) {
         val session = authState.session
-        if (session == null) doctorViewModel.logout()
-        else doctorViewModel.login(session.role, session.userId.takeIf { session.role == UserRole.ASSISTANT })
+        if (session == null) doctorViewModel.logout(authRepository.removedAssistantIds())
+        else doctorViewModel.login(session.role, session.userId.takeIf { session.role == UserRole.ASSISTANT }, authRepository.removedAssistantIds())
     }
 
     fun home() = nav.navigate(Routes.HOME) { launchSingleTop = true }
@@ -54,6 +54,12 @@ private object Routes {
 
     NavHost(navController = nav, startDestination = Routes.SPLASH) {
         composable(Routes.SPLASH) {
+            LaunchedEffect(authState.session) {
+                authState.session?.let { session ->
+                    doctorViewModel.login(session.role, session.userId.takeIf { session.role == UserRole.ASSISTANT }, authRepository.removedAssistantIds())
+                    nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                }
+            }
             SplashScreen {
                 nav.navigate(if (authState.session == null) Routes.LOGIN else Routes.HOME) {
                     popUpTo(Routes.SPLASH) { inclusive = true }
@@ -68,7 +74,7 @@ private object Routes {
         }
         composable(Routes.HOME) {
             DashboardScreen(state, permissions, ::queue, ::appointments, { protectedDoctorRoute(Routes.CLINIC) }, { protectedDoctorRoute(Routes.AVAILABILITY) }, { protectedDoctorRoute(Routes.ANNOUNCEMENTS) }, { protectedDoctorRoute(Routes.ASSISTANTS) }, ::profile, {
-                authViewModel.logout(); doctorViewModel.logout(); nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
+                authViewModel.logout(); doctorViewModel.logout(authRepository.removedAssistantIds()); nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
             })
         }
         composable(Routes.QUEUE) { QueueScreen(state, permissions, nav::popBackStack, ::home, ::appointments, ::profile, doctorViewModel::toggleQueue, doctorViewModel::callNext, doctorViewModel::updateAppointment) }
@@ -76,7 +82,7 @@ private object Routes {
         composable(Routes.CLINIC) { ClinicScreen(state, nav::popBackStack) }
         composable(Routes.AVAILABILITY) { AvailabilityScreen(state, nav::popBackStack, doctorViewModel::toggleAppointments) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen(state, nav::popBackStack, doctorViewModel::toggleAnnouncement) }
-        composable(Routes.ASSISTANTS) { AssistantsScreen(state, nav::popBackStack, doctorViewModel::togglePermission) }
+        composable(Routes.ASSISTANTS) { AssistantsScreen(state, nav::popBackStack, doctorViewModel::togglePermission) { assistantId -> if (doctorViewModel.deleteAssistant(assistantId)) authRepository.removeAssistant(assistantId) } }
         composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::queue, ::appointments) }
     }
 }

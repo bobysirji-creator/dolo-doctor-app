@@ -15,7 +15,7 @@ Backend-ready contracts reserve doctor profile, clinic, appointment, queue, anno
 - no production login or OTP;
 - no shared backend or server authorization;
 - no real patient or medical data;
-- no persistent business-data changes yet (only the Stage 2 login session persists);
+- assistant deletions and the login session persist locally; other business-data changes are not persistent yet;
 - no SMS, push, maps or payment providers;
 - no Doctor/Admin broadcast delivery;
 - no production signing.
@@ -32,3 +32,8 @@ Assistant identity now selects an individual permission set. Queue visibility, a
 Unit tests cover credential validation, role matching, Doctor actions, permitted Assistant actions, view-only restrictions and Doctor-only permission administration.
 
 Next recommended stage: Stage 3 doctor profile, clinic and consultation schedule management with validated persisted edits and sensitive-field Admin-review flags.
+## Stage 2 corrective release
+
+Version 0.2.1-stage2 (version code 3) makes a restored local session automatically resume the saved Doctor or Assistant workspace after app relaunch. Session writes and logout clearing are committed synchronously so a rapid close/relaunch cannot race an asynchronous preference write.
+
+Doctors can now delete an assistant from the local clinic workspace after an explicit confirmation. The ViewModel rejects the same operation when invoked by an Assistant. Removed assistant IDs persist locally and their credentials are rejected on later login attempts. Other assistant and business-data changes remain in-memory prototype behavior until the shared backend stage.

@@ -13,7 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -213,19 +213,54 @@ private val page = Modifier.fillMaxSize().background(DoctorBackground)
     }
 }
 
-@Composable fun AssistantsScreen(state: DoctorUiState, onBack: () -> Unit, onTogglePermission: (String, Permission) -> Unit) {
+@Composable fun AssistantsScreen(
+    state: DoctorUiState,
+    onBack: () -> Unit,
+    onTogglePermission: (String, Permission) -> Unit,
+    onDeleteAssistant: (String) -> Unit
+) {
+    var pendingDeletion by remember { mutableStateOf<Assistant?>(null) }
+
     LazyColumn(page.padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
         item { PageHeader("Assistants", onBack) }
         item { ElevatedSection("Staff access", "Each assistant uses individual credentials and backend-enforced permissions.") { PrimaryAction("Add assistant", {}, icon = Icons.Outlined.PersonAdd) } }
         items(state.assistants, key = { it.id }) { assistant ->
             ElevatedSection(assistant.name, assistant.phone) {
-                StatusPill(if (assistant.active) "Active" else "Disabled", assistant.active)
-                Permission.entries.forEach { permission -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text(permission.name.replace("_", " ").lowercase().replaceFirstChar(Char::uppercase), Modifier.weight(1f), fontSize = 12.sp); Switch(permission in assistant.permissions, { onTogglePermission(assistant.id, permission) }) } }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    StatusPill(if (assistant.active) "Active" else "Disabled", assistant.active)
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { pendingDeletion = assistant }, colors = ButtonDefaults.textButtonColors(contentColor = DoctorCoral)) {
+                        Icon(Icons.Outlined.DeleteOutline, null)
+                        Spacer(Modifier.width(5.dp))
+                        Text("Delete")
+                    }
+                }
+                Permission.entries.forEach { permission ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(permission.name.replace("_", " ").lowercase().replaceFirstChar(Char::uppercase), Modifier.weight(1f), fontSize = 12.sp)
+                        Switch(permission in assistant.permissions, { onTogglePermission(assistant.id, permission) })
+                    }
+                }
             }
         }
+        if (state.assistants.isEmpty()) {
+            item { ElevatedSection("No assistants") { Text("Add an assistant when clinic staff access is needed.", color = DoctorMuted) } }
+        }
+    }
+
+    pendingDeletion?.let { assistant ->
+        AlertDialog(
+            onDismissRequest = { pendingDeletion = null },
+            icon = { Icon(Icons.Outlined.PersonRemove, null, tint = DoctorCoral) },
+            title = { Text("Delete ${assistant.name}?") },
+            text = { Text("This removes the assistant profile and its permissions from the local clinic workspace. This action cannot be undone in this prototype without clearing the app data.") },
+            confirmButton = {
+                TextButton(onClick = { onDeleteAssistant(assistant.id); pendingDeletion = null }, colors = ButtonDefaults.textButtonColors(contentColor = DoctorCoral)) { Text("Delete assistant") }
+            },
+            dismissButton = { TextButton(onClick = { pendingDeletion = null }) { Text("Keep assistant") } }
+        )
     }
 }
-
 @Composable fun ProfileScreen(state: DoctorUiState, onBack: () -> Unit, onHome: () -> Unit, onQueue: () -> Unit, onAppointments: () -> Unit) {
     Scaffold(containerColor = DoctorBackground, bottomBar = { DoctorBottomBar(DoctorBottomDestination.PROFILE, onHome, onQueue, onAppointments, {}) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {

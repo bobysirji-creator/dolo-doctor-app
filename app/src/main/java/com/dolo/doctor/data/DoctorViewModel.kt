@@ -10,11 +10,18 @@ class DoctorViewModel : ViewModel() {
     var uiState by mutableStateOf(DummyData.initialState())
         private set
 
-    fun login(role: UserRole, assistantId: String? = null) {
-        uiState = uiState.copy(role = role, activeAssistantId = if (role == UserRole.ASSISTANT) assistantId else null)
+    fun login(role: UserRole, assistantId: String? = null, removedAssistantIds: Set<String> = emptySet()) {
+        uiState = uiState.copy(
+            role = role,
+            activeAssistantId = if (role == UserRole.ASSISTANT) assistantId else null,
+            assistants = uiState.assistants.filterNot { it.id in removedAssistantIds }
+        )
     }
 
-    fun logout() { uiState = DummyData.initialState() }
+    fun logout(removedAssistantIds: Set<String> = emptySet()) {
+        val initial = DummyData.initialState()
+        uiState = initial.copy(assistants = initial.assistants.filterNot { it.id in removedAssistantIds })
+    }
 
     fun permissions(): Set<Permission> = when (uiState.role) {
         UserRole.DOCTOR -> Permission.entries.toSet()
@@ -70,6 +77,12 @@ class DoctorViewModel : ViewModel() {
         uiState = uiState.copy(availabilityBlocks = uiState.availabilityBlocks.map {
             if (it.id == blockId) it.copy(appointmentsEnabled = !it.appointmentsEnabled) else it
         })
+    }
+
+    fun deleteAssistant(assistantId: String): Boolean {
+        if (uiState.role != UserRole.DOCTOR || uiState.assistants.none { it.id == assistantId }) return false
+        uiState = uiState.copy(assistants = uiState.assistants.filterNot { it.id == assistantId })
+        return true
     }
 
     fun togglePermission(assistantId: String, permission: Permission) {

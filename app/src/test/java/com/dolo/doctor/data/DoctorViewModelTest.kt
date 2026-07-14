@@ -45,6 +45,25 @@ class DoctorViewModelTest {
         assertEquals(AppointmentStatus.ARRIVED, model.uiState.appointments.single { it.id == "a3" }.status)
     }
 
+    @Test fun onlyDoctorCanDeleteAssistant() {
+        val model = DoctorViewModel()
+        model.login(UserRole.ASSISTANT, "staff-1")
+        assertFalse(model.deleteAssistant("staff-2"))
+        assertEquals(2, model.uiState.assistants.size)
+
+        model.login(UserRole.DOCTOR)
+        assertTrue(model.deleteAssistant("staff-2"))
+        assertEquals(listOf("staff-1"), model.uiState.assistants.map { it.id })
+    }
+
+    @Test fun removedAssistantsStayFilteredWhenStateIsRestored() {
+        val model = DoctorViewModel()
+        model.login(UserRole.DOCTOR, removedAssistantIds = setOf("staff-2"))
+        assertEquals(listOf("staff-1"), model.uiState.assistants.map { it.id })
+        model.logout(setOf("staff-2"))
+        assertEquals(listOf("staff-1"), model.uiState.assistants.map { it.id })
+    }
+
     @Test fun onlyDoctorCanChangeAssistantPermissions() {
         val model = DoctorViewModel()
         model.login(UserRole.DOCTOR)
