@@ -7,6 +7,7 @@
 - [x] Stage 5 - expanded appointment workflow with queue audit events
   - [x] Stage 5.2 - independent Morning/Evening queues and automatic session booking cutoffs
   - [x] Stage 5.3 - fee-confirmed queue admission, independent session tokens and 58 mm receipt layout
+  - [x] Stage 5.4 - independent session closure, enforced token capacity and persistent in-app notifications
 - [ ] Stage 6 - appointment availability blocks and affected-patient workflow
 - [ ] Stage 7 - announcements, camps, offers and Patient App profile feed contracts
 - [ ] Stage 8 - assistant creation, credentials and backend-enforced permissions

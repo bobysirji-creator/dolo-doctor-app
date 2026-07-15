@@ -90,6 +90,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
             currentToken = sessionQueues.first { it.session == "Morning" }.currentToken,
             appointments = migratedAppointments,
             selectedSession = preferences.getString(KEY_SELECTED_SESSION, "Morning").takeIf { it in setOf("Morning", "Evening") } ?: "Morning",
+            notificationReadThrough = preferences.getInt(KEY_NOTIFICATION_READ_THROUGH, 0),
             announcements = defaultState.announcements.map { announcement ->
                 announcement.copy(active = announcement.id in activeAnnouncements)
             },
@@ -113,6 +114,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
         .putString(KEY_QUEUE_STATE, state.queueState.name)
         .putInt(KEY_CURRENT_TOKEN, state.currentToken)
         .putString(KEY_SELECTED_SESSION, state.selectedSession)
+        .putInt(KEY_NOTIFICATION_READ_THROUGH, state.notificationReadThrough)
         .putStringSet(KEY_SESSION_QUEUES, state.sessionQueues.mapTo(mutableSetOf(), QueueStateCodec::encodeSessionQueue))
         .putStringSet(KEY_CURRENT_APPOINTMENTS, state.appointments.mapTo(mutableSetOf(), QueueStateCodec::encodeAppointment))
         .putStringSet(KEY_QUEUE_HISTORY, state.queueHistory.mapTo(mutableSetOf(), QueueStateCodec::encodeHistory))
@@ -160,6 +162,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
         const val KEY_INITIALIZED = "doctor_state_initialized"
         const val KEY_SCHEMA_VERSION = "doctor_state_schema_version"
         const val KEY_SELECTED_SESSION = "doctor_selected_session"
+        const val KEY_NOTIFICATION_READ_THROUGH = "doctor_notification_read_through"
         const val KEY_DOCTOR_PROFILE = "doctor_profile"
         const val KEY_CLINICS = "doctor_clinics"
         const val KEY_QUEUE_DATE = "doctor_queue_date"

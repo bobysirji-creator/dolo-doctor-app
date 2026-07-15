@@ -96,6 +96,7 @@ import kotlinx.coroutines.delay
     onAnnouncements: () -> Unit,
     onAssistants: () -> Unit,
     onProfile: () -> Unit,
+    onNotifications: () -> Unit,
     onLogout: () -> Unit
 ) {
     val doctorMode = state.role == UserRole.DOCTOR
@@ -105,12 +106,18 @@ import kotlinx.coroutines.delay
     val morningQueue = state.sessionQueues.firstOrNull { it.session == "Morning" } ?: ConsultationQueue("Morning", state.queueState, state.currentToken)
     val eveningQueue = state.sessionQueues.firstOrNull { it.session == "Evening" } ?: ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
     var confirmLogout by remember { mutableStateOf(false) }
+    val unreadNotifications = state.auditEvents.count { it.sequence > state.notificationReadThrough }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.HOME, {}, onQueue, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { DoctorBrand(); Text(if (doctorMode) state.profile.name else assistantName, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold); Text(if (doctorMode) state.profile.specialty else "Assistant • ${permissions.size} permissions", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     IconButton(onToggleTheme) { Icon(if (darkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (darkTheme) "Use light theme" else "Use dark theme") }
+                    BadgedBox(badge = { if (unreadNotifications > 0) Badge { Text(unreadNotifications.coerceAtMost(99).toString()) } }) {
+                        IconButton(onNotifications) {
+                            Icon(Icons.Outlined.Notifications, "Notifications")
+                        }
+                    }
                     IconButton(onClick = { confirmLogout = true }) { Icon(Icons.Outlined.Logout, "Logout") }
                 }
             }
@@ -167,7 +174,7 @@ import kotlinx.coroutines.delay
     onUpdate: (String, AppointmentStatus) -> Unit,
     onResumeSkipped: (String) -> Boolean,
     onRejoin: (String) -> Boolean,
-    onCloseDay: () -> Boolean
+    onCloseSession: (String) -> Boolean
 ) {
     val doctorMode = state.role == UserRole.DOCTOR
     val canView = doctorMode || Permission.VIEW_QUEUE in permissions
@@ -183,7 +190,7 @@ import kotlinx.coroutines.delay
     val hasNextPatient = sessionAppointments.any { it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }
     val hasCurrentConsultation = sessionAppointments.any { it.token == queue.currentToken && it.status == AppointmentStatus.IN_CONSULTATION }
     val progressedOrder = sessionAppointments.filter { it.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED) }.maxOfOrNull { it.queueOrder } ?: 0
-    var confirmCloseDay by remember { mutableStateOf(false) }
+    var confirmCloseSession by remember { mutableStateOf(false) }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.QUEUE, onHome, {}, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Live queue", onBack) }
@@ -215,10 +222,10 @@ import kotlinx.coroutines.delay
                             }
                         }
                         if (doctorMode) {
-                            OutlinedButton(onClick = { confirmCloseDay = true }, modifier = Modifier.fillMaxWidth(), enabled = state.sessionQueues.any { it.state != QueueState.CLOSED }) {
+                            OutlinedButton(onClick = { confirmCloseSession = true }, modifier = Modifier.fillMaxWidth(), enabled = queue.state != QueueState.CLOSED) {
                                 Icon(Icons.Outlined.EventAvailable, null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Close and archive complete day")
+                                Text("Close " + selectedSession + " session")
                             }
                         }
                         if (!canUpdate || !canCallNext) Text("Some controls are disabled by assistant permissions.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
@@ -244,14 +251,14 @@ import kotlinx.coroutines.delay
             }
         }
     }
-    if (confirmCloseDay) {
+    if (confirmCloseSession) {
         AlertDialog(
-            onDismissRequest = { confirmCloseDay = false },
+            onDismissRequest = { confirmCloseSession = false },
             icon = { Icon(Icons.Outlined.EventAvailable, null) },
-            title = { Text("Close both session queues?") },
-            text = { Text("Morning and Evening queues plus every final appointment status will be archived under " + state.queueDate + ".") },
-            confirmButton = { TextButton(onClick = { if (onCloseDay()) confirmCloseDay = false }) { Text("Close and archive") } },
-            dismissButton = { TextButton(onClick = { confirmCloseDay = false }) { Text("Keep queues open") } }
+            title = { Text("Close " + selectedSession + " session?") },
+            text = { Text("Only the " + selectedSession + " queue and its booking will close. The other session stays independent. Daily history is finalized after both sessions close.") },
+            confirmButton = { TextButton(onClick = { if (onCloseSession(selectedSession)) confirmCloseSession = false }) { Text("Close session") } },
+            dismissButton = { TextButton(onClick = { confirmCloseSession = false }) { Text("Keep session open") } }
         )
     }
 }
@@ -336,6 +343,9 @@ import kotlinx.coroutines.delay
     val morningBookingOpen = sessionClockTick.let { isSessionBookingOpen("Morning") }
     val eveningBookingOpen = sessionClockTick.let { isSessionBookingOpen("Evening") }
     val selectedSession = state.selectedSession
+    val maxTokens = state.clinics.firstOrNull()?.maxTokensPerSession ?: 0
+    val morningCount = state.appointments.count { it.session == "Morning" }
+    val eveningCount = state.appointments.count { it.session == "Evening" }
     var showWalkInBooking by remember { mutableStateOf(false) }
     var activeReceipt by remember { mutableStateOf<TokenReceipt?>(null) }
     var activeFeeAppointment by remember { mutableStateOf<Appointment?>(null) }
@@ -347,6 +357,9 @@ import kotlinx.coroutines.delay
                 item {
                     ElevatedSection("Appointments and fee desk", "Only fee-confirmed appointments with a generated receipt are admitted to the selected session queue.") {
                         Text("Morning: " + (if (morningBookingOpen) "booking open" else "booking closed") + " • Evening: " + (if (eveningBookingOpen) "booking open" else "booking closed"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Morning capacity: " + morningCount + "/" + maxTokens + (if (morningCount >= maxTokens) " - LIMIT REACHED" else ""))
+                        Text("Evening capacity: " + eveningCount + "/" + maxTokens + (if (eveningCount >= maxTokens) " - LIMIT REACHED" else ""))
+                        Text("The configured maximum includes Patient App and clinic walk-in appointments.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         Text("A session remains bookable before its end time; it does not wait for the start time.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         if (canBookWalkIn) PrimaryAction("Book walk-in patient", { showWalkInBooking = true }, enabled = morningBookingOpen || eveningBookingOpen, icon = Icons.Outlined.PersonAdd)
                     }

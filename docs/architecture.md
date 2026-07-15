@@ -62,9 +62,10 @@ Every assistant action must be authorized on the server, not only hidden in Comp
 ## Stage 5.2 independent consultation sessions
 
 - DoctorUiState.sessionQueues stores separate Morning and Evening ConsultationQueue records. The older queueState/currentToken fields remain a Morning-session compatibility alias for migration from installed builds.
-- Appointment.queueOrder is calculated within its selected session, while Appointment.token remains unique across all appointments for the clinic day.
+- Appointment.queueOrder and Appointment.token are calculated independently within the selected session; session plus token is the unique operational identity.
 - Queue controls and Call next filter by session, so one session cannot progress, pause or complete the other session's patients.
-- sessionBookingOpen parses the configured session end time. It intentionally applies no start-time restriction, permitting advance booking, and rejects new bookings at or after the end time.
+- sessionBookingOpen parses the configured session end time and also checks the persisted maximum token capacity. It intentionally applies no start-time restriction, permitting advance booking, and rejects new bookings at or after the end time or at capacity.
+- closeSession changes only the selected ConsultationQueue. The daily archive is produced only after both session queues are closed, preventing Morning closure from affecting Evening controls or booking.
 - The appointments screen refreshes the date and cutoff state periodically. Date rollover archives the previous day and recreates both sessions as NOT_STARTED with token 0.
 - Session cutoff is currently evaluated with device local time. The shared backend must eventually enforce the clinic timezone and cutoff atomically for both Patient App and clinic-device bookings.
 
@@ -77,4 +78,9 @@ Every assistant action must be authorized on the server, not only hidden in Comp
 - Local schema version 2 migrates an installed daily-global token list into independent per-session numbering, infers legacy receipts as paid, preserves the doctor's fee and upgrades receipt-capable assistants with the new confirmation permission.
 - DoctorUiState.selectedSession is persisted and drives both Queue and Appointments instead of screen-local Compose state.
 - AndroidTokenReceiptPrinter requests a 58 mm custom medium, zero margins and 203 dpi, then centers every rendered line on a 164-point receipt canvas. The output includes fee status, amount, method and confirmation time. Printer-service scaling and paper feed still require physical ESC/POS device validation.
+
+## Stage 5.4 local notification projection
+
+- The notification center projects persisted QueueAuditEvent records instead of maintaining a second conflicting event collection.
+- DoctorUiState.notificationReadThrough stores the highest read audit sequence; SharedPreferences persistence keeps the unread badge stable through process recreation.
 - The shared backend must eventually make fee confirmation, token allocation and receipt identity transactional and server-authoritative; no real payment gateway is connected in this local stage.

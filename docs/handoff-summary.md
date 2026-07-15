@@ -1,3 +1,12 @@
+## Stage 5.4 session closure, capacity and notifications
+
+Version 0.5.4-stage5 (version code 13) corrects manual closure so the Doctor closes only the selected Morning or Evening queue. The other queue state, booking eligibility and appointments remain unchanged. An active consultation in the selected session is completed before closure. The dated DailyQueueHistory snapshot is finalized only after both sessions are closed.
+
+The saved maximum-tokens-per-session value is now enforced through a single ViewModel capacity rule used by clinic walk-in validation and session booking availability. Today's appointments displays used/max capacity for both sessions and clearly marks LIMIT REACHED. Existing appointments are never deleted when a Doctor lowers the limit; additional bookings are blocked until the next clinic day.
+
+A persistent notification center is available from the Home bell. Queue, appointment, fee, receipt and closure audit events appear newest first, unread events use a highlighted card, and the Home badge plus read-through position survive process recreation. This is the local operational notification stage; remote Patient App bookings, Admin broadcasts and Android push delivery still require the shared backend.
+
+GitHub Actions remains the required compile, lint, unit-test and APK gate because Gradle/Android SDK are intentionally not installed on the low-resource development PC.
 # Doctor App Handoff
 
 ## Stage 1 status

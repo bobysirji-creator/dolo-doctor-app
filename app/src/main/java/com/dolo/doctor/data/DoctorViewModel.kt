@@ -49,16 +49,39 @@ class DoctorViewModel(
     }
     private fun admittedToQueue(appointment: Appointment): Boolean =
         appointment.paymentStatus != PaymentStatus.PENDING && appointment.receiptNumber.isNotBlank()
+    fun sessionAppointmentCount(session: String): Int =
+        uiState.appointments.count { it.session == session }
+
+    fun sessionRemainingCapacity(session: String): Int {
+        val maximum = uiState.clinics.firstOrNull()?.maxTokensPerSession ?: return 0
+        return (maximum - sessionAppointmentCount(session)).coerceAtLeast(0)
+    }
+
+    private fun sessionHasCapacity(session: String): Boolean =
+        sessionRemainingCapacity(session) > 0
+
 
     fun selectSession(session: String) {
         if (session !in setOf("Morning", "Evening") || session == uiState.selectedSession) return
         persist(uiState.copy(selectedSession = session))
     }
+    fun markNotificationRead(sequence: Int) {
+        if (sequence <= uiState.notificationReadThrough) return
+        persist(uiState.copy(notificationReadThrough = sequence))
+    }
+    fun markAllNotificationsRead() {
+        val latest = uiState.auditEvents.maxOfOrNull { it.sequence } ?: return
+        markNotificationRead(latest)
+    }
+    fun unreadNotificationCount(): Int =
+        uiState.auditEvents.count { it.sequence > uiState.notificationReadThrough }
+
     private fun actorName(): String = when (uiState.role) {
         UserRole.DOCTOR -> uiState.profile.name
         UserRole.ASSISTANT -> uiState.assistants.firstOrNull { it.id == uiState.activeAssistantId }?.name ?: "Assistant"
         null -> "System"
     }
+
 
     private fun withAudit(
         state: DoctorUiState,
@@ -277,14 +300,14 @@ class DoctorViewModel(
         val clinic = uiState.clinics.firstOrNull() ?: return WalkInBookingResult(error = "Clinic details are unavailable.")
         val fee = if (request.paymentMethod == PaymentMethod.WAIVED) 0 else request.consultationFee.takeIf { it > 0 } ?: uiState.profile.consultationFee
         val error = when {
+            session !in setOf("Morning", "Evening") -> "Select Morning or Evening session."
             queueFor(session).state == QueueState.CLOSED -> session + " queue is closed."
+            !sessionHasCapacity(session) -> "The selected session has reached its limit of " + clinic.maxTokensPerSession + " tokens."
             !sessionBookingOpen(session) -> session + " booking has closed because the session end time has passed."
             name.length < 3 -> "Enter the patient's full name."
             phone.length != 10 -> "Enter a valid 10-digit mobile number."
             patientType.isBlank() -> "Select the patient type."
-            session !in setOf("Morning", "Evening") -> "Select Morning or Evening session."
             fee !in 0..100000 || (request.paymentMethod != PaymentMethod.WAIVED && fee == 0) -> "Enter a valid fee or select Waived."
-            uiState.appointments.count { it.session == session } >= clinic.maxTokensPerSession -> "The selected session has reached its token limit."
             else -> null
         }
         if (error != null) return WalkInBookingResult(error = error)
@@ -343,7 +366,7 @@ class DoctorViewModel(
         val clinic = uiState.clinics.firstOrNull() ?: return false
         val schedule = if (session == "Morning") clinic.morningSession else clinic.eveningSession
         val (_, end) = parseSessionRange(schedule) ?: return false
-        return currentTime().isBefore(end)
+        return currentTime().isBefore(end) && sessionHasCapacity(session)
     }
 
     private fun parseSessionRange(value: String): Pair<LocalTime, LocalTime>? {
@@ -376,15 +399,34 @@ class DoctorViewModel(
             paidAt = appointment.paidAt
         )
     }
-    fun closeDay(): Boolean {
+    fun closeSession(session: String): Boolean {
         rollOverIfNeeded()
-        if (uiState.role != UserRole.DOCTOR || uiState.sessionQueues.all { it.state == QueueState.CLOSED }) return false
-        val closed = uiState.copy(
-            sessionQueues = uiState.sessionQueues.map { it.copy(state = QueueState.CLOSED) },
-            queueState = QueueState.CLOSED,
-            queueHistory = archivedHistory(uiState, "Closed manually by doctor", includeEmpty = true)
+        if (uiState.role != UserRole.DOCTOR || session !in setOf("Morning", "Evening")) return false
+        val queue = queueFor(session)
+        if (queue.state == QueueState.CLOSED) return false
+
+        val current = uiState.appointments.firstOrNull {
+            it.session == session && admittedToQueue(it) &&
+                it.status == AppointmentStatus.IN_CONSULTATION
+        }
+        val finalizedAppointments = if (current == null) uiState.appointments else {
+            uiState.appointments.map {
+                if (it.id == current.id) it.copy(status = AppointmentStatus.COMPLETED) else it
+            }
+        }
+        var closed = withSessionQueue(
+            uiState.copy(appointments = finalizedAppointments),
+            queue.copy(state = QueueState.CLOSED)
         )
-        persist(withAudit(closed, AuditAction.DAY_CLOSED, "Closed and archived queue day " + uiState.queueDate))
+        if (current != null) {
+            closed = withAudit(closed, AuditAction.CONSULTATION_COMPLETED, "Completed the final " + session.lowercase() + " consultation before closing the session", current, AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED)
+        }
+        closed = withAudit(closed, AuditAction.SESSION_CLOSED, "Closed " + session.lowercase() + " queue for " + uiState.queueDate)
+        if (closed.sessionQueues.all { it.state == QueueState.CLOSED }) {
+            closed = closed.copy(queueHistory = archivedHistory(closed, "Both sessions closed manually", includeEmpty = true))
+            closed = withAudit(closed, AuditAction.DAY_CLOSED, "Finalized daily archive after both session queues closed for " + uiState.queueDate)
+        }
+        persist(closed)
         return true
     }
     fun updateProfile(updated: DoctorProfile): String? {

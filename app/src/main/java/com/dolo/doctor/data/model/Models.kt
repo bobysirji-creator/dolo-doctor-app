@@ -8,7 +8,7 @@ enum class ProfileReviewStatus { VERIFIED, PENDING_REVIEW }
 enum class BookingSource { PATIENT_APP, CLINIC_WALK_IN }
 enum class PaymentStatus { PENDING, PAID, WAIVED }
 enum class PaymentMethod { CASH, UPI, CARD, ONLINE, WAIVED }
-enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, PATIENT_REJOINED, WALK_IN_BOOKED, FEE_CONFIRMED, RECEIPT_GENERATED, CONSULTATION_COMPLETED, DAY_CLOSED, DAY_ROLLED_OVER }
+enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, PATIENT_REJOINED, WALK_IN_BOOKED, FEE_CONFIRMED, RECEIPT_GENERATED, CONSULTATION_COMPLETED, SESSION_CLOSED, DAY_CLOSED, DAY_ROLLED_OVER }
 enum class Permission {
     VIEW_QUEUE,
     UPDATE_QUEUE,
@@ -166,5 +166,6 @@ data class DoctorUiState(
     val sessionQueues: List<ConsultationQueue> = emptyList(),
     val queueState: QueueState = QueueState.NOT_STARTED,
     val currentToken: Int = 0,
-    val selectedSession: String = "Morning"
+    val selectedSession: String = "Morning",
+    val notificationReadThrough: Int = 0
 )

@@ -17,7 +17,7 @@ Individual credentials with backend-enforced modular permissions. Assistants mus
 ## Core workflows
 
 - review today's appointments;
-- close and archive a dated queue, then review immutable daily appointment history;
+- close Morning and Evening independently, then review immutable daily history after both sessions close;
 - start, pause, resume and close a clinic queue;
 - call next token and update arrival, waiting, consultation, completion, absence or skipped status;
 - configure clinics, sessions, token capacity and average consultation time;
@@ -51,9 +51,9 @@ Skipped patients are recoverable. If Skip was accidental and no other consultati
 
 Morning and Evening are independent operational queues for the same clinic day. Each has its own NOT_STARTED, ACTIVE, PAUSED or CLOSED state, current token and queue order. Starting, pausing, resuming or calling the next patient in one session must not advance or change the other session.
 
-The patient-facing token remains unique across the complete clinic day, including both sessions. Staff must explicitly select Morning or Evening for every clinic walk-in so it joins the correct queue.
+Token numbering is independent per session; session plus token forms the patient-facing identity. Staff must explicitly select Morning or Evening for every clinic walk-in so it joins the correct queue.
 
-A session accepts advance bookings from the beginning of the clinic day; its configured start time does not act as an enable gate. New bookings close automatically when the configured session end time is reached. Closing Morning booking must not close Evening booking. At the next clinic-date rollover both session queues reset to NOT_STARTED and become bookable again until their respective end times. Existing consultations may still be completed after the booking cutoff.
+A session accepts advance bookings from the beginning of the clinic day; its configured start time does not act as an enable gate. New bookings close when that session ends, its configured token capacity is reached, or the Doctor manually closes that session. Closing Morning must not close Evening, and the dated history is finalized after both close. At the next clinic-date rollover both session queues reset to NOT_STARTED and become bookable again until their respective end times. Existing consultations may still be completed after the booking cutoff.
 
 ## Consultation fee and queue admission
 
@@ -62,3 +62,7 @@ Every appointment has a payment status: PENDING, PAID or WAIVED. Payment methods
 Authorized clinic staff confirm the fee amount and payment method only after payment is received, or explicitly select WAIVED. That confirmation marks the patient ARRIVED, assigns the next service order in the selected session, generates the stable receipt and admits the appointment to Live queue. Receipt generation without fee confirmation is not allowed. Both the app receipt preview and printed receipt display the amount/status and payment method.
 
 Morning and Evening use separate token sequences beginning independently for each clinic day. Token M-1 and token E-1 may coexist because session is part of the identity and receipt number. The selected Morning/Evening view is shared by Appointments and Queue and remains selected after navigation or process recreation.
+
+## Doctor notifications
+
+The Doctor App provides a persistent notification center and unread Home badge for queue, appointment, fee, receipt and session activity. Local notifications are derived from the persisted audit stream. Remote Patient App events, Admin broadcasts and Android push delivery require the shared backend and provider integration.

@@ -125,7 +125,11 @@ class DoctorViewModelTest {
         model.login(UserRole.DOCTOR)
         model.callNext()
 
-        assertTrue(model.closeDay())
+        assertTrue(model.closeSession("Morning"))
+        assertEquals(QueueState.CLOSED, model.queueFor("Morning").state)
+        assertEquals(QueueState.NOT_STARTED, model.queueFor("Evening").state)
+        assertTrue(model.uiState.queueHistory.isEmpty())
+        assertTrue(model.closeSession("Evening"))
         assertEquals(QueueState.CLOSED, model.uiState.queueState)
         assertEquals(1, model.uiState.queueHistory.size)
         val history = model.uiState.queueHistory.single()
@@ -145,7 +149,7 @@ class DoctorViewModelTest {
         val model = DoctorViewModel()
         model.login(UserRole.ASSISTANT, "staff-1")
 
-        assertFalse(model.closeDay())
+        assertFalse(model.closeSession("Morning"))
         assertEquals(QueueState.ACTIVE, model.uiState.queueState)
         assertTrue(model.uiState.queueHistory.isEmpty())
     }
@@ -195,7 +199,8 @@ class DoctorViewModelTest {
         )
         model.login(UserRole.DOCTOR)
 
-        assertTrue(model.closeDay())
+        assertTrue(model.closeSession("Morning"))
+        assertTrue(model.closeSession("Evening"))
         assertEquals(QueueState.CLOSED, model.uiState.queueState)
         assertTrue(model.uiState.queueHistory.single().appointments.isEmpty())
         assertEquals(0, model.uiState.queueHistory.single().finalToken)
@@ -209,7 +214,8 @@ class DoctorViewModelTest {
             currentTime = { LocalTime.of(20, 45) }
         )
         first.login(UserRole.DOCTOR)
-        first.closeDay()
+        first.closeSession("Morning")
+        first.closeSession("Evening")
 
         val restored = DoctorViewModel(
             stateStore = store,
@@ -243,7 +249,8 @@ class DoctorViewModelTest {
         model.callNext()
         assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.id == "a3" }.status)
         assertEquals(AuditAction.CONSULTATION_COMPLETED, model.uiState.auditEvents.last().action)
-        assertTrue(model.closeDay())
+        assertTrue(model.closeSession("Morning"))
+        assertTrue(model.closeSession("Evening"))
         assertEquals(AppointmentStatus.COMPLETED, model.uiState.queueHistory.single().appointments.single { it.id == "a3" }.status)
     }
     @Test fun validatedProfileChangesPersistAndSensitiveFieldsNeedReview() {
@@ -627,6 +634,61 @@ class DoctorViewModelTest {
         assertEquals("DL-20260715-M-007", morning?.receiptNumber)
         assertEquals("DL-20260715-E-001", evening?.receiptNumber)
     }
+    @Test fun closingMorningLeavesEveningQueueAndBookingOpen() {
+        val model = DoctorViewModel(
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(10, 0) }
+        )
+        model.login(UserRole.DOCTOR)
+
+        assertTrue(model.closeSession("Morning"))
+
+        assertEquals(QueueState.CLOSED, model.queueFor("Morning").state)
+        assertEquals(QueueState.NOT_STARTED, model.queueFor("Evening").state)
+        assertFalse(model.sessionBookingOpen("Morning"))
+        assertTrue(model.sessionBookingOpen("Evening"))
+        assertTrue(model.uiState.queueHistory.isEmpty())
+        assertEquals(
+            null,
+            model.bookWalkIn(WalkInBookingRequest("Evening Patient", "9876512345", "Self", "Evening")).error
+        )
+    }
+
+    @Test fun savedMaximumTokensBlocksWalkInAtExactSessionCapacity() {
+        val model = DoctorViewModel(
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(10, 0) }
+        )
+        model.login(UserRole.DOCTOR)
+        val clinic = model.uiState.clinics.first()
+
+        assertEquals(null, model.updateClinic(clinic.copy(maxTokensPerSession = 6)))
+        assertEquals(0, model.sessionRemainingCapacity("Morning"))
+        assertFalse(model.sessionBookingOpen("Morning"))
+
+        val blocked = model.bookWalkIn(WalkInBookingRequest("Capacity Patient", "9876512345", "Self", "Morning"))
+        assertTrue(blocked.error?.contains("limit of 6 tokens") == true)
+        assertEquals(6, model.sessionAppointmentCount("Morning"))
+    }
+
+    @Test fun notificationsTrackUnreadActivityAndPersistReadPosition() {
+        val store = MemoryDoctorStateStore()
+        val model = DoctorViewModel(store)
+        model.login(UserRole.DOCTOR)
+
+        model.callNext("Morning")
+        assertTrue(model.unreadNotificationCount() > 0)
+        model.markAllNotificationsRead()
+        assertEquals(0, model.unreadNotificationCount())
+
+        val restored = DoctorViewModel(store)
+        assertEquals(0, restored.unreadNotificationCount())
+        restored.toggleQueue("Morning")
+        assertEquals(1, restored.unreadNotificationCount())
+        restored.markNotificationRead(restored.uiState.auditEvents.last().sequence)
+        assertEquals(0, restored.unreadNotificationCount())
+    }
+
     private class MemoryDoctorStateStore(initial: DoctorUiState? = null) : DoctorStateStore {
         private var saved: DoctorUiState? = initial
         override fun restore(defaultState: DoctorUiState): DoctorUiState = saved ?: defaultState

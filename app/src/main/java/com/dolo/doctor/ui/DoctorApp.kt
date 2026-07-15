@@ -29,6 +29,7 @@ private object Routes {
     const val ANNOUNCEMENTS = "announcements"
     const val ASSISTANTS = "assistants"
     const val PROFILE = "profile"
+    const val NOTIFICATIONS = "notifications"
 }
 
 @Composable fun DoloDoctorApp(
@@ -88,6 +89,7 @@ private object Routes {
                 { protectedDoctorRoute(Routes.ANNOUNCEMENTS) },
                 { protectedDoctorRoute(Routes.ASSISTANTS) },
                 ::profile,
+                { nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } },
                 {
                     authViewModel.logout()
                     doctorViewModel.logout(authRepository.removedAssistantIds())
@@ -109,7 +111,7 @@ private object Routes {
                 doctorViewModel::updateAppointment,
                 doctorViewModel::resumeSkippedConsultation,
                 doctorViewModel::rejoinAppointment,
-                doctorViewModel::closeDay
+                doctorViewModel::closeSession
             )
         }
         composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::queue, ::profile, doctorViewModel::bookWalkIn, doctorViewModel::receiptFor, doctorViewModel::confirmConsultationFee, doctorViewModel::sessionBookingOpen, doctorViewModel::selectSession, doctorViewModel::refreshDate) }
@@ -120,5 +122,6 @@ private object Routes {
         composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen(state, nav::popBackStack, doctorViewModel::toggleAnnouncement) }
         composable(Routes.ASSISTANTS) { AssistantsScreen(state, nav::popBackStack, doctorViewModel::togglePermission) { assistantId -> if (doctorViewModel.deleteAssistant(assistantId)) authRepository.removeAssistant(assistantId) } }
         composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::queue, ::appointments, doctorViewModel::updateProfile) }
+        composable(Routes.NOTIFICATIONS) { NotificationsScreen(state, nav::popBackStack, doctorViewModel::markNotificationRead, doctorViewModel::markAllNotificationsRead) }
     }
 }

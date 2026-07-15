@@ -1,3 +1,15 @@
+## Stage 5.4 session closure, capacity and notifications
+
+1. Open Live queue, select Morning, tap **Close Morning session**, dismiss once, then confirm.
+2. Verify only Morning becomes CLOSED. Evening must retain its previous state, remain selectable, and accept a walk-in if its cutoff and capacity allow it.
+3. Verify Queue history is not finalized yet. Close Evening and then confirm one complete dated history record appears.
+4. If a patient is IN CONSULTATION when its session is closed, verify that patient becomes COMPLETED while the other session's patients remain unchanged.
+5. Open Clinic, set Maximum tokens per session equal to the current Morning appointment count, save, and return to Today's appointments.
+6. Verify Morning displays used/max with LIMIT REACHED, its walk-in choice is disabled, and a workflow submission cannot create another Morning token. Verify Evening follows its own count against the same configured maximum.
+7. Raise the maximum by one, save, and verify exactly one additional Morning walk-in succeeds before the limit is reached again.
+8. Perform a queue action or book a walk-in, return Home, and verify the notification bell shows an unread badge.
+9. Open Notifications and verify the newest event shows its action, detail, actor, date/time and token/patient when applicable.
+10. Tap **Mark all read**, return Home, and verify the badge clears. Remove the app from Recents, relaunch, and verify the cleared read state persists.
 # Stage 2.2 Physical Device Checklist
 
 Run on both Vivo and Samsung devices.
