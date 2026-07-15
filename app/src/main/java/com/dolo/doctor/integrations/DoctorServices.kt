@@ -28,8 +28,10 @@ interface AnnouncementPublisher {
 }
 
 interface AvailabilityManager {
-    suspend fun block(block: AvailabilityBlock): ApiResult<AvailabilityBlock>
-    suspend fun reopen(blockId: String): ApiResult<Unit>
+    suspend fun save(block: AvailabilityBlock): ApiResult<AvailabilityBlock>
+    suspend fun setAppointmentsEnabled(blockId: String, enabled: Boolean): ApiResult<AvailabilityBlock>
+    suspend fun delete(blockId: String): ApiResult<Unit>
+    suspend fun updateAffectedPatient(appointmentId: String, status: AvailabilityImpactStatus): ApiResult<Appointment>
 }
 
 interface DoctorNotificationService {

@@ -110,3 +110,17 @@ Run on both Vivo and Samsung devices.
 9. Print a receipt through the installed ESC/POS 58 mm print service. Verify DO-LO, clinic, session/token, patient, fee and receipt number are horizontally centered rather than aligned to the left.
 10. Verify the 58 mm print is not clipped, the token is large, paper feed is reasonable and no content crosses the printable width. Report the printer model/app and a photo if centering or scaling still needs calibration.
 11. Remove the app from Recents and relaunch. Confirm payment status, fee, receipt, independent token values and selected session all persist.
+
+## Stage 6 appointment availability
+
+1. On Home, verify theme, notification and logout icons are in a separate upper row and the complete Doctor name stays on one line where the screen width permits.
+2. Open Availability and add a Morning-only block covering today's ISO date with Bookings disabled and a reason of at least five characters.
+3. Verify Morning booking closes while Evening stays available. Confirm a Morning clinic walk-in and pending-fee admission are rejected with the saved reason.
+4. Verify existing non-terminal Morning appointments appear under the block with CONTACT PENDING and remain visible in Live queue.
+5. In Live queue, verify an affected appointment cannot be marked arrived or called while follow-up is unresolved.
+6. In Availability, mark one patient Notified, another Needs reschedule and one Resolved. Verify each status updates immediately.
+7. Return to Live queue and verify only the Resolved affected patient can proceed when eligible.
+8. Re-enable bookings on the block and verify affected flags clear and Morning booking becomes available again, subject to its cutoff, capacity and queue state.
+9. Edit the block to Evening or Both, then close/reopen the app and verify its dates, session, reason and enabled state persist.
+10. Delete the block and verify bookings reopen unless another active block covers the same date/session.
+11. Open Notifications and verify availability save/change/delete and affected-patient follow-up events appear and participate in the unread badge.

@@ -49,6 +49,11 @@ class DoctorViewModel(
     }
     private fun admittedToQueue(appointment: Appointment): Boolean =
         appointment.paymentStatus != PaymentStatus.PENDING && appointment.receiptNumber.isNotBlank()
+    private fun clearedForConsultation(appointment: Appointment): Boolean =
+        appointment.availabilityImpactStatus in setOf(
+            AvailabilityImpactStatus.NONE,
+            AvailabilityImpactStatus.RESOLVED
+        )
     fun sessionAppointmentCount(session: String): Int =
         uiState.appointments.count { it.session == session }
 
@@ -59,6 +64,47 @@ class DoctorViewModel(
 
     private fun sessionHasCapacity(session: String): Boolean =
         sessionRemainingCapacity(session) > 0
+    private fun availabilityBlockFor(
+        session: String,
+        date: LocalDate = currentDate(),
+        blocks: List<AvailabilityBlock> = uiState.availabilityBlocks
+    ): AvailabilityBlock? = blocks.firstOrNull { block ->
+        if (block.appointmentsEnabled || block.sessions !in setOf("Morning", "Evening", "Both")) return@firstOrNull false
+        val from = runCatching { LocalDate.parse(block.fromDate) }.getOrNull() ?: return@firstOrNull false
+        val to = runCatching { LocalDate.parse(block.toDate) }.getOrNull() ?: return@firstOrNull false
+        !date.isBefore(from) && !date.isAfter(to) && (block.sessions == "Both" || block.sessions == session)
+    }
+
+    private fun reconcileAvailabilityImpacts(state: DoctorUiState): DoctorUiState {
+        val appointmentDate = runCatching { LocalDate.parse(state.queueDate) }.getOrNull() ?: return state
+        val updatedAppointments = state.appointments.map { appointment ->
+            if (appointment.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.ABSENT)) {
+                appointment.copy(
+                    availabilityBlockId = "",
+                    availabilityImpactStatus = AvailabilityImpactStatus.NONE,
+                    availabilityUpdatedAt = ""
+                )
+            } else {
+                val block = availabilityBlockFor(appointment.session, appointmentDate, state.availabilityBlocks)
+                when {
+                    block == null -> appointment.copy(
+                        availabilityBlockId = "",
+                        availabilityImpactStatus = AvailabilityImpactStatus.NONE,
+                        availabilityUpdatedAt = ""
+                    )
+                    appointment.availabilityBlockId == block.id &&
+                        appointment.availabilityImpactStatus != AvailabilityImpactStatus.NONE -> appointment
+                    else -> appointment.copy(
+                        availabilityBlockId = block.id,
+                        availabilityImpactStatus = AvailabilityImpactStatus.CONTACT_PENDING,
+                        availabilityUpdatedAt = currentTime().format(timeFormatter)
+                    )
+                }
+            }
+        }
+        return state.copy(appointments = updatedAppointments)
+    }
+
 
 
     fun selectSession(session: String) {
@@ -203,7 +249,10 @@ class DoctorViewModel(
             it.session == session && admittedToQueue(it) && it.token == queue.currentToken && it.status == AppointmentStatus.IN_CONSULTATION
         }
         val next = uiState.appointments
-            .filter { it.session == session && admittedToQueue(it) && it.status in setOf(AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }
+            .filter {
+                it.session == session && admittedToQueue(it) && clearedForConsultation(it) &&
+                    it.status in setOf(AppointmentStatus.ARRIVED, AppointmentStatus.WAITING)
+            }
             .minByOrNull { it.queueOrder }
 
         if (next == null) {
@@ -240,6 +289,7 @@ class DoctorViewModel(
         if (!hasPermission(required)) return
         val appointment = uiState.appointments.firstOrNull { it.id == id } ?: return
         if (!admittedToQueue(appointment) || queueFor(appointment.session).state == QueueState.CLOSED) return
+        if (!clearedForConsultation(appointment)) return
         if (!canTransition(appointment.status, status)) return
 
         val progressedOrder = uiState.appointments.filter { it.session == appointment.session && it.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED) }.maxOfOrNull { it.queueOrder } ?: 0
@@ -267,6 +317,7 @@ class DoctorViewModel(
         rollOverIfNeeded()
         if (!hasPermission(Permission.UPDATE_QUEUE)) return false
         val appointment = uiState.appointments.firstOrNull { it.id == id } ?: return false
+        if (!clearedForConsultation(appointment)) return false
         val queue = queueFor(appointment.session)
         if (queue.state == QueueState.CLOSED) return false
         if (uiState.appointments.any { it.session == appointment.session && it.status == AppointmentStatus.IN_CONSULTATION }) return false
@@ -284,6 +335,7 @@ class DoctorViewModel(
         rollOverIfNeeded()
         if (!hasPermission(Permission.UPDATE_QUEUE)) return false
         val appointment = uiState.appointments.firstOrNull { it.id == id } ?: return false
+        if (!clearedForConsultation(appointment)) return false
         if (queueFor(appointment.session).state == QueueState.CLOSED || appointment.status != AppointmentStatus.SKIPPED) return false
         val rejoined = appointment.copy(status = AppointmentStatus.WAITING, queueOrder = nextQueueOrder(appointment.session))
         val updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == id) rejoined else it })
@@ -299,10 +351,12 @@ class DoctorViewModel(
         val session = request.session.trim()
         val clinic = uiState.clinics.firstOrNull() ?: return WalkInBookingResult(error = "Clinic details are unavailable.")
         val fee = if (request.paymentMethod == PaymentMethod.WAIVED) 0 else request.consultationFee.takeIf { it > 0 } ?: uiState.profile.consultationFee
+        val activeBlock = if (session in setOf("Morning", "Evening")) availabilityBlockFor(session) else null
         val error = when {
             session !in setOf("Morning", "Evening") -> "Select Morning or Evening session."
             queueFor(session).state == QueueState.CLOSED -> session + " queue is closed."
             !sessionHasCapacity(session) -> "The selected session has reached its limit of " + clinic.maxTokensPerSession + " tokens."
+            activeBlock != null -> session + " booking is disabled: " + activeBlock.reason
             !sessionBookingOpen(session) -> session + " booking has closed because the session end time has passed."
             name.length < 3 -> "Enter the patient's full name."
             phone.length != 10 -> "Enter a valid 10-digit mobile number."
@@ -335,6 +389,8 @@ class DoctorViewModel(
         if (appointment.paymentStatus != PaymentStatus.PENDING) return FeeConfirmationResult(receipt = receiptFor(appointmentId))
         if (appointment.status != AppointmentStatus.BOOKED) return FeeConfirmationResult(error = "Only a booked appointment can be admitted after fee confirmation.")
         if (queueFor(appointment.session).state == QueueState.CLOSED) return FeeConfirmationResult(error = appointment.session + " queue is closed.")
+        val activeBlock = availabilityBlockFor(appointment.session)
+        if (activeBlock != null) return FeeConfirmationResult(error = appointment.session + " booking is disabled: " + activeBlock.reason)
         val fee = if (method == PaymentMethod.WAIVED) 0 else amount
         if (fee !in 0..100000 || (method != PaymentMethod.WAIVED && fee == 0)) return FeeConfirmationResult(error = "Enter a valid fee or select Waived.")
         val confirmed = appointment.copy(
@@ -363,6 +419,7 @@ class DoctorViewModel(
     fun sessionBookingOpen(session: String): Boolean {
         if (session !in setOf("Morning", "Evening")) return false
         if (queueFor(session).state == QueueState.CLOSED) return false
+        if (availabilityBlockFor(session) != null) return false
         val clinic = uiState.clinics.firstOrNull() ?: return false
         val schedule = if (session == "Morning") clinic.morningSession else clinic.eveningSession
         val (_, end) = parseSessionRange(schedule) ?: return false
@@ -496,11 +553,107 @@ class DoctorViewModel(
         persist(uiState.copy(announcements = uiState.announcements.map { if (it.id == id) it.copy(active = !it.active) else it }))
     }
 
-    fun toggleAppointments(blockId: String) {
-        if (uiState.role != UserRole.DOCTOR) return
-        persist(uiState.copy(availabilityBlocks = uiState.availabilityBlocks.map {
-            if (it.id == blockId) it.copy(appointmentsEnabled = !it.appointmentsEnabled) else it
-        }))
+    fun saveAvailabilityBlock(input: AvailabilityBlock): String? {
+        if (uiState.role != UserRole.DOCTOR) return "Only the doctor can manage availability."
+        val from = runCatching { LocalDate.parse(input.fromDate.trim()) }.getOrNull()
+        val to = runCatching { LocalDate.parse(input.toDate.trim()) }.getOrNull()
+        val session = input.sessions.trim()
+        val reason = input.reason.trim()
+        val error = when {
+            uiState.clinics.none { it.id == input.clinicId } -> "Select a valid clinic."
+            from == null || to == null -> "Use date format YYYY-MM-DD."
+            from != null && to != null && to.isBefore(from) -> "End date cannot be before start date."
+            session !in setOf("Morning", "Evening", "Both") -> "Select Morning, Evening or Both."
+            reason.length !in 5..150 -> "Reason must contain 5 to 150 characters."
+            input.id.isNotBlank() && uiState.availabilityBlocks.none { it.id == input.id } -> "Availability block was not found."
+            else -> null
+        }
+        if (error != null) return error
+
+        val isNew = input.id.isBlank()
+        val id = input.id.ifBlank {
+            "availability-" + currentDate() + "-" + currentTime().toSecondOfDay()
+        }
+        val saved = input.copy(
+            id = id,
+            fromDate = from.toString(),
+            toDate = to.toString(),
+            sessions = session,
+            reason = reason
+        )
+        var updated = uiState.copy(
+            availabilityBlocks = if (isNew) {
+                (uiState.availabilityBlocks + saved).sortedWith(compareBy({ it.fromDate }, { it.sessions }))
+            } else {
+                uiState.availabilityBlocks.map { if (it.id == id) saved else it }
+                    .sortedWith(compareBy({ it.fromDate }, { it.sessions }))
+            }
+        )
+        updated = reconcileAvailabilityImpacts(updated)
+        val affected = updated.appointments.count { it.availabilityBlockId == id }
+        updated = withAudit(
+            updated,
+            AuditAction.AVAILABILITY_SAVED,
+            (if (isNew) "Created" else "Updated") + " " + session.lowercase() +
+                " availability block " + saved.fromDate + " to " + saved.toDate +
+                "; " + affected + " current appointment(s) require follow-up"
+        )
+        persist(updated)
+        return null
+    }
+
+    fun setAvailabilityAppointmentsEnabled(blockId: String, enabled: Boolean): Boolean {
+        if (uiState.role != UserRole.DOCTOR) return false
+        val block = uiState.availabilityBlocks.firstOrNull { it.id == blockId } ?: return false
+        if (block.appointmentsEnabled == enabled) return false
+        var updated = uiState.copy(
+            availabilityBlocks = uiState.availabilityBlocks.map {
+                if (it.id == blockId) it.copy(appointmentsEnabled = enabled) else it
+            }
+        )
+        updated = reconcileAvailabilityImpacts(updated)
+        updated = withAudit(
+            updated,
+            AuditAction.AVAILABILITY_CHANGED,
+            (if (enabled) "Reopened" else "Disabled") + " " + block.sessions.lowercase() +
+                " bookings for " + block.fromDate + " to " + block.toDate
+        )
+        persist(updated)
+        return true
+    }
+
+    fun deleteAvailabilityBlock(blockId: String): Boolean {
+        if (uiState.role != UserRole.DOCTOR) return false
+        val block = uiState.availabilityBlocks.firstOrNull { it.id == blockId } ?: return false
+        var updated = uiState.copy(availabilityBlocks = uiState.availabilityBlocks.filterNot { it.id == blockId })
+        updated = reconcileAvailabilityImpacts(updated)
+        updated = withAudit(
+            updated,
+            AuditAction.AVAILABILITY_DELETED,
+            "Deleted " + block.sessions.lowercase() + " availability block " + block.fromDate + " to " + block.toDate
+        )
+        persist(updated)
+        return true
+    }
+
+    fun updateAffectedPatientStatus(appointmentId: String, status: AvailabilityImpactStatus): Boolean {
+        if (uiState.role != UserRole.DOCTOR) return false
+        if (status !in setOf(AvailabilityImpactStatus.PATIENT_NOTIFIED, AvailabilityImpactStatus.RESCHEDULE_REQUIRED, AvailabilityImpactStatus.RESOLVED)) return false
+        val appointment = uiState.appointments.firstOrNull { it.id == appointmentId } ?: return false
+        if (appointment.availabilityBlockId.isBlank() || appointment.availabilityImpactStatus == AvailabilityImpactStatus.NONE) return false
+        val changed = appointment.copy(
+            availabilityImpactStatus = status,
+            availabilityUpdatedAt = currentTime().format(timeFormatter)
+        )
+        var updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == appointmentId) changed else it })
+        updated = withAudit(
+            updated,
+            AuditAction.AFFECTED_PATIENT_UPDATED,
+            "Availability follow-up changed to " + status.name.replace("_", " ").lowercase(),
+            changed
+        )
+        persist(updated)
+        return true
     }
 
     fun deleteAssistant(assistantId: String): Boolean {

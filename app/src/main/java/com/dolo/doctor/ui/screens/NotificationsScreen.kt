@@ -95,4 +95,8 @@ private fun notificationTitle(action: AuditAction): String = when (action) {
     AuditAction.DAY_ROLLED_OVER -> "New clinic day"
     AuditAction.PATIENT_REJOINED -> "Patient rejoined"
     AuditAction.STATUS_CHANGED -> "Appointment updated"
+    AuditAction.AVAILABILITY_SAVED -> "Availability block saved"
+    AuditAction.AVAILABILITY_CHANGED -> "Booking availability changed"
+    AuditAction.AVAILABILITY_DELETED -> "Availability block deleted"
+    AuditAction.AFFECTED_PATIENT_UPDATED -> "Affected patient updated"
 }

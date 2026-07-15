@@ -84,3 +84,13 @@ Every assistant action must be authorized on the server, not only hidden in Comp
 - The notification center projects persisted QueueAuditEvent records instead of maintaining a second conflicting event collection.
 - DoctorUiState.notificationReadThrough stores the highest read audit sequence; SharedPreferences persistence keeps the unread badge stable through process recreation.
 - The shared backend must eventually make fee confirmation, token allocation and receipt identity transactional and server-authoritative; no real payment gateway is connected in this local stage.
+
+## Stage 6 availability enforcement
+
+- AvailabilityBlock is a persisted clinic/date-range/session rule. `appointmentsEnabled = false` makes the rule active for Morning, Evening or Both.
+- DoctorViewModel is the local enforcement boundary for walk-in booking, fee-confirmed queue admission and session booking eligibility; hiding a Compose control is not treated as authorization.
+- Existing non-terminal appointments are linked to the active block and receive an AvailabilityImpactStatus rather than being deleted.
+- CONTACT_PENDING, PATIENT_NOTIFIED and RESCHEDULE_REQUIRED appointments are withheld from Call next. RESOLVED appointments can re-enter normal queue progression.
+- QueueStateCodec schema version 3 persists complete block records and per-appointment follow-up state while preserving older appointment formats.
+- Availability save, enable/disable, delete and patient follow-up mutations create audit events that also drive the local notification center.
+- AvailabilityManager reserves backend save, enable/disable, delete and affected-patient operations. The server must later evaluate clinic timezone/date, notify patients and resolve concurrent bookings transactionally.

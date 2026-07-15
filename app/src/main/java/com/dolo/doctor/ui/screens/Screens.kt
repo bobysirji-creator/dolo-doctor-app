@@ -110,15 +110,17 @@ import kotlinx.coroutines.delay
     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.HOME, {}, onQueue, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) { DoctorBrand(); Text(if (doctorMode) state.profile.name else assistantName, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold); Text(if (doctorMode) state.profile.specialty else "Assistant • ${permissions.size} permissions", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    IconButton(onToggleTheme) { Icon(if (darkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (darkTheme) "Use light theme" else "Use dark theme") }
-                    BadgedBox(badge = { if (unreadNotifications > 0) Badge { Text(unreadNotifications.coerceAtMost(99).toString()) } }) {
-                        IconButton(onNotifications) {
-                            Icon(Icons.Outlined.Notifications, "Notifications")
+                Column(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.Top) {
+                        IconButton(onToggleTheme) { Icon(if (darkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (darkTheme) "Use light theme" else "Use dark theme") }
+                        BadgedBox(badge = { if (unreadNotifications > 0) Badge { Text(unreadNotifications.coerceAtMost(99).toString()) } }) {
+                            IconButton(onNotifications) { Icon(Icons.Outlined.Notifications, "Notifications") }
                         }
+                        IconButton(onClick = { confirmLogout = true }) { Icon(Icons.Outlined.Logout, "Logout") }
                     }
-                    IconButton(onClick = { confirmLogout = true }) { Icon(Icons.Outlined.Logout, "Logout") }
+                    DoctorBrand()
+                    Text(if (doctorMode) state.profile.name else assistantName, Modifier.fillMaxWidth(), fontSize = 23.sp, lineHeight = 29.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(if (doctorMode) state.profile.specialty else "Assistant • ${permissions.size} permissions", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("Morning token", morningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Evening token", eveningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
@@ -187,7 +189,10 @@ import kotlinx.coroutines.delay
     val queue = state.sessionQueues.firstOrNull { it.session == selectedSession }
         ?: ConsultationQueue(selectedSession, if (selectedSession == "Morning") state.queueState else QueueState.NOT_STARTED, if (selectedSession == "Morning") state.currentToken else 0)
     val sessionAppointments = state.appointments.filter { it.session == selectedSession && it.paymentStatus != PaymentStatus.PENDING && it.receiptNumber.isNotBlank() }
-    val hasNextPatient = sessionAppointments.any { it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }
+    val hasNextPatient = sessionAppointments.any {
+        it.availabilityImpactStatus in setOf(AvailabilityImpactStatus.NONE, AvailabilityImpactStatus.RESOLVED) &&
+            it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING)
+    }
     val hasCurrentConsultation = sessionAppointments.any { it.token == queue.currentToken && it.status == AppointmentStatus.IN_CONSULTATION }
     val progressedOrder = sessionAppointments.filter { it.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED) }.maxOfOrNull { it.queueOrder } ?: 0
     var confirmCloseSession by remember { mutableStateOf(false) }
@@ -274,15 +279,28 @@ import kotlinx.coroutines.delay
     onResumeSkipped: (String) -> Boolean,
     onRejoin: (String) -> Boolean
 ) {
+    val availabilityReady = appointment.availabilityImpactStatus in setOf(
+        AvailabilityImpactStatus.NONE,
+        AvailabilityImpactStatus.RESOLVED
+    )
     ElevatedSection("Token ${appointment.token} • ${appointment.patientName}", "${appointment.patientType} • ${appointment.session} • booked ${appointment.bookedAt} • INR ${appointment.consultationFee} ${appointment.paymentStatus.name}") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(appointment.status.name.replace("_", " "), appointment.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.SKIPPED))
             Spacer(Modifier.weight(1f))
-            if (appointment.status == AppointmentStatus.BOOKED && canMarkArrived) {
+            if (appointment.status == AppointmentStatus.BOOKED && canMarkArrived && availabilityReady) {
                 TextButton({ onUpdate(appointment.id, AppointmentStatus.ARRIVED) }) { Text(if (isLateArrival) "Late arrival • rejoin" else "Mark arrived") }
             }
         }
-        when (appointment.status) {
+        if (!availabilityReady) {
+            StatusPill(
+                "Availability follow-up: " + appointment.availabilityImpactStatus.name.replace("_", " "),
+                false
+            )
+            Text(
+                "Resolve this patient from Availability before continuing the consultation queue.",
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp
+            )
             AppointmentStatus.ARRIVED -> if (canMarkAbsent || canUpdate) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (canMarkAbsent) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.ABSENT) }, Modifier.weight(1f)) { Text("Absent") }

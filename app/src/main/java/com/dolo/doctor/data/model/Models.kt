@@ -8,7 +8,8 @@ enum class ProfileReviewStatus { VERIFIED, PENDING_REVIEW }
 enum class BookingSource { PATIENT_APP, CLINIC_WALK_IN }
 enum class PaymentStatus { PENDING, PAID, WAIVED }
 enum class PaymentMethod { CASH, UPI, CARD, ONLINE, WAIVED }
-enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, PATIENT_REJOINED, WALK_IN_BOOKED, FEE_CONFIRMED, RECEIPT_GENERATED, CONSULTATION_COMPLETED, SESSION_CLOSED, DAY_CLOSED, DAY_ROLLED_OVER }
+enum class AvailabilityImpactStatus { NONE, CONTACT_PENDING, PATIENT_NOTIFIED, RESCHEDULE_REQUIRED, RESOLVED }
+enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, PATIENT_REJOINED, WALK_IN_BOOKED, FEE_CONFIRMED, RECEIPT_GENERATED, CONSULTATION_COMPLETED, SESSION_CLOSED, DAY_CLOSED, DAY_ROLLED_OVER, AVAILABILITY_SAVED, AVAILABILITY_CHANGED, AVAILABILITY_DELETED, AFFECTED_PATIENT_UPDATED }
 enum class Permission {
     VIEW_QUEUE,
     UPDATE_QUEUE,
@@ -67,7 +68,10 @@ data class Appointment(
     val consultationFee: Int = 0,
     val paymentStatus: PaymentStatus = PaymentStatus.PENDING,
     val paymentMethod: PaymentMethod? = null,
-    val paidAt: String = ""
+    val paidAt: String = "",
+    val availabilityBlockId: String = "",
+    val availabilityImpactStatus: AvailabilityImpactStatus = AvailabilityImpactStatus.NONE,
+    val availabilityUpdatedAt: String = ""
 )
 
 data class WalkInBookingRequest(

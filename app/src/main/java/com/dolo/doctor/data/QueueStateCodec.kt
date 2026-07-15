@@ -13,6 +13,8 @@ import com.dolo.doctor.data.model.QueueState
 import com.dolo.doctor.data.model.ProfileReviewStatus
 import com.dolo.doctor.data.model.QueueAuditEvent
 import com.dolo.doctor.data.model.AuditAction
+import com.dolo.doctor.data.model.AvailabilityBlock
+import com.dolo.doctor.data.model.AvailabilityImpactStatus
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
@@ -61,6 +63,31 @@ internal object QueueStateCodec {
         val averageMinutes = fields[7].toIntOrNull() ?: return null
         return Clinic(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], maxTokens, averageMinutes)
     }
+    fun encodeAvailabilityBlock(block: AvailabilityBlock): String = listOf(
+        block.id,
+        block.clinicId,
+        block.fromDate,
+        block.toDate,
+        block.sessions,
+        block.reason,
+        block.appointmentsEnabled.toString()
+    ).joinToString("|") { encode(it) }
+
+    fun decodeAvailabilityBlock(value: String): AvailabilityBlock? {
+        val fields = value.split("|").mapNotNull(::decode)
+        if (fields.size != 7) return null
+        val enabled = fields[6].toBooleanStrictOrNull() ?: return null
+        return AvailabilityBlock(
+            id = fields[0],
+            clinicId = fields[1],
+            fromDate = fields[2],
+            toDate = fields[3],
+            sessions = fields[4],
+            reason = fields[5],
+            appointmentsEnabled = enabled
+        )
+    }
+
 
     fun encodeSessionQueue(queue: ConsultationQueue): String = listOf(
         queue.session,
@@ -127,23 +154,26 @@ internal object QueueStateCodec {
         appointment.consultationFee.toString(),
         appointment.paymentStatus.name,
         appointment.paymentMethod?.name.orEmpty(),
-        appointment.paidAt
+        appointment.paidAt,
+        appointment.availabilityBlockId,
+        appointment.availabilityImpactStatus.name,
+        appointment.availabilityUpdatedAt
     ).joinToString(",") { encode(it) }
 
     fun decodeAppointment(value: String): Appointment? {
         val fields = value.split(",").mapNotNull(::decode)
-        if (fields.size !in setOf(7, 11, 15)) return null
+        if (fields.size !in setOf(7, 11, 15, 18)) return null
         val token = fields[1].toIntOrNull() ?: return null
         val status = runCatching { AppointmentStatus.valueOf(fields[5]) }.getOrNull() ?: return null
         if (fields.size == 7) return Appointment(fields[0], token, fields[2], fields[3], fields[4], status, fields[6])
         val queueOrder = fields[7].toIntOrNull() ?: return null
         val source = runCatching { BookingSource.valueOf(fields[8]) }.getOrNull() ?: return null
         val legacyPaid = fields[10].isNotBlank()
-        val fee = if (fields.size == 15) fields[11].toIntOrNull() ?: return null else 0
-        val paymentStatus = if (fields.size == 15) {
+        val fee = if (fields.size >= 15) fields[11].toIntOrNull() ?: return null else 0
+        val paymentStatus = if (fields.size >= 15) {
             runCatching { PaymentStatus.valueOf(fields[12]) }.getOrNull() ?: return null
         } else if (legacyPaid) PaymentStatus.PAID else PaymentStatus.PENDING
-        val paymentMethod = if (fields.size == 15) fields[13].takeIf(String::isNotBlank)
+        val paymentMethod = if (fields.size >= 15) fields[13].takeIf(String::isNotBlank)
             ?.let { runCatching { PaymentMethod.valueOf(it) }.getOrNull() }
         else if (legacyPaid) PaymentMethod.CASH else null
         return Appointment(
@@ -161,7 +191,10 @@ internal object QueueStateCodec {
             consultationFee = fee,
             paymentStatus = paymentStatus,
             paymentMethod = paymentMethod,
-            paidAt = if (fields.size == 15) fields[14] else ""
+            paidAt = if (fields.size >= 15) fields[14] else "",
+            availabilityBlockId = if (fields.size == 18) fields[15] else "",
+            availabilityImpactStatus = if (fields.size == 18) runCatching { AvailabilityImpactStatus.valueOf(fields[16]) }.getOrDefault(AvailabilityImpactStatus.NONE) else AvailabilityImpactStatus.NONE,
+            availabilityUpdatedAt = if (fields.size == 18) fields[17] else ""
         )
     }    fun encodeHistory(history: DailyQueueHistory): String = listOf(
         history.date,

@@ -6,6 +6,8 @@ import com.dolo.doctor.data.model.DailyQueueHistory
 import com.dolo.doctor.data.model.AuditAction
 import com.dolo.doctor.data.model.QueueAuditEvent
 import com.dolo.doctor.data.model.PaymentMethod
+import com.dolo.doctor.data.model.AvailabilityBlock
+import com.dolo.doctor.data.model.AvailabilityImpactStatus
 import com.dolo.doctor.data.model.PaymentStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -27,7 +29,10 @@ class QueueStateCodecTest {
             consultationFee = 500,
             paymentStatus = PaymentStatus.PAID,
             paymentMethod = PaymentMethod.UPI,
-            paidAt = "06:10 PM"
+            paidAt = "06:10 PM",
+            availabilityBlockId = "block-1",
+            availabilityImpactStatus = AvailabilityImpactStatus.PATIENT_NOTIFIED,
+            availabilityUpdatedAt = "07:00 PM"
         )
 
         assertEquals(appointment, QueueStateCodec.decodeAppointment(QueueStateCodec.encodeAppointment(appointment)))
@@ -80,6 +85,15 @@ class QueueStateCodecTest {
 
         assertEquals(profile, QueueStateCodec.decodeProfile(QueueStateCodec.encodeProfile(profile)))
         assertEquals(clinic, QueueStateCodec.decodeClinic(QueueStateCodec.encodeClinic(clinic)))
+    }
+
+    @Test fun availabilityBlockRoundTripKeepsBookingState() {
+        val block = AvailabilityBlock("block-1", "clinic-1", "2026-07-20", "2026-07-22", "Both", "Medical conference", false)
+
+        assertEquals(
+            block,
+            QueueStateCodec.decodeAvailabilityBlock(QueueStateCodec.encodeAvailabilityBlock(block))
+        )
     }
 
     @Test fun sessionQueueRoundTripKeepsIndependentState() {

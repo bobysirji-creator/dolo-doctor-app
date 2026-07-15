@@ -66,3 +66,11 @@ Morning and Evening use separate token sequences beginning independently for eac
 ## Doctor notifications
 
 The Doctor App provides a persistent notification center and unread Home badge for queue, appointment, fee, receipt and session activity. Local notifications are derived from the persisted audit stream. Remote Patient App events, Admin broadcasts and Android push delivery require the shared backend and provider integration.
+
+## Appointment availability and affected patients
+
+A Doctor can disable new appointments for one clinic, an ISO date or date range, and Morning, Evening or both sessions, with a staff-facing reason. Reopening or deleting a block must restore booking only when no other active rule, session closure, time cutoff or capacity limit prevents it.
+
+An availability change never silently removes an existing appointment. Covered non-terminal appointments require an explicit follow-up state: contact pending, patient notified, reschedule required or resolved. Until resolved, the clinic queue must not call or progress that appointment. All block and follow-up mutations require audit records and future backend notification delivery.
+
+The shared backend remains responsible for authoritative clinic-timezone evaluation, preventing race-condition bookings, informing the Patient App and offering eligible reschedule dates. Stage 6 implements the complete local Doctor workflow and provider-neutral contracts without sending real messages.

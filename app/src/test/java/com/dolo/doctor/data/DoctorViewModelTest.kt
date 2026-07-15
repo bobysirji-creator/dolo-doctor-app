@@ -689,6 +689,129 @@ class DoctorViewModelTest {
         assertEquals(0, restored.unreadNotificationCount())
     }
 
+    @Test fun availabilityBlockDisablesOnlyMatchingSessionAndFlagsAffectedPatients() {
+        val model = DoctorViewModel(
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(10, 0) }
+        )
+        model.login(UserRole.DOCTOR)
+
+        val result = model.saveAvailabilityBlock(
+            AvailabilityBlock("", "clinic-1", "2026-07-15", "2026-07-15", "Morning", "Doctor unavailable", false)
+        )
+
+        assertEquals(null, result)
+        val block = model.uiState.availabilityBlocks.single { it.reason == "Doctor unavailable" }
+        assertFalse(model.sessionBookingOpen("Morning"))
+        assertTrue(model.sessionBookingOpen("Evening"))
+        assertEquals(5, model.uiState.appointments.count { it.availabilityBlockId == block.id })
+        assertTrue(
+            model.uiState.appointments
+                .filter { it.availabilityBlockId == block.id }
+                .all { it.availabilityImpactStatus == AvailabilityImpactStatus.CONTACT_PENDING }
+        )
+        val blocked = model.bookWalkIn(WalkInBookingRequest("Blocked Patient", "9876512345", "Self", "Morning"))
+        assertTrue(blocked.error?.contains("Doctor unavailable") == true)
+        assertEquals(AuditAction.AVAILABILITY_SAVED, model.uiState.auditEvents.last().action)
+    }
+
+    @Test fun reopeningAvailabilityClearsAffectedFlagsAndRestoresBooking() {
+        val model = DoctorViewModel(
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(10, 0) }
+        )
+        model.login(UserRole.DOCTOR)
+        model.saveAvailabilityBlock(
+            AvailabilityBlock("", "clinic-1", "2026-07-15", "2026-07-15", "Morning", "Emergency leave", false)
+        )
+        val block = model.uiState.availabilityBlocks.single { it.reason == "Emergency leave" }
+
+        assertTrue(model.setAvailabilityAppointmentsEnabled(block.id, true))
+
+        assertTrue(model.sessionBookingOpen("Morning"))
+        assertTrue(model.uiState.appointments.all { it.availabilityBlockId != block.id })
+        assertTrue(model.uiState.appointments.all { it.availabilityImpactStatus == AvailabilityImpactStatus.NONE })
+        assertEquals(AuditAction.AVAILABILITY_CHANGED, model.uiState.auditEvents.last().action)
+    }
+
+    @Test fun affectedPatientFollowUpAndAvailabilityBlocksPersist() {
+        val store = MemoryDoctorStateStore()
+        val first = DoctorViewModel(
+            store,
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(10, 0) }
+        )
+        first.login(UserRole.DOCTOR)
+        first.saveAvailabilityBlock(
+            AvailabilityBlock("", "clinic-1", "2026-07-15", "2026-07-16", "Both", "Medical conference", false)
+        )
+        val block = first.uiState.availabilityBlocks.single { it.reason == "Medical conference" }
+        assertTrue(first.updateAffectedPatientStatus("a2", AvailabilityImpactStatus.PATIENT_NOTIFIED))
+
+        val restored = DoctorViewModel(
+            store,
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(10, 5) }
+        )
+
+        assertEquals(block, restored.uiState.availabilityBlocks.single { it.id == block.id })
+        assertEquals(AvailabilityImpactStatus.PATIENT_NOTIFIED, restored.uiState.appointments.single { it.id == "a2" }.availabilityImpactStatus)
+        assertEquals(AuditAction.AFFECTED_PATIENT_UPDATED, restored.uiState.auditEvents.last().action)
+    }
+
+    @Test fun invalidOrAssistantAvailabilityChangesAreRejected() {
+        val model = DoctorViewModel(currentDate = { LocalDate.parse("2026-07-15") })
+        model.login(UserRole.DOCTOR)
+        val originalCount = model.uiState.availabilityBlocks.size
+
+        val invalid = model.saveAvailabilityBlock(
+            AvailabilityBlock("", "clinic-1", "2026-07-20", "2026-07-19", "Morning", "Away", false)
+        )
+        assertTrue(invalid != null)
+        assertEquals(originalCount, model.uiState.availabilityBlocks.size)
+
+        model.login(UserRole.ASSISTANT, "staff-1")
+        val unauthorized = model.saveAvailabilityBlock(
+            AvailabilityBlock("", "clinic-1", "2026-07-20", "2026-07-20", "Morning", "Assistant block", false)
+        )
+        assertTrue(unauthorized != null)
+        assertEquals(originalCount, model.uiState.availabilityBlocks.size)
+    }
+
+    @Test fun affectedPatientsAreNotCalledUntilAvailabilityFollowUpIsResolved() {
+        val model = DoctorViewModel(
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(10, 0) }
+        )
+        model.login(UserRole.DOCTOR)
+        model.saveAvailabilityBlock(
+            AvailabilityBlock(
+                id = "",
+                clinicId = "clinic-1",
+                fromDate = "2026-07-15",
+                toDate = "2026-07-15",
+                sessions = "Morning",
+                reason = "Unexpected emergency",
+                appointmentsEnabled = false
+            )
+        )
+
+        model.updateAppointment("a2", AppointmentStatus.SKIPPED)
+        assertEquals(AppointmentStatus.WAITING, model.uiState.appointments.single { it.id == "a2" }.status)
+
+        model.callNext("Morning")
+
+        assertEquals(1, model.uiState.currentToken)
+        assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.id == "a1" }.status)
+        assertEquals(AppointmentStatus.WAITING, model.uiState.appointments.single { it.id == "a2" }.status)
+
+        assertTrue(model.updateAffectedPatientStatus("a2", AvailabilityImpactStatus.RESOLVED))
+        model.callNext("Morning")
+
+        assertEquals(2, model.uiState.currentToken)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.id == "a2" }.status)
+    }
+
     private class MemoryDoctorStateStore(initial: DoctorUiState? = null) : DoctorStateStore {
         private var saved: DoctorUiState? = initial
         override fun restore(defaultState: DoctorUiState): DoctorUiState = saved ?: defaultState

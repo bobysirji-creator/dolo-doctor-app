@@ -50,6 +50,15 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         } else feeReadyAppointments
         val activeAnnouncements = preferences.getStringSet(KEY_ACTIVE_ANNOUNCEMENTS, emptySet()).orEmpty()
         val enabledAvailability = preferences.getStringSet(KEY_ENABLED_AVAILABILITY, emptySet()).orEmpty()
+        val availabilityBlocks = if (preferences.contains(KEY_AVAILABILITY_BLOCKS)) {
+            preferences.getStringSet(KEY_AVAILABILITY_BLOCKS, emptySet()).orEmpty()
+                .mapNotNull(QueueStateCodec::decodeAvailabilityBlock)
+                .sortedWith(compareBy({ it.fromDate }, { it.sessions }))
+        } else {
+            defaultState.availabilityBlocks.map { block ->
+                block.copy(appointmentsEnabled = block.id in enabledAvailability)
+            }
+        }
         val permissionEntries = preferences.getStringSet(KEY_ASSISTANT_PERMISSIONS, emptySet()).orEmpty()
         val permissionsByAssistant = permissionEntries.mapNotNull { entry ->
             val (id, value) = entry.pair() ?: return@mapNotNull null
@@ -94,9 +103,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
             announcements = defaultState.announcements.map { announcement ->
                 announcement.copy(active = announcement.id in activeAnnouncements)
             },
-            availabilityBlocks = defaultState.availabilityBlocks.map { block ->
-                block.copy(appointmentsEnabled = block.id in enabledAvailability)
-            },
+            availabilityBlocks = availabilityBlocks,
             assistants = defaultState.assistants.map { assistant ->
                 val saved = permissionsByAssistant[assistant.id]?.toSet() ?: emptySet()
                 val migrated = if (schemaVersion < 2 && Permission.GENERATE_TOKEN_RECEIPT in saved) saved + Permission.CONFIRM_CONSULTATION_FEE else saved
@@ -107,7 +114,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
 
     override fun save(state: DoctorUiState): Boolean = preferences.edit()
         .putBoolean(KEY_INITIALIZED, true)
-        .putInt(KEY_SCHEMA_VERSION, 2)
+        .putInt(KEY_SCHEMA_VERSION, 3)
         .putString(KEY_DOCTOR_PROFILE, QueueStateCodec.encodeProfile(state.profile))
         .putStringSet(KEY_CLINICS, state.clinics.mapTo(mutableSetOf(), QueueStateCodec::encodeClinic))
         .putString(KEY_QUEUE_DATE, state.queueDate)
@@ -122,6 +129,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
         .putStringSet(KEY_APPOINTMENT_STATUSES, state.appointments.mapTo(mutableSetOf()) { "${it.id}|${it.status.name}" })
         .putStringSet(KEY_ACTIVE_ANNOUNCEMENTS, state.announcements.filter { it.active }.mapTo(mutableSetOf()) { it.id })
         .putStringSet(KEY_ENABLED_AVAILABILITY, state.availabilityBlocks.filter { it.appointmentsEnabled }.mapTo(mutableSetOf()) { it.id })
+        .putStringSet(KEY_AVAILABILITY_BLOCKS, state.availabilityBlocks.mapTo(mutableSetOf(), QueueStateCodec::encodeAvailabilityBlock))
         .putStringSet(KEY_ASSISTANT_PERMISSIONS, state.assistants.flatMapTo(mutableSetOf()) { assistant -> assistant.permissions.map { "${assistant.id}|${it.name}" } })
         .commit()
 
@@ -175,6 +183,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
         const val KEY_APPOINTMENT_STATUSES = "doctor_appointment_statuses"
         const val KEY_ACTIVE_ANNOUNCEMENTS = "doctor_active_announcements"
         const val KEY_ENABLED_AVAILABILITY = "doctor_enabled_availability"
+        const val KEY_AVAILABILITY_BLOCKS = "doctor_availability_blocks"
         const val KEY_ASSISTANT_PERMISSIONS = "doctor_assistant_permissions"
     }
 }

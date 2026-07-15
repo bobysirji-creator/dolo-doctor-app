@@ -122,3 +122,19 @@ Morning and Evening now allocate numeric tokens independently. Receipt IDs inclu
 The Android receipt document is formatted for a 58 mm ESC/POS-oriented print service: custom paper width, requested 203 dpi, zero margins and centered content. It prints the session, token, fee status/amount, method and payment-confirmation time. This is still Android PrintManager PDF output; final centering, feed length and printer-driver behavior must be accepted on the user's physical 58 mm printer.
 
 Unit coverage now includes unpaid queue exclusion, fee-confirmed admission, payment/receipt persistence, independent Morning/Evening allocation, selected-session restoration and expanded codec round trips. GitHub Actions remains the compile, lint and unit-test gate.
+
+## Stage 6 appointment availability and affected-patient workflow
+
+Version 0.6.0-stage6 (version code 14) replaces the former demonstration toggles with validated and persisted availability blocks. A Doctor can add, edit, reopen or delete a clinic block for an ISO date range and Morning, Evening or both sessions. An active block is enforced in both the UI and DoctorViewModel for clinic walk-ins, fee-confirmed admission and session booking availability.
+
+Existing non-terminal appointments covered by an active block are retained and marked CONTACT_PENDING. The Doctor can record PATIENT_NOTIFIED, RESCHEDULE_REQUIRED or RESOLVED follow-up. Unresolved affected appointments remain visible but cannot be marked arrived or called into consultation; resolved appointments may continue in the existing queue. Availability and follow-up changes are persisted in schema version 3, audited and projected into the local notification center.
+
+The Home header now places theme, notification and logout actions in their own upper row. The Doctor or Assistant name receives full width below it and no longer wraps because it is competing with three icons.
+
+GitHub Actions remains the authoritative compile, lint, unit-test and APK gate because the local low-resource PC intentionally has no Android toolchain.
+
+## Next recommended stage
+
+Stage 7: make doctor announcements, camps, offers and availability notices into validated, expiring records and define the Patient App profile-feed contract. Real cross-app delivery still waits for the shared backend.
+
+Stage 6 physical-device acceptance is defined in `docs/device-test-checklist.md`.

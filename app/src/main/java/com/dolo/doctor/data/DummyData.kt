@@ -40,7 +40,7 @@ object DummyData {
     )
 
     val availabilityBlocks = listOf(
-        AvailabilityBlock("b1", "clinic-1", "22 Jul 2026", "22 Jul 2026", "Evening", "Medical conference", false)
+        AvailabilityBlock("b1", "clinic-1", "2026-07-22", "2026-07-22", "Evening", "Medical conference", false)
     )
 
     fun initialState(queueDate: String = LocalDate.now().toString()) = DoctorUiState(
