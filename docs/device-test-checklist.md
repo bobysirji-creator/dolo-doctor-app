@@ -56,3 +56,17 @@ Run on both Vivo and Samsung devices.
 7. Login as the view-only Assistant and confirm queue mutation controls remain disabled; the event count must not change from attempted navigation.
 8. Close the app, remove it from Recents and relaunch. Confirm appointment statuses and Activity log entries remain intact.
 9. As Doctor, close and archive the day. Confirm the final Activity log entry records the day close and Queue history preserves every final status.
+
+## Stage 5.1 skipped/late patients, walk-ins and receipts
+
+1. While a patient is IN_CONSULTATION, press Skip. Before calling another patient, press Resume consultation now and confirm the same token returns to IN_CONSULTATION.
+2. Skip again, press Rejoin at end, then repeatedly Call next. Confirm normal waiting tokens are handled first and the skipped token eventually returns to IN_CONSULTATION without receiving a new token.
+3. After the queue has progressed, mark an earlier BOOKED token as Late arrival/rejoin. Confirm the original token remains unchanged and is called after the patients already ahead in queue order.
+4. Confirm Resume consultation now is hidden while another patient is IN_CONSULTATION, preventing two active consultations.
+5. Login as Doctor or queue-enabled Assistant, open Today's appointments and choose Book walk-in patient. Enter valid details and confirm the next token is allotted, status is ARRIVED and source is clinic walk-in.
+6. Confirm the receipt opens automatically with a large bold token, patient/doctor/clinic/date/session and stable receipt number.
+7. Press Print receipt. Confirm the Android print screen opens; test Save as PDF or a printer exposed through an installed Android print service.
+8. Close the receipt, open it again from the appointment and confirm token/receipt number do not change and no duplicate appointment is created.
+9. Mark a future online booking Arrived and confirm its receipt is generated and available from Today's appointments.
+10. Login as the view-only Assistant and confirm walk-in booking and receipt actions are unavailable.
+11. Remove the app from Recents and relaunch. Confirm walk-in appointment, queue order, booking source and receipt number persist.

@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.dolo.doctor.auth.AuthUiState
 import com.dolo.doctor.data.model.*
 import com.dolo.doctor.ui.components.*
+import com.dolo.doctor.printing.AndroidTokenReceiptPrinter
 
 @Composable private fun page() = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
 
@@ -149,7 +151,7 @@ import com.dolo.doctor.ui.components.*
     }
 }
 
-@Composable fun QueueScreen(state: DoctorUiState, permissions: Set<Permission>, onBack: () -> Unit, onHome: () -> Unit, onAppointments: () -> Unit, onProfile: () -> Unit, onToggleQueue: () -> Unit, onCallNext: () -> Unit, onUpdate: (String, AppointmentStatus) -> Unit, onCloseDay: () -> Boolean) {
+@Composable fun QueueScreen(state: DoctorUiState, permissions: Set<Permission>, onBack: () -> Unit, onHome: () -> Unit, onAppointments: () -> Unit, onProfile: () -> Unit, onToggleQueue: () -> Unit, onCallNext: () -> Unit, onUpdate: (String, AppointmentStatus) -> Unit, onResumeSkipped: (String) -> Boolean, onRejoin: (String) -> Boolean, onCloseDay: () -> Boolean) {
     val doctorMode = state.role == UserRole.DOCTOR
     val canView = doctorMode || Permission.VIEW_QUEUE in permissions
     val canUpdate = doctorMode || Permission.UPDATE_QUEUE in permissions
@@ -157,15 +159,16 @@ import com.dolo.doctor.ui.components.*
     val canMarkArrived = doctorMode || Permission.MARK_PATIENT_ARRIVED in permissions
     val canMarkAbsent = doctorMode || Permission.MARK_PATIENT_ABSENT in permissions
     val canMarkCompleted = doctorMode || Permission.MARK_PATIENT_COMPLETED in permissions
-    val hasNextPatient = state.appointments.any { it.token > state.currentToken && it.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.COMPLETED) }
+    val hasNextPatient = state.appointments.any { it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }
     val hasCurrentConsultation = state.appointments.any { it.token == state.currentToken && it.status == AppointmentStatus.IN_CONSULTATION }
+    val progressedOrder = state.appointments.filter { it.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED) }.maxOfOrNull { it.queueOrder } ?: 0
     var confirmCloseDay by remember { mutableStateOf(false) }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.QUEUE, onHome, {}, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Live queue", onBack) }
             if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_QUEUE permission.", color = MaterialTheme.colorScheme.error) } }
             else {
-                item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile(if (hasCurrentConsultation) "In consultation" else "Last token", state.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Remaining", state.appointments.count { it.token > state.currentToken && it.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.COMPLETED) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
+                item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile(if (hasCurrentConsultation) "In consultation" else "Last token", state.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Remaining", state.appointments.count { it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
                 item {
                     ElevatedSection("Queue controls", "Status: ${state.queueState.name.lowercase().replaceFirstChar(Char::uppercase)}") {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -193,7 +196,7 @@ import com.dolo.doctor.ui.components.*
                 if (state.appointments.isEmpty()) {
                     item { ElevatedSection("No appointments for " + state.queueDate) { Text("The new daily queue is ready for appointments from the shared backend.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                 }
-                items(state.appointments.sortedBy { it.token }, key = { it.id }) { appointment -> QueueAppointmentCard(appointment, canMarkArrived && state.queueState != QueueState.CLOSED, canMarkAbsent && state.queueState != QueueState.CLOSED, canMarkCompleted && state.queueState != QueueState.CLOSED, canUpdate && state.queueState != QueueState.CLOSED, onUpdate) }
+                items(state.appointments.sortedBy { it.token }, key = { it.id }) { appointment -> QueueAppointmentCard(appointment, appointment.status == AppointmentStatus.BOOKED && appointment.queueOrder < progressedOrder, canMarkArrived && state.queueState != QueueState.CLOSED, canMarkAbsent && state.queueState != QueueState.CLOSED, canMarkCompleted && state.queueState != QueueState.CLOSED, canUpdate && state.queueState != QueueState.CLOSED, !hasCurrentConsultation, onUpdate, onResumeSkipped, onRejoin) }
             }
         }
     }
@@ -211,18 +214,22 @@ import com.dolo.doctor.ui.components.*
 
 @Composable private fun QueueAppointmentCard(
     appointment: Appointment,
+    isLateArrival: Boolean,
     canMarkArrived: Boolean,
     canMarkAbsent: Boolean,
     canMarkCompleted: Boolean,
     canUpdate: Boolean,
-    onUpdate: (String, AppointmentStatus) -> Unit
+    canResumeNow: Boolean,
+    onUpdate: (String, AppointmentStatus) -> Unit,
+    onResumeSkipped: (String) -> Boolean,
+    onRejoin: (String) -> Boolean
 ) {
     ElevatedSection("Token ${appointment.token} • ${appointment.patientName}", "${appointment.patientType} • ${appointment.session} • booked ${appointment.bookedAt}") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(appointment.status.name.replace("_", " "), appointment.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.SKIPPED))
             Spacer(Modifier.weight(1f))
             if (appointment.status == AppointmentStatus.BOOKED && canMarkArrived) {
-                TextButton({ onUpdate(appointment.id, AppointmentStatus.ARRIVED) }) { Text("Mark arrived") }
+                TextButton({ onUpdate(appointment.id, AppointmentStatus.ARRIVED) }) { Text(if (isLateArrival) "Late arrival • rejoin" else "Mark arrived") }
             }
         }
         when (appointment.status) {
@@ -239,9 +246,10 @@ import com.dolo.doctor.ui.components.*
                 }
             }
             AppointmentStatus.SKIPPED -> if (canMarkAbsent || canUpdate) {
+                if (canUpdate && canResumeNow) Button({ onResumeSkipped(appointment.id) }, Modifier.fillMaxWidth()) { Text("Resume consultation now") }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (canMarkAbsent) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.ABSENT) }, Modifier.weight(1f)) { Text("Absent") }
-                    if (canUpdate) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.WAITING) }, Modifier.weight(1f)) { Text("Resume waiting") }
+                    if (canUpdate) Button({ onRejoin(appointment.id) }, Modifier.weight(1f)) { Text("Rejoin at end") }
                 }
             }
             AppointmentStatus.IN_CONSULTATION -> if (canMarkCompleted || canUpdate) {
@@ -254,19 +262,134 @@ import com.dolo.doctor.ui.components.*
         }
     }
 }
-@Composable fun AppointmentsScreen(state: DoctorUiState, permissions: Set<Permission>, onBack: () -> Unit, onHome: () -> Unit, onQueue: () -> Unit, onProfile: () -> Unit) {
+@Composable fun AppointmentsScreen(
+    state: DoctorUiState,
+    permissions: Set<Permission>,
+    onBack: () -> Unit,
+    onHome: () -> Unit,
+    onQueue: () -> Unit,
+    onProfile: () -> Unit,
+    onBookWalkIn: (WalkInBookingRequest) -> WalkInBookingResult,
+    onReceipt: (String) -> TokenReceipt?
+) {
     val doctorMode = state.role == UserRole.DOCTOR
     val canView = doctorMode || Permission.VIEW_TODAY_APPOINTMENTS in permissions
+    val canBookWalkIn = doctorMode || Permission.BOOK_WALK_IN_APPOINTMENT in permissions
+    val canGenerateReceipt = doctorMode || Permission.GENERATE_TOKEN_RECEIPT in permissions
+    var showWalkInBooking by remember { mutableStateOf(false) }
+    var activeReceipt by remember { mutableStateOf<TokenReceipt?>(null) }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.APPOINTMENTS, onHome, onQueue, {}, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Today's appointments", onBack) }
             if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_TODAY_APPOINTMENTS permission.", color = MaterialTheme.colorScheme.error) } }
             else {
-                item { ElevatedSection("Morning session") { Text("${state.appointments.size} booked patients • maximum ${state.clinics.first().maxTokensPerSession} tokens", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-                items(state.appointments.sortedBy { it.token }, key = { it.id }) { appointment -> ElevatedSection("Token ${appointment.token} • ${appointment.patientName}", "${appointment.patientType} • ${appointment.bookedAt}") { Row { StatusPill(appointment.status.name.replace("_", " "), appointment.status != AppointmentStatus.ABSENT); Spacer(Modifier.weight(1f)); Text(appointment.session, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
+                item {
+                    ElevatedSection("Clinic and online bookings", "Both sources share the same token queue. Every arrived patient must receive a token receipt.") {
+                        Text("${state.appointments.size} patients • maximum ${state.clinics.first().maxTokensPerSession} tokens per session", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (canBookWalkIn) PrimaryAction("Book walk-in patient", { showWalkInBooking = true }, icon = Icons.Outlined.PersonAdd)
+                    }
+                }
+                items(state.appointments.sortedBy { it.queueOrder }, key = { it.id }) { appointment ->
+                    ElevatedSection(
+                        "Token ${appointment.token} • ${appointment.patientName}",
+                        appointment.patientType + " • " + appointment.session + " • " + appointment.bookingSource.name.replace("_", " ").lowercase()
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            StatusPill(appointment.status.name.replace("_", " "), appointment.status != AppointmentStatus.ABSENT)
+                            Spacer(Modifier.weight(1f))
+                            if (canGenerateReceipt) TextButton({ activeReceipt = onReceipt(appointment.id) }) {
+                                Icon(Icons.Outlined.ReceiptLong, null)
+                                Spacer(Modifier.width(5.dp))
+                                Text(if (appointment.receiptNumber.isBlank()) "Generate receipt" else "Receipt")
+                            }
+                        }
+                    }
+                }
             }
         }
     }
+    if (showWalkInBooking) {
+        WalkInBookingDialog(
+            onDismiss = { showWalkInBooking = false },
+            onBook = { request ->
+                val result = onBookWalkIn(request)
+                if (result.receipt != null) {
+                    showWalkInBooking = false
+                    activeReceipt = result.receipt
+                }
+                result.error
+            }
+        )
+    }
+    activeReceipt?.let { receipt -> TokenReceiptDialog(receipt, onDismiss = { activeReceipt = null }) }
+}
+
+@Composable private fun WalkInBookingDialog(
+    onDismiss: () -> Unit,
+    onBook: (WalkInBookingRequest) -> String?
+) {
+    var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var patientType by remember { mutableStateOf("Self") }
+    var session by remember { mutableStateOf("Morning") }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Outlined.PersonAdd, null) },
+        title = { Text("Book clinic walk-in") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("The patient will be marked arrived, allotted the next token and shown a compulsory receipt.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(name, { name = it; error = null }, Modifier.fillMaxWidth(), label = { Text("Patient name") }, singleLine = true)
+                OutlinedTextField(phone, { phone = it.filter(Char::isDigit).take(10); error = null }, Modifier.fillMaxWidth(), label = { Text("Mobile number") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), singleLine = true)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(patientType == "Self", { patientType = "Self" }, { Text("Self") })
+                    FilterChip(patientType == "Family member", { patientType = "Family member" }, { Text("Family member") })
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(session == "Morning", { session = "Morning" }, { Text("Morning") })
+                    FilterChip(session == "Evening", { session = "Evening" }, { Text("Evening") })
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            Button({ error = onBook(WalkInBookingRequest(name, phone, patientType, session)) }) {
+                Text("Book & generate receipt")
+            }
+        },
+        dismissButton = { TextButton(onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable private fun TokenReceiptDialog(receipt: TokenReceipt, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Outlined.ReceiptLong, null) },
+        title = { Text("Token receipt") },
+        text = {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text(receipt.clinicName, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center)
+                Text("TOKEN", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                Text(receipt.token.toString(), fontSize = 64.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                HorizontalDivider()
+                Text(receipt.patientName, fontWeight = FontWeight.Bold)
+                Text(receipt.doctorName)
+                Text(receipt.appointmentDate + " • " + receipt.session)
+                Text(receipt.receiptNumber, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Patient must hand this receipt to the doctor during consultation.", textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+            }
+        },
+        confirmButton = {
+            Button({ AndroidTokenReceiptPrinter.print(context, receipt) }) {
+                Icon(Icons.Outlined.Print, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Print receipt")
+            }
+        },
+        dismissButton = { TextButton(onDismiss) { Text("Close") } }
+    )
 }
 @Composable fun QueueHistoryScreen(state: DoctorUiState, onBack: () -> Unit) {
     LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {

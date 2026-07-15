@@ -69,7 +69,7 @@ class DoctorViewModel(
         AppointmentStatus.ARRIVED -> to in setOf(AppointmentStatus.WAITING, AppointmentStatus.IN_CONSULTATION, AppointmentStatus.ABSENT)
         AppointmentStatus.WAITING -> to in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.ABSENT, AppointmentStatus.SKIPPED)
         AppointmentStatus.IN_CONSULTATION -> to in setOf(AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED)
-        AppointmentStatus.SKIPPED -> to in setOf(AppointmentStatus.WAITING, AppointmentStatus.IN_CONSULTATION, AppointmentStatus.ABSENT)
+        AppointmentStatus.SKIPPED -> to == AppointmentStatus.ABSENT
         AppointmentStatus.COMPLETED, AppointmentStatus.ABSENT -> false
     }
 
@@ -151,8 +151,8 @@ class DoctorViewModel(
             it.token == uiState.currentToken && it.status == AppointmentStatus.IN_CONSULTATION
         }
         val next = uiState.appointments
-            .filter { it.token > uiState.currentToken && it.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.COMPLETED) }
-            .minByOrNull { it.token }
+            .filter { it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }
+            .minByOrNull { it.queueOrder }
 
         if (next == null) {
             if (current != null) {
@@ -192,10 +192,127 @@ class DoctorViewModel(
         val appointment = uiState.appointments.firstOrNull { it.id == id } ?: return
         if (!canTransition(appointment.status, status)) return
 
-        val changed = appointment.copy(status = status)
-        val updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == id) changed else it })
-        val action = if (status == AppointmentStatus.COMPLETED) AuditAction.CONSULTATION_COMPLETED else AuditAction.STATUS_CHANGED
-        persist(withAudit(updated, action, "Changed token " + appointment.token + " from " + appointment.status.name + " to " + status.name, appointment, appointment.status, status))
+        val progressedOrder = uiState.appointments.filter { it.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED) }.maxOfOrNull { it.queueOrder } ?: 0
+        val lateArrival = status == AppointmentStatus.ARRIVED && appointment.queueOrder < progressedOrder
+        val needsReceipt = status == AppointmentStatus.ARRIVED && appointment.receiptNumber.isBlank()
+        val changed = appointment.copy(
+            status = status,
+            queueOrder = if (lateArrival) nextQueueOrder() else appointment.queueOrder,
+            receiptNumber = if (needsReceipt) receiptNumber(appointment.token) else appointment.receiptNumber
+        )
+        var updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == id) changed else it })
+        val action = when {
+            status == AppointmentStatus.COMPLETED -> AuditAction.CONSULTATION_COMPLETED
+            lateArrival -> AuditAction.PATIENT_REJOINED
+            else -> AuditAction.STATUS_CHANGED
+        }
+        val detail = if (lateArrival) {
+            "Late arrival token " + appointment.token + " joined at the end of the active queue"
+        } else {
+            "Changed token " + appointment.token + " from " + appointment.status.name + " to " + status.name
+        }
+        updated = withAudit(updated, action, detail, appointment, appointment.status, status)
+        if (needsReceipt) {
+            updated = withAudit(updated, AuditAction.RECEIPT_GENERATED, "Generated compulsory token receipt " + changed.receiptNumber, changed)
+        }
+        persist(updated)
+    }
+
+    fun resumeSkippedConsultation(id: String): Boolean {
+        rollOverIfNeeded()
+        if (uiState.queueState == QueueState.CLOSED || !hasPermission(Permission.UPDATE_QUEUE)) return false
+        if (uiState.appointments.any { it.status == AppointmentStatus.IN_CONSULTATION }) return false
+        val appointment = uiState.appointments.firstOrNull { it.id == id } ?: return false
+        if (appointment.status != AppointmentStatus.SKIPPED) return false
+        val resumed = appointment.copy(status = AppointmentStatus.IN_CONSULTATION)
+        val updated = uiState.copy(
+            appointments = uiState.appointments.map { if (it.id == id) resumed else it },
+            currentToken = appointment.token
+        )
+        persist(withAudit(updated, AuditAction.PATIENT_REJOINED, "Immediately resumed skipped token " + appointment.token + " in consultation", appointment, AppointmentStatus.SKIPPED, AppointmentStatus.IN_CONSULTATION))
+        return true
+    }
+    fun rejoinAppointment(id: String): Boolean {
+        rollOverIfNeeded()
+        if (uiState.queueState == QueueState.CLOSED || !hasPermission(Permission.UPDATE_QUEUE)) return false
+        val appointment = uiState.appointments.firstOrNull { it.id == id } ?: return false
+        if (appointment.status != AppointmentStatus.SKIPPED) return false
+        val rejoined = appointment.copy(status = AppointmentStatus.WAITING, queueOrder = nextQueueOrder())
+        val updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == id) rejoined else it })
+        persist(withAudit(updated, AuditAction.PATIENT_REJOINED, "Rejoined skipped token " + appointment.token + " at the end of the queue", appointment, AppointmentStatus.SKIPPED, AppointmentStatus.WAITING))
+        return true
+    }
+
+    fun bookWalkIn(request: WalkInBookingRequest): WalkInBookingResult {
+        rollOverIfNeeded()
+        if (!hasPermission(Permission.BOOK_WALK_IN_APPOINTMENT)) return WalkInBookingResult(error = "This account cannot book walk-in patients.")
+        if (uiState.queueState == QueueState.CLOSED) return WalkInBookingResult(error = "Today's queue is closed.")
+        val name = request.patientName.trim()
+        val phone = request.patientPhone.filter(Char::isDigit)
+        val patientType = request.patientType.trim()
+        val session = request.session.trim()
+        val clinic = uiState.clinics.firstOrNull() ?: return WalkInBookingResult(error = "Clinic details are unavailable.")
+        val error = when {
+            name.length < 3 -> "Enter the patient's full name."
+            phone.length != 10 -> "Enter a valid 10-digit mobile number."
+            patientType.isBlank() -> "Select the patient type."
+            session !in setOf("Morning", "Evening") -> "Select Morning or Evening session."
+            uiState.appointments.count { it.session == session } >= clinic.maxTokensPerSession -> "The selected session has reached its token limit."
+            else -> null
+        }
+        if (error != null) return WalkInBookingResult(error = error)
+
+        val token = (uiState.appointments.maxOfOrNull { it.token } ?: 0) + 1
+        val appointment = Appointment(
+            id = "walkin-" + uiState.queueDate + "-" + token + "-" + currentTime().toSecondOfDay(),
+            token = token,
+            patientName = name,
+            patientType = patientType,
+            session = session,
+            status = AppointmentStatus.ARRIVED,
+            bookedAt = currentTime().format(timeFormatter),
+            queueOrder = nextQueueOrder(),
+            bookingSource = BookingSource.CLINIC_WALK_IN,
+            patientPhone = phone,
+            receiptNumber = receiptNumber(token)
+        )
+        var updated = uiState.copy(appointments = (uiState.appointments + appointment).sortedBy { it.queueOrder })
+        updated = withAudit(updated, AuditAction.WALK_IN_BOOKED, "Booked clinic walk-in and allotted token " + token, appointment)
+        updated = withAudit(updated, AuditAction.RECEIPT_GENERATED, "Generated compulsory token receipt " + appointment.receiptNumber, appointment)
+        persist(updated)
+        return WalkInBookingResult(receipt = tokenReceipt(appointment))
+    }
+
+    fun receiptFor(appointmentId: String): TokenReceipt? {
+        if (!hasPermission(Permission.GENERATE_TOKEN_RECEIPT)) return null
+        val appointment = uiState.appointments.firstOrNull { it.id == appointmentId } ?: return null
+        if (appointment.receiptNumber.isNotBlank()) return tokenReceipt(appointment)
+        val withReceipt = appointment.copy(receiptNumber = receiptNumber(appointment.token))
+        val updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == appointmentId) withReceipt else it })
+        persist(withAudit(updated, AuditAction.RECEIPT_GENERATED, "Generated compulsory token receipt " + withReceipt.receiptNumber, withReceipt))
+        return tokenReceipt(withReceipt)
+    }
+
+    private fun nextQueueOrder(): Int = (uiState.appointments.maxOfOrNull { it.queueOrder } ?: 0) + 1
+
+    private fun receiptNumber(token: Int): String = "DL-" + uiState.queueDate.replace("-", "") + "-" + token.toString().padStart(3, '0')
+
+    private fun tokenReceipt(appointment: Appointment): TokenReceipt {
+        val clinic = uiState.clinics.first()
+        return TokenReceipt(
+            receiptNumber = appointment.receiptNumber,
+            token = appointment.token,
+            appointmentDate = uiState.queueDate,
+            generatedAt = currentTime().format(timeFormatter),
+            patientName = appointment.patientName,
+            patientPhone = appointment.patientPhone,
+            patientType = appointment.patientType,
+            doctorName = uiState.profile.name,
+            clinicName = clinic.name,
+            clinicAddress = clinic.address,
+            session = appointment.session,
+            bookingSource = appointment.bookingSource
+        )
     }
     fun closeDay(): Boolean {
         rollOverIfNeeded()

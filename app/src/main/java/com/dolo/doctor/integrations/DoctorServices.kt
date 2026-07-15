@@ -13,6 +13,9 @@ interface DoctorApi {
     suspend fun todayAppointments(clinicId: String): ApiResult<List<Appointment>>
     suspend fun callNext(clinicId: String): ApiResult<Appointment>
     suspend fun updateAppointment(id: String, status: AppointmentStatus): ApiResult<Appointment>
+    suspend fun bookWalkIn(request: WalkInBookingRequest): ApiResult<Appointment>
+    suspend fun resumeSkippedConsultation(id: String): ApiResult<Appointment>
+    suspend fun rejoinAppointment(id: String): ApiResult<Appointment>
     suspend fun announcements(): ApiResult<List<Announcement>>
     suspend fun availability(): ApiResult<List<AvailabilityBlock>>
     suspend fun assistants(): ApiResult<List<Assistant>>
@@ -31,4 +34,7 @@ interface AvailabilityManager {
 interface DoctorNotificationService {
     suspend fun broadcastQueueDelay(clinicId: String, delayMinutes: Int): ApiResult<Unit>
     suspend fun notifyAffectedAppointments(blockId: String): ApiResult<Unit>
+}
+interface TokenReceiptGateway {
+    suspend fun print(receipt: TokenReceipt): ApiResult<Unit>
 }

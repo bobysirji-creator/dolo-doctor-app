@@ -48,3 +48,13 @@ Every assistant action must be authorized on the server, not only hidden in Comp
 - Audit records include a monotonic local sequence, clinic date/time, Doctor or Assistant actor, token/patient context and before/after status when applicable.
 - QueueStateCodec persists the newest 500 events in the local prototype. Invalid, unauthorized and no-op actions create no audit event.
 - This local audit trail is for workflow testing. The shared backend must eventually assign authoritative IDs/timestamps and retain an immutable server-side log.
+
+## Stage 5.1 recoverable queue order, walk-in booking and receipts
+
+- Appointment.token is the permanent patient-facing number. Appointment.queueOrder is the mutable service order used by Call next.
+- Skip removes a patient from eligible selection. Resume consultation now is allowed only when no other appointment is IN_CONSULTATION; Rejoin at end assigns the next queueOrder.
+- A late BOOKED patient marked ARRIVED keeps the original token and is appended after the furthest progressed queue position.
+- PATIENT_APP and CLINIC_WALK_IN appointments share the same daily token generator and persisted appointment collection.
+- Arriving online patients and new clinic walk-ins receive a stable receiptNumber. Receipt generation and walk-in booking are permission checked and audited.
+- AndroidTokenReceiptPrinter creates a one-page print document and opens the Android print service. Direct Bluetooth ESC/POS support remains behind TokenReceiptGateway until supported printer models and paper widths are selected.
+- The backend must allocate token and queueOrder transactionally to prevent duplicate tokens when multiple clinic devices and the Patient App book concurrently.

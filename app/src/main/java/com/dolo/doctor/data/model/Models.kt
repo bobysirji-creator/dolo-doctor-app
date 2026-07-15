@@ -5,7 +5,8 @@ enum class QueueState { NOT_STARTED, ACTIVE, PAUSED, CLOSED }
 enum class AppointmentStatus { BOOKED, ARRIVED, WAITING, IN_CONSULTATION, COMPLETED, ABSENT, SKIPPED }
 enum class AnnouncementType { AVAILABILITY, CAMP, OFFER, GENERAL }
 enum class ProfileReviewStatus { VERIFIED, PENDING_REVIEW }
-enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, CONSULTATION_COMPLETED, DAY_CLOSED, DAY_ROLLED_OVER }
+enum class BookingSource { PATIENT_APP, CLINIC_WALK_IN }
+enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, PATIENT_REJOINED, WALK_IN_BOOKED, RECEIPT_GENERATED, CONSULTATION_COMPLETED, DAY_CLOSED, DAY_ROLLED_OVER }
 enum class Permission {
     VIEW_QUEUE,
     UPDATE_QUEUE,
@@ -15,7 +16,9 @@ enum class Permission {
     MARK_PATIENT_COMPLETED,
     VIEW_TODAY_APPOINTMENTS,
     MANAGE_CLINIC_AVAILABILITY,
-    MANAGE_ANNOUNCEMENTS
+    MANAGE_ANNOUNCEMENTS,
+    BOOK_WALK_IN_APPOINTMENT,
+    GENERATE_TOKEN_RECEIPT
 }
 
 data class DoctorProfile(
@@ -48,9 +51,36 @@ data class Appointment(
     val patientType: String,
     val session: String,
     val status: AppointmentStatus,
-    val bookedAt: String
+    val bookedAt: String,
+    val queueOrder: Int = token,
+    val bookingSource: BookingSource = BookingSource.PATIENT_APP,
+    val patientPhone: String = "",
+    val receiptNumber: String = ""
 )
 
+data class WalkInBookingRequest(
+    val patientName: String,
+    val patientPhone: String,
+    val patientType: String,
+    val session: String
+)
+
+data class TokenReceipt(
+    val receiptNumber: String,
+    val token: Int,
+    val appointmentDate: String,
+    val generatedAt: String,
+    val patientName: String,
+    val patientPhone: String,
+    val patientType: String,
+    val doctorName: String,
+    val clinicName: String,
+    val clinicAddress: String,
+    val session: String,
+    val bookingSource: BookingSource
+)
+
+data class WalkInBookingResult(val receipt: TokenReceipt? = null, val error: String? = null)
 data class DailyQueueHistory(
     val date: String,
     val clinicName: String,

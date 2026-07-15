@@ -2,6 +2,7 @@ package com.dolo.doctor.data
 
 import com.dolo.doctor.data.model.Appointment
 import com.dolo.doctor.data.model.AppointmentStatus
+import com.dolo.doctor.data.model.BookingSource
 import com.dolo.doctor.data.model.DailyQueueHistory
 import com.dolo.doctor.data.model.DoctorProfile
 import com.dolo.doctor.data.model.Clinic
@@ -101,17 +102,35 @@ internal object QueueStateCodec {
         appointment.patientType,
         appointment.session,
         appointment.status.name,
-        appointment.bookedAt
+        appointment.bookedAt,
+        appointment.queueOrder.toString(),
+        appointment.bookingSource.name,
+        appointment.patientPhone,
+        appointment.receiptNumber
     ).joinToString(",") { encode(it) }
 
     fun decodeAppointment(value: String): Appointment? {
         val fields = value.split(",").mapNotNull(::decode)
-        if (fields.size != 7) return null
+        if (fields.size !in setOf(7, 11)) return null
         val token = fields[1].toIntOrNull() ?: return null
         val status = runCatching { AppointmentStatus.valueOf(fields[5]) }.getOrNull() ?: return null
-        return Appointment(fields[0], token, fields[2], fields[3], fields[4], status, fields[6])
+        if (fields.size == 7) return Appointment(fields[0], token, fields[2], fields[3], fields[4], status, fields[6])
+        val queueOrder = fields[7].toIntOrNull() ?: return null
+        val source = runCatching { BookingSource.valueOf(fields[8]) }.getOrNull() ?: return null
+        return Appointment(
+            id = fields[0],
+            token = token,
+            patientName = fields[2],
+            patientType = fields[3],
+            session = fields[4],
+            status = status,
+            bookedAt = fields[6],
+            queueOrder = queueOrder,
+            bookingSource = source,
+            patientPhone = fields[9],
+            receiptNumber = fields[10]
+        )
     }
-
     fun encodeHistory(history: DailyQueueHistory): String = listOf(
         history.date,
         history.clinicName,

@@ -39,3 +39,10 @@ Individual credentials with backend-enforced modular permissions. Assistants mus
 ## Stage 1 limitations
 
 All data and controls are local demonstrations. No real user, patient record, medical note, outbound message, payment, map or production API is used.
+## Clinic walk-in booking and compulsory token receipt
+
+Appointments have two sources: PATIENT_APP and CLINIC_WALK_IN. Both sources must enter the same doctor, clinic, date and session queue and receive one unique token sequence. An authorized Doctor or Assistant can register an in-person patient, capture name/mobile/patient type/session, mark the patient arrived, allot the next token and generate the token receipt in one workflow.
+
+A token receipt is compulsory for every arrived patient, whether booked online or at the clinic. It displays the token prominently plus receipt number, patient, doctor, clinic, date, session, source and generation time. The patient hands the physical receipt to the doctor at consultation. Reprints retain the same token and receipt number and must not create another appointment.
+
+Skipped patients are recoverable. If Skip was accidental and no other consultation has started, staff can resume the same patient immediately. Otherwise staff can rejoin the patient at the end of the active queue. A patient arriving after their original turn keeps the original token but receives a new queue position at the end. ABSENT and COMPLETED remain terminal statuses.

@@ -17,12 +17,26 @@ class QueueStateCodecTest {
             patientType = "Family member",
             session = "Evening",
             status = AppointmentStatus.IN_CONSULTATION,
-            bookedAt = "06:15 PM"
+            bookedAt = "06:15 PM",
+            queueOrder = 57,
+            bookingSource = com.dolo.doctor.data.model.BookingSource.CLINIC_WALK_IN,
+            patientPhone = "9876512345",
+            receiptNumber = "DL-20260715-042"
         )
 
         assertEquals(appointment, QueueStateCodec.decodeAppointment(QueueStateCodec.encodeAppointment(appointment)))
     }
 
+    @Test fun legacySevenFieldAppointmentMigratesWithTokenQueueOrder() {
+        val legacy = listOf("legacy", "8", "Old Patient", "Self", "Morning", "WAITING", "08:00 AM")
+            .joinToString(",") { java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray()) }
+
+        val decoded = QueueStateCodec.decodeAppointment(legacy) ?: throw AssertionError("Legacy appointment was not decoded")
+
+        assertEquals(8, decoded.queueOrder)
+        assertEquals(com.dolo.doctor.data.model.BookingSource.PATIENT_APP, decoded.bookingSource)
+        assertEquals("", decoded.receiptNumber)
+    }
     @Test fun dailyHistoryRoundTripKeepsAppointments() {
         val history = DailyQueueHistory(
             date = "2026-07-15",

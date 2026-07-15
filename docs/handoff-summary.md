@@ -83,3 +83,13 @@ Every successful queue start, pause, resume, patient call, status change, consul
 Unit tests cover valid and invalid transitions, terminal-state protection, Doctor/Assistant attribution, queue lifecycle persistence and lossless audit-event encoding. GitHub Actions remains the build, lint and unit-test gate because the low-resource development PC does not host the Android toolchain.
 
 Next recommended stage: Stage 6 appointment availability blocks and the affected-patient workflow.
+
+## Stage 5.1 skipped/late recovery, clinic walk-ins and token receipts
+
+Version 0.5.1-stage5 (version code 10) corrects the skipped-patient dead end. Token number and queue position are now separate: Resume consultation now safely reverses an accidental skip only when no other consultation is active, while Rejoin at end appends the same token to the remaining queue. Late patients marked arrived also keep their token and move to the end. Call next selects the lowest eligible queueOrder, so rejoined patients can be consulted even when their token is lower than the previously called token.
+
+Appointments now record PATIENT_APP or CLINIC_WALK_IN source, mobile number, queue order and stable receipt number. Authorized Doctors and the queue-enabled Assistant can book an in-person patient from Today's appointments. A successful booking validates the form and session capacity, allots the next daily token, marks the patient ARRIVED, persists it in the shared local queue, records booking/receipt audit events and immediately opens a large-token receipt.
+
+Every appointment exposes receipt generation or reprint. The receipt includes clinic, doctor, patient, token, date, session, source and receipt number. Print receipt uses Android's system print service and can save PDF or reach printers supported by an installed Android print service. Direct Bluetooth ESC/POS thermal printing is intentionally not hard-coded; TokenReceiptGateway reserves that provider integration once actual printer models are chosen.
+
+Next recommended work remains Stage 6 availability blocks and affected-patient handling, followed by backend synchronization where token allocation and printing acknowledgements become authoritative.
