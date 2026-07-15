@@ -14,6 +14,8 @@ import com.dolo.doctor.data.model.ProfileReviewStatus
 import com.dolo.doctor.data.model.QueueAuditEvent
 import com.dolo.doctor.data.model.AuditAction
 import com.dolo.doctor.data.model.AvailabilityBlock
+import com.dolo.doctor.data.model.Announcement
+import com.dolo.doctor.data.model.AnnouncementType
 import com.dolo.doctor.data.model.AvailabilityImpactStatus
 import java.nio.charset.StandardCharsets
 import java.util.Base64
@@ -85,6 +87,33 @@ internal object QueueStateCodec {
             sessions = fields[4],
             reason = fields[5],
             appointmentsEnabled = enabled
+        )
+    }
+
+
+    fun encodeAnnouncement(announcement: Announcement): String = listOf(
+        announcement.id,
+        announcement.title,
+        announcement.message,
+        announcement.type.name,
+        announcement.startsOn,
+        announcement.endsOn,
+        announcement.active.toString()
+    ).joinToString("|") { encode(it) }
+
+    fun decodeAnnouncement(value: String): Announcement? {
+        val fields = value.split("|").mapNotNull(::decode)
+        if (fields.size != 7) return null
+        val type = runCatching { AnnouncementType.valueOf(fields[3]) }.getOrNull() ?: return null
+        val active = fields[6].toBooleanStrictOrNull() ?: return null
+        return Announcement(
+            id = fields[0],
+            title = fields[1],
+            message = fields[2],
+            type = type,
+            startsOn = fields[4],
+            endsOn = fields[5],
+            active = active
         )
     }
 

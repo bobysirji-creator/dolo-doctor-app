@@ -1,3 +1,11 @@
+## Doctor updates and Patient App profile feed
+
+Doctors can create availability notices, health camps, offers and general updates with a title, patient-facing message, start date, end date and draft/published choice. Invalid content and reversed or malformed date ranges must be rejected.
+
+A published update is scheduled before its start date, live throughout its inclusive date range and expired afterward. Only live updates are eligible for the Patient App doctor-profile feed; drafts, future updates and expired updates must never leak into the public projection.
+
+Every create, edit, publish, draft and delete operation requires permission enforcement and an audit record. The shared backend will later own clinic-timezone evaluation, Patient App synchronization and delivery; the Android app stores no privileged broadcast credentials.
+
 # DO-LO Doctor App Product Requirements
 
 ## Purpose

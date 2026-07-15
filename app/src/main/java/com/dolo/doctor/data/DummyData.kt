@@ -34,9 +34,9 @@ object DummyData {
     )
 
     val announcements = listOf(
-        Announcement("n1", "Sunday health camp", "Free blood-pressure and diabetes screening this Sunday.", AnnouncementType.CAMP, "20 Jul 2026", "20 Jul 2026", true),
-        Announcement("n2", "Evening session unavailable", "The evening session will remain closed on 22 July.", AnnouncementType.AVAILABILITY, "22 Jul 2026", "22 Jul 2026", true),
-        Announcement("n3", "Monsoon wellness consultation", "Preventive health consultation available through July.", AnnouncementType.OFFER, "01 Jul 2026", "31 Jul 2026", true)
+        Announcement("n1", "Sunday health camp", "Free blood-pressure and diabetes screening this Sunday.", AnnouncementType.CAMP, "2026-07-20", "2026-07-20", true),
+        Announcement("n2", "Evening session unavailable", "The evening session will remain closed on 22 July.", AnnouncementType.AVAILABILITY, "2026-07-22", "2026-07-22", true),
+        Announcement("n3", "Monsoon wellness consultation", "Preventive health consultation available through July.", AnnouncementType.OFFER, "2026-07-01", "2026-07-31", true)
     )
 
     val availabilityBlocks = listOf(

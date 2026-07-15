@@ -23,9 +23,15 @@ interface DoctorApi {
 }
 
 interface AnnouncementPublisher {
-    suspend fun publish(announcement: Announcement): ApiResult<Announcement>
-    suspend fun deactivate(id: String): ApiResult<Unit>
+    suspend fun save(announcement: Announcement): ApiResult<Announcement>
+    suspend fun setActive(id: String, active: Boolean): ApiResult<Announcement>
+    suspend fun delete(id: String): ApiResult<Unit>
 }
+
+interface PatientProfileFeedGateway {
+    suspend fun doctorUpdates(doctorId: String, clinicId: String?, onDate: String): ApiResult<List<PatientProfileFeedItem>>
+}
+
 
 interface AvailabilityManager {
     suspend fun save(block: AvailabilityBlock): ApiResult<AvailabilityBlock>

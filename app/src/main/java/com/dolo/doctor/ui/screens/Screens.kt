@@ -136,7 +136,7 @@ import kotlinx.coroutines.delay
             }
             if (doctorMode || Permission.MANAGE_ANNOUNCEMENTS in permissions) {
                 item { Text("Active doctor updates", style = MaterialTheme.typography.titleLarge) }
-                items(state.announcements.filter { it.active }.take(2), key = { it.id }) { AnnouncementCard(it, null) }
+                items(state.announcements.filter { it.active && state.queueDate >= it.startsOn && state.queueDate <= it.endsOn }.take(2), key = { it.id }) { AnnouncementCard(it, null) }
             }
         }
     }

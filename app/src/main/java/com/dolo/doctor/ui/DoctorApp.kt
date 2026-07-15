@@ -119,7 +119,7 @@ private object Routes {
         composable(Routes.ACTIVITY) { QueueActivityScreen(state, nav::popBackStack) }
         composable(Routes.CLINIC) { ClinicScreen(state, nav::popBackStack, doctorViewModel::updateClinic) }
         composable(Routes.AVAILABILITY) { AvailabilityManagementScreen(state, nav::popBackStack, doctorViewModel::saveAvailabilityBlock, doctorViewModel::setAvailabilityAppointmentsEnabled, doctorViewModel::deleteAvailabilityBlock, doctorViewModel::updateAffectedPatientStatus) }
-        composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen(state, nav::popBackStack, doctorViewModel::toggleAnnouncement) }
+        composable(Routes.ANNOUNCEMENTS) { AnnouncementManagementScreen(state, nav::popBackStack, doctorViewModel::saveAnnouncement, doctorViewModel::setAnnouncementActive, doctorViewModel::deleteAnnouncement) }
         composable(Routes.ASSISTANTS) { AssistantsScreen(state, nav::popBackStack, doctorViewModel::togglePermission) { assistantId -> if (doctorViewModel.deleteAssistant(assistantId)) authRepository.removeAssistant(assistantId) } }
         composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::queue, ::appointments, doctorViewModel::updateProfile) }
         composable(Routes.NOTIFICATIONS) { NotificationsScreen(state, nav::popBackStack, doctorViewModel::markNotificationRead, doctorViewModel::markAllNotificationsRead) }

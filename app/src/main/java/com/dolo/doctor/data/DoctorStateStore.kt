@@ -49,6 +49,15 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
             migrateIndependentSessionTokens(feeReadyAppointments, preferences.getString(KEY_QUEUE_DATE, defaultState.queueDate) ?: defaultState.queueDate)
         } else feeReadyAppointments
         val activeAnnouncements = preferences.getStringSet(KEY_ACTIVE_ANNOUNCEMENTS, emptySet()).orEmpty()
+        val announcements = if (preferences.contains(KEY_ANNOUNCEMENTS)) {
+            preferences.getStringSet(KEY_ANNOUNCEMENTS, emptySet()).orEmpty()
+                .mapNotNull(QueueStateCodec::decodeAnnouncement)
+                .sortedWith(compareBy({ it.startsOn }, { it.title }))
+        } else {
+            defaultState.announcements.map { announcement ->
+                announcement.copy(active = announcement.id in activeAnnouncements)
+            }
+        }
         val enabledAvailability = preferences.getStringSet(KEY_ENABLED_AVAILABILITY, emptySet()).orEmpty()
         val availabilityBlocks = if (preferences.contains(KEY_AVAILABILITY_BLOCKS)) {
             preferences.getStringSet(KEY_AVAILABILITY_BLOCKS, emptySet()).orEmpty()
@@ -100,9 +109,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
             appointments = migratedAppointments,
             selectedSession = preferences.getString(KEY_SELECTED_SESSION, "Morning").takeIf { it in setOf("Morning", "Evening") } ?: "Morning",
             notificationReadThrough = preferences.getInt(KEY_NOTIFICATION_READ_THROUGH, 0),
-            announcements = defaultState.announcements.map { announcement ->
-                announcement.copy(active = announcement.id in activeAnnouncements)
-            },
+            announcements = announcements,
             availabilityBlocks = availabilityBlocks,
             assistants = defaultState.assistants.map { assistant ->
                 val saved = permissionsByAssistant[assistant.id]?.toSet() ?: emptySet()
@@ -114,7 +121,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
 
     override fun save(state: DoctorUiState): Boolean = preferences.edit()
         .putBoolean(KEY_INITIALIZED, true)
-        .putInt(KEY_SCHEMA_VERSION, 3)
+        .putInt(KEY_SCHEMA_VERSION, 4)
         .putString(KEY_DOCTOR_PROFILE, QueueStateCodec.encodeProfile(state.profile))
         .putStringSet(KEY_CLINICS, state.clinics.mapTo(mutableSetOf(), QueueStateCodec::encodeClinic))
         .putString(KEY_QUEUE_DATE, state.queueDate)
@@ -128,6 +135,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
         .putStringSet(KEY_AUDIT_EVENTS, state.auditEvents.takeLast(500).mapTo(mutableSetOf(), QueueStateCodec::encodeAuditEvent))
         .putStringSet(KEY_APPOINTMENT_STATUSES, state.appointments.mapTo(mutableSetOf()) { "${it.id}|${it.status.name}" })
         .putStringSet(KEY_ACTIVE_ANNOUNCEMENTS, state.announcements.filter { it.active }.mapTo(mutableSetOf()) { it.id })
+        .putStringSet(KEY_ANNOUNCEMENTS, state.announcements.mapTo(mutableSetOf(), QueueStateCodec::encodeAnnouncement))
         .putStringSet(KEY_ENABLED_AVAILABILITY, state.availabilityBlocks.filter { it.appointmentsEnabled }.mapTo(mutableSetOf()) { it.id })
         .putStringSet(KEY_AVAILABILITY_BLOCKS, state.availabilityBlocks.mapTo(mutableSetOf(), QueueStateCodec::encodeAvailabilityBlock))
         .putStringSet(KEY_ASSISTANT_PERMISSIONS, state.assistants.flatMapTo(mutableSetOf()) { assistant -> assistant.permissions.map { "${assistant.id}|${it.name}" } })
@@ -182,6 +190,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
         const val KEY_AUDIT_EVENTS = "doctor_queue_audit_events"
         const val KEY_APPOINTMENT_STATUSES = "doctor_appointment_statuses"
         const val KEY_ACTIVE_ANNOUNCEMENTS = "doctor_active_announcements"
+        const val KEY_ANNOUNCEMENTS = "doctor_announcements"
         const val KEY_ENABLED_AVAILABILITY = "doctor_enabled_availability"
         const val KEY_AVAILABILITY_BLOCKS = "doctor_availability_blocks"
         const val KEY_ASSISTANT_PERMISSIONS = "doctor_assistant_permissions"

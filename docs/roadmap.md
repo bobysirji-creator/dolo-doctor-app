@@ -12,7 +12,10 @@
   - [x] persisted date-range and Morning/Evening/Both booking controls
   - [x] affected-patient follow-up states and queue safety enforcement
   - [x] availability audit/notification events and backend-ready contracts
-- [ ] Stage 7 - announcements, camps, offers and Patient App profile feed contracts
+- [x] Stage 7 - announcements, camps, offers and Patient App profile feed contracts
+  - [x] validated create, edit, publish, draft and delete workflow
+  - [x] persisted scheduling with live/expired Patient profile visibility
+  - [x] audit notifications and provider-neutral cross-app feed contracts
 - [ ] Stage 8 - assistant creation, credentials and backend-enforced permissions
 - [ ] Stage 9 - reports, feedback, multi-clinic readiness and queue-delay notices
 - [ ] Stage 10 - shared backend integration with Patient App

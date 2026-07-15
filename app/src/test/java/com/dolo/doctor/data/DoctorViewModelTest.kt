@@ -812,6 +812,98 @@ class DoctorViewModelTest {
         assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.id == "a2" }.status)
     }
 
+
+    @Test fun announcementLifecycleControlsPatientProfileFeedAndAudit() {
+        val model = DoctorViewModel(
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(10, 30) }
+        )
+        model.login(UserRole.DOCTOR)
+        val result = model.saveAnnouncement(
+            Announcement(
+                id = "",
+                title = "Priority wellness clinic",
+                message = "Extended preventive consultations are available this week.",
+                type = AnnouncementType.OFFER,
+                startsOn = "2026-07-15",
+                endsOn = "2026-07-16",
+                active = true
+            )
+        )
+
+        assertEquals(null, result)
+        val saved = model.uiState.announcements.single { it.title == "Priority wellness clinic" }
+        assertEquals(AnnouncementPublicationStatus.LIVE, model.announcementPublicationStatus(saved))
+        val feedItem = model.patientProfileFeed().single { it.announcementId == saved.id }
+        assertEquals(model.uiState.profile.name, feedItem.doctorName)
+        assertEquals("clinic-1", feedItem.clinicId)
+        assertEquals(AuditAction.ANNOUNCEMENT_SAVED, model.uiState.auditEvents.last().action)
+
+        assertTrue(model.setAnnouncementActive(saved.id, false))
+        assertTrue(model.patientProfileFeed().none { it.announcementId == saved.id })
+        assertEquals(AuditAction.ANNOUNCEMENT_VISIBILITY_CHANGED, model.uiState.auditEvents.last().action)
+
+        assertTrue(model.deleteAnnouncement(saved.id))
+        assertTrue(model.uiState.announcements.none { it.id == saved.id })
+        assertEquals(AuditAction.ANNOUNCEMENT_DELETED, model.uiState.auditEvents.last().action)
+    }
+
+    @Test fun scheduledAndExpiredAnnouncementsAreExcludedFromPatientFeed() {
+        val model = DoctorViewModel(currentDate = { LocalDate.parse("2026-07-15") })
+        model.login(UserRole.DOCTOR)
+        model.saveAnnouncement(
+            Announcement("", "Future health camp", "Screening appointments open from tomorrow.", AnnouncementType.CAMP, "2026-07-16", "2026-07-17", true)
+        )
+        model.saveAnnouncement(
+            Announcement("", "Previous clinic offer", "This completed offer remains in update history.", AnnouncementType.OFFER, "2026-07-10", "2026-07-14", true)
+        )
+
+        val scheduled = model.uiState.announcements.single { it.title == "Future health camp" }
+        val expired = model.uiState.announcements.single { it.title == "Previous clinic offer" }
+
+        assertEquals(AnnouncementPublicationStatus.SCHEDULED, model.announcementPublicationStatus(scheduled))
+        assertEquals(AnnouncementPublicationStatus.EXPIRED, model.announcementPublicationStatus(expired))
+        assertTrue(model.patientProfileFeed().none { it.announcementId in setOf(scheduled.id, expired.id) })
+    }
+
+    @Test fun announcementValidationAndPermissionsAreEnforced() {
+        val model = DoctorViewModel(currentDate = { LocalDate.parse("2026-07-15") })
+        model.login(UserRole.DOCTOR)
+        val originalCount = model.uiState.announcements.size
+
+        val invalid = model.saveAnnouncement(
+            Announcement("", "Bad", "Short", AnnouncementType.GENERAL, "2026-07-16", "2026-07-15", true)
+        )
+        assertTrue(invalid != null)
+        assertEquals(originalCount, model.uiState.announcements.size)
+
+        model.login(UserRole.ASSISTANT, "staff-2")
+        val unauthorized = model.saveAnnouncement(
+            Announcement("", "Clinic schedule update", "The clinic schedule has been updated for patients.", AnnouncementType.GENERAL, "2026-07-15", "2026-07-16", true)
+        )
+        assertTrue(unauthorized != null)
+        assertEquals(originalCount, model.uiState.announcements.size)
+    }
+
+    @Test fun completeAnnouncementRecordsPersistAcrossViewModelRecreation() {
+        val store = MemoryDoctorStateStore()
+        val first = DoctorViewModel(
+            store,
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(11, 0) }
+        )
+        first.login(UserRole.DOCTOR)
+        first.saveAnnouncement(
+            Announcement("", "Weekend availability", "The doctor is available for a special weekend session.", AnnouncementType.AVAILABILITY, "2026-07-18", "2026-07-19", false)
+        )
+        val saved = first.uiState.announcements.single { it.title == "Weekend availability" }
+
+        val restored = DoctorViewModel(store, currentDate = { LocalDate.parse("2026-07-15") })
+
+        assertEquals(saved, restored.uiState.announcements.single { it.id == saved.id })
+        assertEquals(AnnouncementPublicationStatus.DRAFT, restored.announcementPublicationStatus(saved))
+    }
+
     private class MemoryDoctorStateStore(initial: DoctorUiState? = null) : DoctorStateStore {
         private var saved: DoctorUiState? = initial
         override fun restore(defaultState: DoctorUiState): DoctorUiState = saved ?: defaultState

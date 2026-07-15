@@ -8,6 +8,8 @@ import com.dolo.doctor.data.model.QueueAuditEvent
 import com.dolo.doctor.data.model.PaymentMethod
 import com.dolo.doctor.data.model.AvailabilityBlock
 import com.dolo.doctor.data.model.AvailabilityImpactStatus
+import com.dolo.doctor.data.model.Announcement
+import com.dolo.doctor.data.model.AnnouncementType
 import com.dolo.doctor.data.model.PaymentStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -86,6 +88,16 @@ class QueueStateCodecTest {
         assertEquals(profile, QueueStateCodec.decodeProfile(QueueStateCodec.encodeProfile(profile)))
         assertEquals(clinic, QueueStateCodec.decodeClinic(QueueStateCodec.encodeClinic(clinic)))
     }
+
+    @Test fun announcementRoundTripKeepsCompletePublishedRecord() {
+        val announcement = Announcement(
+            "announcement-1", "Free heart health camp", "Screening is available at the clinic.",
+            AnnouncementType.CAMP, "2026-07-20", "2026-07-21", true
+        )
+
+        assertEquals(announcement, QueueStateCodec.decodeAnnouncement(QueueStateCodec.encodeAnnouncement(announcement)))
+    }
+
 
     @Test fun availabilityBlockRoundTripKeepsBookingState() {
         val block = AvailabilityBlock("block-1", "clinic-1", "2026-07-20", "2026-07-22", "Both", "Medical conference", false)

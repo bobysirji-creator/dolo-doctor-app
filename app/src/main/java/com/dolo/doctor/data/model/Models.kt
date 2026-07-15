@@ -4,12 +4,13 @@ enum class UserRole { DOCTOR, ASSISTANT }
 enum class QueueState { NOT_STARTED, ACTIVE, PAUSED, CLOSED }
 enum class AppointmentStatus { BOOKED, ARRIVED, WAITING, IN_CONSULTATION, COMPLETED, ABSENT, SKIPPED }
 enum class AnnouncementType { AVAILABILITY, CAMP, OFFER, GENERAL }
+enum class AnnouncementPublicationStatus { DRAFT, SCHEDULED, LIVE, EXPIRED }
 enum class ProfileReviewStatus { VERIFIED, PENDING_REVIEW }
 enum class BookingSource { PATIENT_APP, CLINIC_WALK_IN }
 enum class PaymentStatus { PENDING, PAID, WAIVED }
 enum class PaymentMethod { CASH, UPI, CARD, ONLINE, WAIVED }
 enum class AvailabilityImpactStatus { NONE, CONTACT_PENDING, PATIENT_NOTIFIED, RESCHEDULE_REQUIRED, RESOLVED }
-enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, PATIENT_REJOINED, WALK_IN_BOOKED, FEE_CONFIRMED, RECEIPT_GENERATED, CONSULTATION_COMPLETED, SESSION_CLOSED, DAY_CLOSED, DAY_ROLLED_OVER, AVAILABILITY_SAVED, AVAILABILITY_CHANGED, AVAILABILITY_DELETED, AFFECTED_PATIENT_UPDATED }
+enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, PATIENT_REJOINED, WALK_IN_BOOKED, FEE_CONFIRMED, RECEIPT_GENERATED, CONSULTATION_COMPLETED, SESSION_CLOSED, DAY_CLOSED, DAY_ROLLED_OVER, AVAILABILITY_SAVED, AVAILABILITY_CHANGED, AVAILABILITY_DELETED, AFFECTED_PATIENT_UPDATED, ANNOUNCEMENT_SAVED, ANNOUNCEMENT_VISIBILITY_CHANGED, ANNOUNCEMENT_DELETED }
 enum class Permission {
     VIEW_QUEUE,
     UPDATE_QUEUE,
@@ -143,6 +144,17 @@ data class Announcement(
     val startsOn: String,
     val endsOn: String,
     val active: Boolean
+)
+
+data class PatientProfileFeedItem(
+    val announcementId: String,
+    val doctorName: String,
+    val clinicId: String,
+    val title: String,
+    val message: String,
+    val type: AnnouncementType,
+    val startsOn: String,
+    val endsOn: String
 )
 
 data class AvailabilityBlock(

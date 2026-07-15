@@ -99,4 +99,7 @@ private fun notificationTitle(action: AuditAction): String = when (action) {
     AuditAction.AVAILABILITY_CHANGED -> "Booking availability changed"
     AuditAction.AVAILABILITY_DELETED -> "Availability block deleted"
     AuditAction.AFFECTED_PATIENT_UPDATED -> "Affected patient updated"
+    AuditAction.ANNOUNCEMENT_SAVED -> "Doctor update saved"
+    AuditAction.ANNOUNCEMENT_VISIBILITY_CHANGED -> "Doctor update visibility changed"
+    AuditAction.ANNOUNCEMENT_DELETED -> "Doctor update deleted"
 }

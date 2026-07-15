@@ -1,3 +1,17 @@
+## Stage 7 doctor updates and Patient App profile feed
+
+Version 0.7.0-stage7 (version code 15) replaces the announcement demonstration toggles with complete doctor-update records. Doctors can create, edit, publish, move to draft and delete AVAILABILITY, CAMP, OFFER and GENERAL updates using validated ISO start/end dates, an 80-character title and a 300-character patient message.
+
+Published records automatically evaluate as SCHEDULED, LIVE or EXPIRED against the clinic date. Draft, scheduled and expired records remain manageable in the Doctor App, while only LIVE records appear on Home and in the provider-neutral PatientProfileFeedItem projection. No real Patient App message is sent in this local stage.
+
+Schema version 4 persists the full announcement collection and migrates Stage 6 active/hidden defaults. Save, visibility and delete actions create durable audit events and local notification-center entries. AnnouncementPublisher and PatientProfileFeedGateway reserve backend operations without embedding provider credentials.
+
+GitHub Actions remains the authoritative compile, lint, unit-test and APK gate. Stage 7 physical-device acceptance is listed in docs/device-test-checklist.md.
+
+## Next recommended stage
+
+Stage 8: assistant creation, generated credentials and expanded permission administration, while keeping server authorization reserved for the shared backend.
+
 ## Stage 5.4 session closure, capacity and notifications
 
 Version 0.5.4-stage5 (version code 13) corrects manual closure so the Doctor closes only the selected Morning or Evening queue. The other queue state, booking eligibility and appointments remain unchanged. An active consultation in the selected session is completed before closure. The dated DailyQueueHistory snapshot is finalized only after both sessions are closed.

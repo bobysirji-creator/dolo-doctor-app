@@ -1,3 +1,12 @@
+## Stage 7 scheduled doctor updates
+
+- Announcement records are validated as ISO date ranges and persisted in full under local schema version 4.
+- AnnouncementPublicationStatus is derived as DRAFT, SCHEDULED, LIVE or EXPIRED; it is not stored as competing mutable state.
+- PatientProfileFeedItem is the provider-neutral public projection. It exposes only live update content plus doctor/clinic identity needed by the Patient App.
+- Home and patientProfileFeed exclude draft, future and expired records. Historical records remain available to the Doctor for editing or deletion.
+- Announcement save, visibility and delete operations are permission checked and appended to the persisted audit/notification stream.
+- AnnouncementPublisher and PatientProfileFeedGateway reserve shared-backend endpoints. Server time, clinic timezone, cross-device consistency and Patient App delivery remain backend responsibilities.
+
 # Architecture
 
 ## Current prototype

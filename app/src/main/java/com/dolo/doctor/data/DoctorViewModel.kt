@@ -548,9 +548,123 @@ class DoctorViewModel(
         persist(uiState.copy(clinics = uiState.clinics.map { if (it.id == cleaned.id) cleaned else it }))
         return null
     }
+    fun announcementPublicationStatus(
+        announcement: Announcement,
+        date: LocalDate = currentDate()
+    ): AnnouncementPublicationStatus {
+        val startsOn = runCatching { LocalDate.parse(announcement.startsOn) }.getOrNull()
+            ?: return AnnouncementPublicationStatus.DRAFT
+        val endsOn = runCatching { LocalDate.parse(announcement.endsOn) }.getOrNull()
+            ?: return AnnouncementPublicationStatus.DRAFT
+        return when {
+            !announcement.active -> AnnouncementPublicationStatus.DRAFT
+            date.isBefore(startsOn) -> AnnouncementPublicationStatus.SCHEDULED
+            date.isAfter(endsOn) -> AnnouncementPublicationStatus.EXPIRED
+            else -> AnnouncementPublicationStatus.LIVE
+        }
+    }
+
+    fun patientProfileFeed(date: LocalDate = currentDate()): List<PatientProfileFeedItem> {
+        val clinicId = uiState.clinics.firstOrNull()?.id.orEmpty()
+        return uiState.announcements
+            .filter { announcementPublicationStatus(it, date) == AnnouncementPublicationStatus.LIVE }
+            .sortedWith(compareBy({ it.startsOn }, { it.title }))
+            .map {
+                PatientProfileFeedItem(
+                    announcementId = it.id,
+                    doctorName = uiState.profile.name,
+                    clinicId = clinicId,
+                    title = it.title,
+                    message = it.message,
+                    type = it.type,
+                    startsOn = it.startsOn,
+                    endsOn = it.endsOn
+                )
+            }
+    }
+
+    fun saveAnnouncement(input: Announcement): String? {
+        if (!hasPermission(Permission.MANAGE_ANNOUNCEMENTS)) return "You do not have permission to manage doctor updates."
+        val title = input.title.trim()
+        val message = input.message.trim()
+        val startsOn = runCatching { LocalDate.parse(input.startsOn.trim()) }.getOrNull()
+        val endsOn = runCatching { LocalDate.parse(input.endsOn.trim()) }.getOrNull()
+        val error = when {
+            title.length !in 5..80 -> "Title must contain 5 to 80 characters."
+            message.length !in 10..300 -> "Message must contain 10 to 300 characters."
+            startsOn == null || endsOn == null -> "Use date format YYYY-MM-DD."
+            startsOn != null && endsOn != null && endsOn.isBefore(startsOn) -> "End date cannot be before start date."
+            input.id.isNotBlank() && uiState.announcements.none { it.id == input.id } -> "Doctor update was not found."
+            else -> null
+        }
+        if (error != null) return error
+
+        val isNew = input.id.isBlank()
+        val id = input.id.ifBlank {
+            val prefix = "announcement-" + currentDate() + "-" + currentTime().toSecondOfDay() + "-"
+            generateSequence(uiState.announcements.size + 1) { it + 1 }
+                .map { prefix + it }
+                .first { candidate -> uiState.announcements.none { it.id == candidate } }
+        }
+        val saved = input.copy(
+            id = id,
+            title = title,
+            message = message,
+            startsOn = startsOn.toString(),
+            endsOn = endsOn.toString()
+        )
+        var updated = uiState.copy(
+            announcements = if (isNew) {
+                (uiState.announcements + saved).sortedWith(compareBy({ it.startsOn }, { it.title }))
+            } else {
+                uiState.announcements.map { if (it.id == id) saved else it }
+                    .sortedWith(compareBy({ it.startsOn }, { it.title }))
+            }
+        )
+        updated = withAudit(
+            updated,
+            AuditAction.ANNOUNCEMENT_SAVED,
+            (if (isNew) "Created " else "Updated ") + saved.type.name.lowercase() +
+                " update '" + saved.title + "' for " + saved.startsOn + " to " + saved.endsOn
+        )
+        persist(updated)
+        return null
+    }
+
+    fun setAnnouncementActive(id: String, active: Boolean): Boolean {
+        if (!hasPermission(Permission.MANAGE_ANNOUNCEMENTS)) return false
+        val announcement = uiState.announcements.firstOrNull { it.id == id } ?: return false
+        if (announcement.active == active) return false
+        var updated = uiState.copy(
+            announcements = uiState.announcements.map {
+                if (it.id == id) it.copy(active = active) else it
+            }
+        )
+        updated = withAudit(
+            updated,
+            AuditAction.ANNOUNCEMENT_VISIBILITY_CHANGED,
+            (if (active) "Published" else "Moved to draft") + " doctor update '" + announcement.title + "'"
+        )
+        persist(updated)
+        return true
+    }
+
+    fun deleteAnnouncement(id: String): Boolean {
+        if (!hasPermission(Permission.MANAGE_ANNOUNCEMENTS)) return false
+        val announcement = uiState.announcements.firstOrNull { it.id == id } ?: return false
+        var updated = uiState.copy(announcements = uiState.announcements.filterNot { it.id == id })
+        updated = withAudit(
+            updated,
+            AuditAction.ANNOUNCEMENT_DELETED,
+            "Deleted " + announcement.type.name.lowercase() + " update '" + announcement.title + "'"
+        )
+        persist(updated)
+        return true
+    }
+
     fun toggleAnnouncement(id: String) {
-        if (uiState.role != UserRole.DOCTOR) return
-        persist(uiState.copy(announcements = uiState.announcements.map { if (it.id == id) it.copy(active = !it.active) else it }))
+        val announcement = uiState.announcements.firstOrNull { it.id == id } ?: return
+        setAnnouncementActive(id, !announcement.active)
     }
 
     fun saveAvailabilityBlock(input: AvailabilityBlock): String? {

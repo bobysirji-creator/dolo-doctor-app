@@ -1,3 +1,18 @@
+## Stage 7 doctor updates and Patient profile feed
+
+1. Login as Doctor, open Updates, and verify the Live and Scheduled counters are visible.
+2. Create a General update as a draft using today's ISO date, a valid title and a message of at least 10 characters.
+3. Verify the saved record shows Draft and does not appear under Active doctor updates on Home.
+4. Publish it and verify it changes to Live and appears on Home.
+5. Create a future Camp with Published enabled. Verify it shows Scheduled, is retained in Updates, and does not appear on Home yet.
+6. Create an Offer whose end date is before today. Verify it shows Expired and is excluded from Home.
+7. Edit the live update's title, message, type and date range; verify the changes appear immediately without creating a duplicate.
+8. Try a title under five characters, a message under ten characters, an invalid date and an end date before the start. Verify each is rejected without closing the form.
+9. Move the live record back to Draft and verify it disappears from Home but remains editable.
+10. Delete a test record, dismiss the confirmation once, then confirm; verify only the selected record is removed.
+11. Open Notifications and verify save, publish/draft and delete events appear with unread-badge behavior.
+12. Remove the app from Recents, relaunch, and verify every remaining update, date, type and publication choice persists.
+
 ## Stage 5.4 session closure, capacity and notifications
 
 1. Open Live queue, select Morning, tap **Close Morning session**, dismiss once, then confirm.
