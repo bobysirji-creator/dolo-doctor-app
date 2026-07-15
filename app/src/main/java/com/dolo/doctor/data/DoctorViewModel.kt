@@ -32,8 +32,8 @@ class DoctorViewModel(
         stateStore.save(state)
     }
 
-    private fun archivedHistory(state: DoctorUiState, closureReason: String): List<DailyQueueHistory> {
-        if (state.appointments.isEmpty() && state.currentToken == 0) return state.queueHistory
+    private fun archivedHistory(state: DoctorUiState, closureReason: String, includeEmpty: Boolean = false): List<DailyQueueHistory> {
+        if (!includeEmpty && state.appointments.isEmpty() && state.currentToken == 0) return state.queueHistory
         if (state.queueState == QueueState.CLOSED && state.queueHistory.any { it.date == state.queueDate }) {
             return state.queueHistory
         }
