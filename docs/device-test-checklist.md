@@ -84,3 +84,17 @@ Run on both Vivo and Samsung devices.
 9. Close the app, remove it from Recents and relaunch. Confirm both session states/current tokens and their appointment membership persist.
 10. Next-day reset/reopening is covered by unit tests; do not change the phone date solely for testing unless comfortable restoring automatic date/time afterward.
 11. Thermal receipt printing is intentionally deferred until the target printer is available; confirm only that receipt generation/reopen still works in this build.
+
+## Stage 5.3 fee desk, independent tokens and 58 mm receipt
+
+1. Open Today's appointments. Confirm unpaid online bookings show FEE PENDING and do not appear in Live queue.
+2. For a pending Morning appointment, select Confirm fee & admit to queue, verify the default doctor fee, choose Cash or UPI and confirm. Verify the receipt opens and the appointment now appears in Morning Queue as ARRIVED.
+3. Confirm the receipt and appointment show the same fee amount, payment method, payment time, session and token. Close/reopen the receipt and verify these values do not change.
+4. Test Waived on a suitable demo appointment and verify the receipt clearly says CONSULTATION FEE: WAIVED with amount zero.
+5. Login as the view-only Assistant and verify fee confirmation is unavailable. Login as Neha Kapoor and verify fee confirmation and walk-in fee collection are available.
+6. Book one new Morning walk-in and one new Evening walk-in. Verify each receives the next number only from its own session; Evening should not continue Morning's token count.
+7. Switch Appointments to Evening, return Home and reopen Appointments; Evening must remain selected. Repeat by moving between Queue, Home and Appointments, then remove the app from Recents and relaunch.
+8. In Live queue, confirm only receipt-issued paid/waived appointments are present. Call next and ensure no fee-pending appointment can be called.
+9. Print a receipt through the installed ESC/POS 58 mm print service. Verify DO-LO, clinic, session/token, patient, fee and receipt number are horizontally centered rather than aligned to the left.
+10. Verify the 58 mm print is not clipped, the token is large, paper feed is reasonable and no content crosses the printable width. Report the printer model/app and a photo if centering or scaling still needs calibration.
+11. Remove the app from Recents and relaunch. Confirm payment status, fee, receipt, independent token values and selected session all persist.

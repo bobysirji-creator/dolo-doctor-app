@@ -6,7 +6,9 @@ enum class AppointmentStatus { BOOKED, ARRIVED, WAITING, IN_CONSULTATION, COMPLE
 enum class AnnouncementType { AVAILABILITY, CAMP, OFFER, GENERAL }
 enum class ProfileReviewStatus { VERIFIED, PENDING_REVIEW }
 enum class BookingSource { PATIENT_APP, CLINIC_WALK_IN }
-enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, PATIENT_REJOINED, WALK_IN_BOOKED, RECEIPT_GENERATED, CONSULTATION_COMPLETED, DAY_CLOSED, DAY_ROLLED_OVER }
+enum class PaymentStatus { PENDING, PAID, WAIVED }
+enum class PaymentMethod { CASH, UPI, CARD, ONLINE, WAIVED }
+enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, PATIENT_REJOINED, WALK_IN_BOOKED, FEE_CONFIRMED, RECEIPT_GENERATED, CONSULTATION_COMPLETED, DAY_CLOSED, DAY_ROLLED_OVER }
 enum class Permission {
     VIEW_QUEUE,
     UPDATE_QUEUE,
@@ -18,7 +20,8 @@ enum class Permission {
     MANAGE_CLINIC_AVAILABILITY,
     MANAGE_ANNOUNCEMENTS,
     BOOK_WALK_IN_APPOINTMENT,
-    GENERATE_TOKEN_RECEIPT
+    GENERATE_TOKEN_RECEIPT,
+    CONFIRM_CONSULTATION_FEE
 }
 
 data class DoctorProfile(
@@ -60,14 +63,20 @@ data class Appointment(
     val queueOrder: Int = token,
     val bookingSource: BookingSource = BookingSource.PATIENT_APP,
     val patientPhone: String = "",
-    val receiptNumber: String = ""
+    val receiptNumber: String = "",
+    val consultationFee: Int = 0,
+    val paymentStatus: PaymentStatus = PaymentStatus.PENDING,
+    val paymentMethod: PaymentMethod? = null,
+    val paidAt: String = ""
 )
 
 data class WalkInBookingRequest(
     val patientName: String,
     val patientPhone: String,
     val patientType: String,
-    val session: String
+    val session: String,
+    val consultationFee: Int = 0,
+    val paymentMethod: PaymentMethod = PaymentMethod.CASH
 )
 
 data class TokenReceipt(
@@ -82,10 +91,15 @@ data class TokenReceipt(
     val clinicName: String,
     val clinicAddress: String,
     val session: String,
-    val bookingSource: BookingSource
+    val bookingSource: BookingSource,
+    val consultationFee: Int,
+    val paymentStatus: PaymentStatus,
+    val paymentMethod: PaymentMethod,
+    val paidAt: String
 )
 
 data class WalkInBookingResult(val receipt: TokenReceipt? = null, val error: String? = null)
+data class FeeConfirmationResult(val receipt: TokenReceipt? = null, val error: String? = null)
 data class DailyQueueHistory(
     val date: String,
     val clinicName: String,
@@ -151,5 +165,6 @@ data class DoctorUiState(
     val auditEvents: List<QueueAuditEvent> = emptyList(),
     val sessionQueues: List<ConsultationQueue> = emptyList(),
     val queueState: QueueState = QueueState.NOT_STARTED,
-    val currentToken: Int = 0
+    val currentToken: Int = 0,
+    val selectedSession: String = "Morning"
 )

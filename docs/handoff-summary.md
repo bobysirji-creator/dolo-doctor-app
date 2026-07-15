@@ -103,3 +103,13 @@ New appointments are accepted before a session's configured start time, matching
 Existing Stage 5.1 receipt generation and Android system printing are unchanged. Physical thermal-printer output remains deferred until printer hardware/model and its Android print path can be tested.
 
 Unit coverage includes independent queue advancement, per-session end-time boundaries, advance Evening booking, next-day reset/reopening, persistence across ViewModel recreation and session-queue codec round trips. Next recommended work remains Stage 6 availability blocks and affected-patient handling after this build passes GitHub Actions and physical-device session tests.
+
+## Stage 5.3 consultation fee admission and independent session tokens
+
+Version 0.5.3-stage5 (version code 12) adds an explicit clinic fee desk to Today's appointments. Online appointments with PENDING payment remain visible there but are excluded from Live queue. A Doctor or authorized Assistant confirms Cash, UPI, Card, Online or Waived status, records the amount/time, marks the patient arrived, assigns queue order, generates the receipt and only then admits the patient to Queue. Walk-in booking performs the same fee-confirmation and receipt steps in one form. Fee confirmation and receipt generation are separately audited and persisted.
+
+Morning and Evening now allocate numeric tokens independently. Receipt IDs include M or E, for example DL-20260715-M-004 and DL-20260715-E-001. Installed Stage 5.2 state is migrated once to per-session numbering. The selected session is now ViewModel/store state shared by Queue and Appointments, so leaving either screen no longer resets it to Morning.
+
+The Android receipt document is formatted for a 58 mm ESC/POS-oriented print service: custom paper width, requested 203 dpi, zero margins and centered content. It prints the session, token, fee status/amount, method and payment-confirmation time. This is still Android PrintManager PDF output; final centering, feed length and printer-driver behavior must be accepted on the user's physical 58 mm printer.
+
+Unit coverage now includes unpaid queue exclusion, fee-confirmed admission, payment/receipt persistence, independent Morning/Evening allocation, selected-session restoration and expanded codec round trips. GitHub Actions remains the compile, lint and unit-test gate.

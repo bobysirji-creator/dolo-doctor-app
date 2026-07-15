@@ -3,6 +3,8 @@ package com.dolo.doctor.data
 import com.dolo.doctor.data.model.Appointment
 import com.dolo.doctor.data.model.AppointmentStatus
 import com.dolo.doctor.data.model.BookingSource
+import com.dolo.doctor.data.model.PaymentMethod
+import com.dolo.doctor.data.model.PaymentStatus
 import com.dolo.doctor.data.model.DailyQueueHistory
 import com.dolo.doctor.data.model.DoctorProfile
 import com.dolo.doctor.data.model.Clinic
@@ -121,17 +123,29 @@ internal object QueueStateCodec {
         appointment.queueOrder.toString(),
         appointment.bookingSource.name,
         appointment.patientPhone,
-        appointment.receiptNumber
+        appointment.receiptNumber,
+        appointment.consultationFee.toString(),
+        appointment.paymentStatus.name,
+        appointment.paymentMethod?.name.orEmpty(),
+        appointment.paidAt
     ).joinToString(",") { encode(it) }
 
     fun decodeAppointment(value: String): Appointment? {
         val fields = value.split(",").mapNotNull(::decode)
-        if (fields.size !in setOf(7, 11)) return null
+        if (fields.size !in setOf(7, 11, 15)) return null
         val token = fields[1].toIntOrNull() ?: return null
         val status = runCatching { AppointmentStatus.valueOf(fields[5]) }.getOrNull() ?: return null
         if (fields.size == 7) return Appointment(fields[0], token, fields[2], fields[3], fields[4], status, fields[6])
         val queueOrder = fields[7].toIntOrNull() ?: return null
         val source = runCatching { BookingSource.valueOf(fields[8]) }.getOrNull() ?: return null
+        val legacyPaid = fields[10].isNotBlank()
+        val fee = if (fields.size == 15) fields[11].toIntOrNull() ?: return null else 0
+        val paymentStatus = if (fields.size == 15) {
+            runCatching { PaymentStatus.valueOf(fields[12]) }.getOrNull() ?: return null
+        } else if (legacyPaid) PaymentStatus.PAID else PaymentStatus.PENDING
+        val paymentMethod = if (fields.size == 15) fields[13].takeIf(String::isNotBlank)
+            ?.let { runCatching { PaymentMethod.valueOf(it) }.getOrNull() }
+        else if (legacyPaid) PaymentMethod.CASH else null
         return Appointment(
             id = fields[0],
             token = token,
@@ -143,10 +157,13 @@ internal object QueueStateCodec {
             queueOrder = queueOrder,
             bookingSource = source,
             patientPhone = fields[9],
-            receiptNumber = fields[10]
+            receiptNumber = fields[10],
+            consultationFee = fee,
+            paymentStatus = paymentStatus,
+            paymentMethod = paymentMethod,
+            paidAt = if (fields.size == 15) fields[14] else ""
         )
-    }
-    fun encodeHistory(history: DailyQueueHistory): String = listOf(
+    }    fun encodeHistory(history: DailyQueueHistory): String = listOf(
         history.date,
         history.clinicName,
         history.closedAt,

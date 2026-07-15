@@ -54,3 +54,11 @@ Morning and Evening are independent operational queues for the same clinic day. 
 The patient-facing token remains unique across the complete clinic day, including both sessions. Staff must explicitly select Morning or Evening for every clinic walk-in so it joins the correct queue.
 
 A session accepts advance bookings from the beginning of the clinic day; its configured start time does not act as an enable gate. New bookings close automatically when the configured session end time is reached. Closing Morning booking must not close Evening booking. At the next clinic-date rollover both session queues reset to NOT_STARTED and become bookable again until their respective end times. Existing consultations may still be completed after the booking cutoff.
+
+## Consultation fee and queue admission
+
+Every appointment has a payment status: PENDING, PAID or WAIVED. Payment methods currently supported by the local workflow are CASH, UPI, CARD, ONLINE and WAIVED. A Patient App booking may appear in Today's appointments with a session token while payment remains pending, but it must not appear in Live queue or be callable.
+
+Authorized clinic staff confirm the fee amount and payment method only after payment is received, or explicitly select WAIVED. That confirmation marks the patient ARRIVED, assigns the next service order in the selected session, generates the stable receipt and admits the appointment to Live queue. Receipt generation without fee confirmation is not allowed. Both the app receipt preview and printed receipt display the amount/status and payment method.
+
+Morning and Evening use separate token sequences beginning independently for each clinic day. Token M-1 and token E-1 may coexist because session is part of the identity and receipt number. The selected Morning/Evening view is shared by Appointments and Queue and remains selected after navigation or process recreation.

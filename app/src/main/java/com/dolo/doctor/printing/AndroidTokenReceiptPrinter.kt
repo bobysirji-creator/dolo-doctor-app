@@ -12,17 +12,21 @@ import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentInfo
 import android.print.PrintManager
 import android.print.PageRange
+import com.dolo.doctor.data.model.PaymentStatus
 import com.dolo.doctor.data.model.TokenReceipt
 import java.io.FileOutputStream
 
 object AndroidTokenReceiptPrinter {
+    private val receiptMediaSize = PrintAttributes.MediaSize("DOLO_58MM", "58 mm receipt", 2283, 7000)
+
     fun print(context: Context, receipt: TokenReceipt) {
         val manager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
-        manager.print(
-            "DO-LO token ${receipt.token}",
-            ReceiptDocumentAdapter(receipt),
-            PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.UNKNOWN_PORTRAIT).build()
-        )
+        val attributes = PrintAttributes.Builder()
+            .setMediaSize(receiptMediaSize)
+            .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+            .setResolution(PrintAttributes.Resolution("DOLO_203_DPI", "203 dpi thermal", 203, 203))
+            .build()
+        manager.print("DO-LO ${receipt.session} token ${receipt.token}", ReceiptDocumentAdapter(receipt), attributes)
     }
 
     private class ReceiptDocumentAdapter(private val receipt: TokenReceipt) : PrintDocumentAdapter() {
@@ -38,7 +42,7 @@ object AndroidTokenReceiptPrinter {
                 return
             }
             callback.onLayoutFinished(
-                PrintDocumentInfo.Builder("dolo-token-${receipt.token}.pdf")
+                PrintDocumentInfo.Builder("dolo-${receipt.session.lowercase()}-${receipt.token}.pdf")
                     .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
                     .setPageCount(1)
                     .build(),
@@ -57,29 +61,78 @@ object AndroidTokenReceiptPrinter {
                 return
             }
             runCatching {
+                val pageWidth = 164
+                val pageHeight = 500
                 val document = PdfDocument()
-                val page = document.startPage(PdfDocument.PageInfo.Builder(384, 700, 1).create())
+                val page = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create())
                 val canvas = page.canvas
-                val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.BLACK }
-                fun line(value: String, y: Float, size: Float = 18f, bold: Boolean = false) {
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.BLACK
+                    textAlign = Paint.Align.CENTER
+                }
+                val centerX = pageWidth / 2f
+
+                fun centered(value: String, y: Float, size: Float = 10f, bold: Boolean = false) {
                     paint.textSize = size
                     paint.typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-                    canvas.drawText(value, 24f, y, paint)
+                    canvas.drawText(value, centerX, y, paint)
                 }
-                line("DO-LO", 45f, 28f, true)
-                line(receipt.clinicName, 76f, 19f, true)
-                line(receipt.clinicAddress.take(42), 102f, 13f)
-                line("TOKEN", 150f, 21f, true)
-                line(receipt.token.toString(), 225f, 68f, true)
-                line("Patient: ${receipt.patientName}", 270f, 17f, true)
-                if (receipt.patientPhone.isNotBlank()) line("Mobile: ${receipt.patientPhone}", 296f, 15f)
-                line("Doctor: ${receipt.doctorName}", 322f, 15f)
-                line("Date: ${receipt.appointmentDate}", 348f, 15f)
-                line("Session: ${receipt.session}", 374f, 15f)
-                line("Booking: ${receipt.bookingSource.name.replace("_", " ")}", 400f, 15f)
-                line("Receipt: ${receipt.receiptNumber}", 426f, 15f)
-                line("Generated: ${receipt.generatedAt}", 452f, 15f)
-                line("Please hand this receipt to the doctor.", 500f, 14f, true)
+                fun wrapped(value: String, startY: Float, size: Float = 9f, bold: Boolean = false, maxWidth: Float = 144f): Float {
+                    paint.textSize = size
+                    paint.typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                    val lines = mutableListOf<String>()
+                    var current = ""
+                    value.split(Regex("\\s+")).filter(String::isNotBlank).forEach { word ->
+                        val candidate = if (current.isBlank()) word else "$current $word"
+                        if (paint.measureText(candidate) <= maxWidth) current = candidate
+                        else {
+                            if (current.isNotBlank()) lines += current
+                            current = word
+                        }
+                    }
+                    if (current.isNotBlank()) lines += current
+                    var y = startY
+                    lines.take(3).forEach { line ->
+                        canvas.drawText(line, centerX, y, paint)
+                        y += size + 4f
+                    }
+                    return y
+                }
+                fun divider(y: Float) {
+                    paint.strokeWidth = 1f
+                    canvas.drawLine(10f, y, pageWidth - 10f, y, paint)
+                }
+
+                centered("DO-LO", 25f, 20f, true)
+                centered(receipt.clinicName, 45f, 11f, true)
+                var y = wrapped(receipt.clinicAddress, 61f, 8f)
+                divider(y + 1f)
+                y += 20f
+                centered(receipt.session.uppercase() + " TOKEN", y, 12f, true)
+                y += 54f
+                centered(receipt.token.toString(), y, 48f, true)
+                y += 17f
+                divider(y)
+                y += 18f
+                centered(receipt.patientName, y, 11f, true)
+                y += 15f
+                if (receipt.patientPhone.isNotBlank()) { centered(receipt.patientPhone, y, 9f); y += 14f }
+                y = wrapped(receipt.doctorName, y, 9f, true)
+                centered(receipt.appointmentDate + " | " + receipt.session, y, 9f)
+                y += 15f
+                centered("Booking: " + receipt.bookingSource.name.replace("_", " "), y, 8f)
+                y += 14f
+                val feeLine = if (receipt.paymentStatus == PaymentStatus.WAIVED) "CONSULTATION FEE: WAIVED"
+                    else "FEE PAID: INR ${receipt.consultationFee} | ${receipt.paymentMethod.name}"
+                centered(feeLine, y, 9f, true)
+                y += 14f
+                if (receipt.paidAt.isNotBlank()) { centered("Confirmed: " + receipt.paidAt, y, 8f); y += 13f }
+                centered(receipt.receiptNumber, y, 8f)
+                y += 17f
+                divider(y)
+                y += 18f
+                wrapped("Please hand this receipt to the doctor.", y, 9f, true)
+
                 document.finishPage(page)
                 FileOutputStream(destination.fileDescriptor).use { document.writeTo(it) }
                 document.close()

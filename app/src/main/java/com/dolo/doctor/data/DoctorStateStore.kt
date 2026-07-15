@@ -16,6 +16,7 @@ object NoOpDoctorStateStore : DoctorStateStore {
 class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferences) : DoctorStateStore {
     override fun restore(defaultState: DoctorUiState): DoctorUiState {
         if (!preferences.getBoolean(KEY_INITIALIZED, false)) return defaultState
+        val schemaVersion = preferences.getInt(KEY_SCHEMA_VERSION, 1)
 
         val appointmentStatuses = enumMap<AppointmentStatus>(KEY_APPOINTMENT_STATUSES)
         val currentAppointments = if (preferences.contains(KEY_CURRENT_APPOINTMENTS)) {
@@ -39,6 +40,14 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         val decodedClinics = preferences.getStringSet(KEY_CLINICS, emptySet()).orEmpty()
             .mapNotNull(QueueStateCodec::decodeClinic)
         val clinics = decodedClinics.ifEmpty { defaultState.clinics }
+        val feeReadyAppointments = currentAppointments.map { appointment ->
+            if (appointment.paymentStatus != PaymentStatus.PENDING && appointment.consultationFee == 0) {
+                appointment.copy(consultationFee = profile.consultationFee)
+            } else appointment
+        }
+        val migratedAppointments = if (schemaVersion < 2) {
+            migrateIndependentSessionTokens(feeReadyAppointments, preferences.getString(KEY_QUEUE_DATE, defaultState.queueDate) ?: defaultState.queueDate)
+        } else feeReadyAppointments
         val activeAnnouncements = preferences.getStringSet(KEY_ACTIVE_ANNOUNCEMENTS, emptySet()).orEmpty()
         val enabledAvailability = preferences.getStringSet(KEY_ENABLED_AVAILABILITY, emptySet()).orEmpty()
         val permissionEntries = preferences.getStringSet(KEY_ASSISTANT_PERMISSIONS, emptySet()).orEmpty()
@@ -54,7 +63,7 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         val currentToken = preferences.getInt(KEY_CURRENT_TOKEN, defaultState.currentToken)
         val decodedSessionQueues = preferences.getStringSet(KEY_SESSION_QUEUES, emptySet()).orEmpty()
             .mapNotNull(QueueStateCodec::decodeSessionQueue)
-        val sessionQueues = if (decodedSessionQueues.isNotEmpty()) {
+        val restoredSessionQueues = if (decodedSessionQueues.isNotEmpty()) {
             listOf("Morning", "Evening").map { session ->
                 decodedSessionQueues.firstOrNull { it.session == session } ?: ConsultationQueue(session, QueueState.NOT_STARTED, 0)
             }
@@ -65,6 +74,11 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
             )
         }
 
+val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
+            val progressedToken = migratedAppointments.filter { it.session == queue.session && it.paymentStatus != PaymentStatus.PENDING && it.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED) }.maxOfOrNull { it.token } ?: 0
+            queue.copy(currentToken = progressedToken)
+        } else restoredSessionQueues
+
         return defaultState.copy(
             profile = profile,
             clinics = clinics,
@@ -74,7 +88,8 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
             sessionQueues = sessionQueues,
             queueState = sessionQueues.first { it.session == "Morning" }.state,
             currentToken = sessionQueues.first { it.session == "Morning" }.currentToken,
-            appointments = currentAppointments,
+            appointments = migratedAppointments,
+            selectedSession = preferences.getString(KEY_SELECTED_SESSION, "Morning").takeIf { it in setOf("Morning", "Evening") } ?: "Morning",
             announcements = defaultState.announcements.map { announcement ->
                 announcement.copy(active = announcement.id in activeAnnouncements)
             },
@@ -82,18 +97,22 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
                 block.copy(appointmentsEnabled = block.id in enabledAvailability)
             },
             assistants = defaultState.assistants.map { assistant ->
-                assistant.copy(permissions = permissionsByAssistant[assistant.id]?.toSet() ?: emptySet())
+                val saved = permissionsByAssistant[assistant.id]?.toSet() ?: emptySet()
+                val migrated = if (schemaVersion < 2 && Permission.GENERATE_TOKEN_RECEIPT in saved) saved + Permission.CONFIRM_CONSULTATION_FEE else saved
+                assistant.copy(permissions = migrated)
             }
         )
     }
 
     override fun save(state: DoctorUiState): Boolean = preferences.edit()
         .putBoolean(KEY_INITIALIZED, true)
+        .putInt(KEY_SCHEMA_VERSION, 2)
         .putString(KEY_DOCTOR_PROFILE, QueueStateCodec.encodeProfile(state.profile))
         .putStringSet(KEY_CLINICS, state.clinics.mapTo(mutableSetOf(), QueueStateCodec::encodeClinic))
         .putString(KEY_QUEUE_DATE, state.queueDate)
         .putString(KEY_QUEUE_STATE, state.queueState.name)
         .putInt(KEY_CURRENT_TOKEN, state.currentToken)
+        .putString(KEY_SELECTED_SESSION, state.selectedSession)
         .putStringSet(KEY_SESSION_QUEUES, state.sessionQueues.mapTo(mutableSetOf(), QueueStateCodec::encodeSessionQueue))
         .putStringSet(KEY_CURRENT_APPOINTMENTS, state.appointments.mapTo(mutableSetOf(), QueueStateCodec::encodeAppointment))
         .putStringSet(KEY_QUEUE_HISTORY, state.queueHistory.mapTo(mutableSetOf(), QueueStateCodec::encodeHistory))
@@ -104,6 +123,25 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         .putStringSet(KEY_ASSISTANT_PERMISSIONS, state.assistants.flatMapTo(mutableSetOf()) { assistant -> assistant.permissions.map { "${assistant.id}|${it.name}" } })
         .commit()
 
+    private fun migrateIndependentSessionTokens(appointments: List<Appointment>, queueDate: String): List<Appointment> =
+        listOf("Morning", "Evening").flatMap { session ->
+            var admittedOrder = 0
+            appointments.filter { it.session == session }
+                .sortedWith(compareBy<Appointment> { it.token }.thenBy { it.bookedAt })
+                .mapIndexed { index, appointment ->
+                    val admitted = appointment.paymentStatus != PaymentStatus.PENDING && appointment.receiptNumber.isNotBlank()
+                    if (admitted) admittedOrder++
+                    val token = index + 1
+                    appointment.copy(
+                        token = token,
+                        queueOrder = if (admitted) admittedOrder else 0,
+                        receiptNumber = if (admitted) migratedReceiptNumber(queueDate, session, token) else ""
+                    )
+                }
+        }
+
+    private fun migratedReceiptNumber(queueDate: String, session: String, token: Int): String =
+        "DL-" + queueDate.replace("-", "") + "-" + session.first().uppercaseChar() + "-" + token.toString().padStart(3, '0')
     private inline fun <reified T : Enum<T>> enumMap(key: String): Map<String, T> = preferences
         .getStringSet(key, emptySet()).orEmpty()
         .mapNotNull { entry ->
@@ -120,6 +158,8 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
 
     private companion object {
         const val KEY_INITIALIZED = "doctor_state_initialized"
+        const val KEY_SCHEMA_VERSION = "doctor_state_schema_version"
+        const val KEY_SELECTED_SESSION = "doctor_selected_session"
         const val KEY_DOCTOR_PROFILE = "doctor_profile"
         const val KEY_CLINICS = "doctor_clinics"
         const val KEY_QUEUE_DATE = "doctor_queue_date"

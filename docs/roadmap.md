@@ -6,6 +6,7 @@
 - [x] Stage 4 - validated, persisted doctor profile, clinic and consultation schedule management
 - [x] Stage 5 - expanded appointment workflow with queue audit events
   - [x] Stage 5.2 - independent Morning/Evening queues and automatic session booking cutoffs
+  - [x] Stage 5.3 - fee-confirmed queue admission, independent session tokens and 58 mm receipt layout
 - [ ] Stage 6 - appointment availability blocks and affected-patient workflow
 - [ ] Stage 7 - announcements, camps, offers and Patient App profile feed contracts
 - [ ] Stage 8 - assistant creation, credentials and backend-enforced permissions

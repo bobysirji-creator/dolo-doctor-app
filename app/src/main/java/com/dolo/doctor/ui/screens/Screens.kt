@@ -161,6 +161,7 @@ import kotlinx.coroutines.delay
     onHome: () -> Unit,
     onAppointments: () -> Unit,
     onProfile: () -> Unit,
+    onSelectSession: (String) -> Unit,
     onToggleQueue: (String) -> Unit,
     onCallNext: (String) -> Unit,
     onUpdate: (String, AppointmentStatus) -> Unit,
@@ -175,10 +176,10 @@ import kotlinx.coroutines.delay
     val canMarkArrived = doctorMode || Permission.MARK_PATIENT_ARRIVED in permissions
     val canMarkAbsent = doctorMode || Permission.MARK_PATIENT_ABSENT in permissions
     val canMarkCompleted = doctorMode || Permission.MARK_PATIENT_COMPLETED in permissions
-    var selectedSession by remember { mutableStateOf("Morning") }
+    val selectedSession = state.selectedSession
     val queue = state.sessionQueues.firstOrNull { it.session == selectedSession }
         ?: ConsultationQueue(selectedSession, if (selectedSession == "Morning") state.queueState else QueueState.NOT_STARTED, if (selectedSession == "Morning") state.currentToken else 0)
-    val sessionAppointments = state.appointments.filter { it.session == selectedSession }
+    val sessionAppointments = state.appointments.filter { it.session == selectedSession && it.paymentStatus != PaymentStatus.PENDING && it.receiptNumber.isNotBlank() }
     val hasNextPatient = sessionAppointments.any { it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }
     val hasCurrentConsultation = sessionAppointments.any { it.token == queue.currentToken && it.status == AppointmentStatus.IN_CONSULTATION }
     val progressedOrder = sessionAppointments.filter { it.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED) }.maxOfOrNull { it.queueOrder } ?: 0
@@ -192,7 +193,7 @@ import kotlinx.coroutines.delay
                         val sessionQueue = state.sessionQueues.firstOrNull { it.session == session }
                         FilterChip(
                             selected = selectedSession == session,
-                            onClick = { selectedSession = session },
+                            onClick = { onSelectSession(session) },
                             label = { Text(session) },
                             leadingIcon = { Icon(if (session == "Morning") Icons.Outlined.LightMode else Icons.Outlined.DarkMode, null) },
                             modifier = Modifier.weight(1f)
@@ -224,7 +225,7 @@ import kotlinx.coroutines.delay
                     }
                 }
                 if (sessionAppointments.isEmpty()) {
-                    item { ElevatedSection("No " + selectedSession.lowercase() + " appointments for " + state.queueDate) { Text("This session queue is independent from the other consultation session.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+                    item { ElevatedSection("No fee-confirmed " + selectedSession.lowercase() + " appointments for " + state.queueDate) { Text("This session queue is independent from the other consultation session.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                 }
                 items(sessionAppointments.sortedBy { it.queueOrder }, key = { it.id }) { appointment ->
                     QueueAppointmentCard(
@@ -266,7 +267,7 @@ import kotlinx.coroutines.delay
     onResumeSkipped: (String) -> Boolean,
     onRejoin: (String) -> Boolean
 ) {
-    ElevatedSection("Token ${appointment.token} • ${appointment.patientName}", "${appointment.patientType} • ${appointment.session} • booked ${appointment.bookedAt}") {
+    ElevatedSection("Token ${appointment.token} • ${appointment.patientName}", "${appointment.patientType} • ${appointment.session} • booked ${appointment.bookedAt} • INR ${appointment.consultationFee} ${appointment.paymentStatus.name}") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(appointment.status.name.replace("_", " "), appointment.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.SKIPPED))
             Spacer(Modifier.weight(1f))
@@ -313,7 +314,9 @@ import kotlinx.coroutines.delay
     onProfile: () -> Unit,
     onBookWalkIn: (WalkInBookingRequest) -> WalkInBookingResult,
     onReceipt: (String) -> TokenReceipt?,
+    onConfirmFee: (String, Int, PaymentMethod) -> FeeConfirmationResult,
     isSessionBookingOpen: (String) -> Boolean,
+    onSelectSession: (String) -> Unit,
     onRefreshDate: () -> Unit
 ) {
     var sessionClockTick by remember { mutableIntStateOf(0) }
@@ -327,20 +330,22 @@ import kotlinx.coroutines.delay
     }
     val doctorMode = state.role == UserRole.DOCTOR
     val canView = doctorMode || Permission.VIEW_TODAY_APPOINTMENTS in permissions
-    val canBookWalkIn = doctorMode || Permission.BOOK_WALK_IN_APPOINTMENT in permissions
+    val canBookWalkIn = doctorMode || (Permission.BOOK_WALK_IN_APPOINTMENT in permissions && Permission.CONFIRM_CONSULTATION_FEE in permissions)
     val canGenerateReceipt = doctorMode || Permission.GENERATE_TOKEN_RECEIPT in permissions
+    val canConfirmFee = doctorMode || Permission.CONFIRM_CONSULTATION_FEE in permissions
     val morningBookingOpen = sessionClockTick.let { isSessionBookingOpen("Morning") }
     val eveningBookingOpen = sessionClockTick.let { isSessionBookingOpen("Evening") }
-    var selectedSession by remember { mutableStateOf("Morning") }
+    val selectedSession = state.selectedSession
     var showWalkInBooking by remember { mutableStateOf(false) }
     var activeReceipt by remember { mutableStateOf<TokenReceipt?>(null) }
+    var activeFeeAppointment by remember { mutableStateOf<Appointment?>(null) }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.APPOINTMENTS, onHome, onQueue, {}, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Today's appointments", onBack) }
             if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_TODAY_APPOINTMENTS permission.", color = MaterialTheme.colorScheme.error) } }
             else {
                 item {
-                    ElevatedSection("Clinic and online bookings", "Both sources share the same token queue. Every arrived patient must receive a token receipt.") {
+                    ElevatedSection("Appointments and fee desk", "Only fee-confirmed appointments with a generated receipt are admitted to the selected session queue.") {
                         Text("Morning: " + (if (morningBookingOpen) "booking open" else "booking closed") + " • Evening: " + (if (eveningBookingOpen) "booking open" else "booking closed"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("A session remains bookable before its end time; it does not wait for the start time.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         if (canBookWalkIn) PrimaryAction("Book walk-in patient", { showWalkInBooking = true }, enabled = morningBookingOpen || eveningBookingOpen, icon = Icons.Outlined.PersonAdd)
@@ -351,25 +356,38 @@ import kotlinx.coroutines.delay
                         listOf("Morning", "Evening").forEach { session ->
                             FilterChip(
                                 selected = selectedSession == session,
-                                onClick = { selectedSession = session },
+                                onClick = { onSelectSession(session) },
                                 label = { Text(session + " (" + state.appointments.count { it.session == session } + ")") },
                                 modifier = Modifier.weight(1f)
                             )
                         }
                     }
                 }
-                items(state.appointments.filter { it.session == selectedSession }.sortedBy { it.queueOrder }, key = { it.id }) { appointment ->
+                items(state.appointments.filter { it.session == selectedSession }.sortedBy { it.token }, key = { it.id }) { appointment ->
+                    val feeConfirmed = appointment.paymentStatus != PaymentStatus.PENDING && appointment.receiptNumber.isNotBlank()
                     ElevatedSection(
                         "Token ${appointment.token} • ${appointment.patientName}",
                         appointment.patientType + " • " + appointment.session + " • " + appointment.bookingSource.name.replace("_", " ").lowercase()
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            StatusPill(appointment.status.name.replace("_", " "), appointment.status != AppointmentStatus.ABSENT)
+                            StatusPill(if (feeConfirmed) appointment.paymentStatus.name.replace("_", " ") else "FEE PENDING", feeConfirmed)
+                            Spacer(Modifier.width(8.dp))
+                            Text("INR " + (if (feeConfirmed) appointment.consultationFee else state.profile.consultationFee), fontWeight = FontWeight.Bold)
                             Spacer(Modifier.weight(1f))
-                            if (canGenerateReceipt) TextButton({ activeReceipt = onReceipt(appointment.id) }) {
+                            if (feeConfirmed && canGenerateReceipt) TextButton({ activeReceipt = onReceipt(appointment.id) }) {
                                 Icon(Icons.Outlined.ReceiptLong, null)
                                 Spacer(Modifier.width(5.dp))
-                                Text(if (appointment.receiptNumber.isBlank()) "Generate receipt" else "Receipt")
+                                Text("Receipt")
+                            }
+                        }
+                        if (feeConfirmed) {
+                            Text("Queue admitted • " + appointment.status.name.replace("_", " ").lowercase() + " • " + (appointment.paymentMethod?.name ?: "PAYMENT"), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        } else {
+                            Text("Not visible in Queue until the consultation fee is confirmed and receipt is generated.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                            if (canConfirmFee && canGenerateReceipt) Button({ activeFeeAppointment = appointment }, Modifier.fillMaxWidth()) {
+                                Icon(Icons.Outlined.Payments, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Confirm fee & admit to queue")
                             }
                         }
                     }
@@ -381,11 +399,27 @@ import kotlinx.coroutines.delay
         WalkInBookingDialog(
             morningOpen = morningBookingOpen,
             eveningOpen = eveningBookingOpen,
+            consultationFee = state.profile.consultationFee,
             onDismiss = { showWalkInBooking = false },
             onBook = { request ->
                 val result = onBookWalkIn(request)
                 if (result.receipt != null) {
                     showWalkInBooking = false
+                    activeReceipt = result.receipt
+                }
+                result.error
+            }
+        )
+    }
+    activeFeeAppointment?.let { appointment ->
+        FeeConfirmationDialog(
+            appointment = appointment,
+            defaultFee = state.profile.consultationFee,
+            onDismiss = { activeFeeAppointment = null },
+            onConfirm = { amount, method ->
+                val result = onConfirmFee(appointment.id, amount, method)
+                if (result.receipt != null) {
+                    activeFeeAppointment = null
                     activeReceipt = result.receipt
                 }
                 result.error
@@ -398,6 +432,7 @@ import kotlinx.coroutines.delay
 @Composable private fun WalkInBookingDialog(
     morningOpen: Boolean,
     eveningOpen: Boolean,
+    consultationFee: Int,
     onDismiss: () -> Unit,
     onBook: (WalkInBookingRequest) -> String?
 ) {
@@ -405,6 +440,8 @@ import kotlinx.coroutines.delay
     var phone by remember { mutableStateOf("") }
     var patientType by remember { mutableStateOf("Self") }
     var session by remember { mutableStateOf(if (morningOpen) "Morning" else "Evening") }
+    var feeText by remember { mutableStateOf(consultationFee.toString()) }
+    var paymentMethod by remember { mutableStateOf(PaymentMethod.CASH) }
     var error by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -419,6 +456,26 @@ import kotlinx.coroutines.delay
                     FilterChip(patientType == "Self", { patientType = "Self" }, { Text("Self") })
                     FilterChip(patientType == "Family member", { patientType = "Family member" }, { Text("Family member") })
                 }
+                OutlinedTextField(
+                    value = if (paymentMethod == PaymentMethod.WAIVED) "0" else feeText,
+                    onValueChange = { feeText = it.filter(Char::isDigit).take(6); error = null },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Consultation fee (INR)") },
+                    enabled = paymentMethod != PaymentMethod.WAIVED,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                Text("Payment received by", fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(PaymentMethod.CASH, PaymentMethod.UPI, PaymentMethod.CARD).forEach { method ->
+                        FilterChip(paymentMethod == method, { paymentMethod = method }, { Text(method.name) })
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(PaymentMethod.ONLINE, PaymentMethod.WAIVED).forEach { method ->
+                        FilterChip(paymentMethod == method, { paymentMethod = method }, { Text(method.name) })
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(session == "Morning", { session = "Morning" }, { Text(if (morningOpen) "Morning" else "Morning closed") }, enabled = morningOpen)
                     FilterChip(session == "Evening", { session = "Evening" }, { Text(if (eveningOpen) "Evening" else "Evening closed") }, enabled = eveningOpen)
@@ -427,14 +484,57 @@ import kotlinx.coroutines.delay
             }
         },
         confirmButton = {
-            Button({ error = onBook(WalkInBookingRequest(name, phone, patientType, session)) }, enabled = (session == "Morning" && morningOpen) || (session == "Evening" && eveningOpen)) {
-                Text("Book & generate receipt")
+            Button({ error = onBook(WalkInBookingRequest(name, phone, patientType, session, feeText.toIntOrNull() ?: 0, paymentMethod)) }, enabled = (session == "Morning" && morningOpen) || (session == "Evening" && eveningOpen)) {
+                Text("Confirm fee, book & receipt")
             }
         },
         dismissButton = { TextButton(onDismiss) { Text("Cancel") } }
     )
 }
 
+@Composable private fun FeeConfirmationDialog(
+    appointment: Appointment,
+    defaultFee: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int, PaymentMethod) -> String?
+) {
+    var feeText by remember(appointment.id) { mutableStateOf(defaultFee.toString()) }
+    var method by remember(appointment.id) { mutableStateOf(PaymentMethod.CASH) }
+    var error by remember(appointment.id) { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Outlined.Payments, null) },
+        title = { Text("Confirm consultation fee") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("${appointment.patientName} • ${appointment.session} token ${appointment.token}")
+                Text("Receipt generation admits this patient to the ${appointment.session.lowercase()} queue.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(
+                    value = if (method == PaymentMethod.WAIVED) "0" else feeText,
+                    onValueChange = { feeText = it.filter(Char::isDigit).take(6); error = null },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Fee received (INR)") },
+                    enabled = method != PaymentMethod.WAIVED,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(PaymentMethod.CASH, PaymentMethod.UPI, PaymentMethod.CARD).forEach { option ->
+                        FilterChip(method == option, { method = option }, { Text(option.name) })
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(PaymentMethod.ONLINE, PaymentMethod.WAIVED).forEach { option ->
+                        FilterChip(method == option, { method = option }, { Text(option.name) })
+                    }
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = { Button({ error = onConfirm(feeText.toIntOrNull() ?: 0, method) }) { Text("Confirm & generate receipt") } },
+        dismissButton = { TextButton(onDismiss) { Text("Cancel") } }
+    )
+}
 @Composable private fun TokenReceiptDialog(receipt: TokenReceipt, onDismiss: () -> Unit) {
     val context = LocalContext.current
     AlertDialog(
@@ -450,6 +550,8 @@ import kotlinx.coroutines.delay
                 Text(receipt.patientName, fontWeight = FontWeight.Bold)
                 Text(receipt.doctorName)
                 Text(receipt.appointmentDate + " • " + receipt.session)
+                Text(if (receipt.paymentStatus == PaymentStatus.WAIVED) "Consultation fee: WAIVED" else "Fee paid: INR ${receipt.consultationFee} • ${receipt.paymentMethod.name}", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                if (receipt.paidAt.isNotBlank()) Text("Confirmed: " + receipt.paidAt, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 Text(receipt.receiptNumber, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Patient must hand this receipt to the doctor during consultation.", textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
             }

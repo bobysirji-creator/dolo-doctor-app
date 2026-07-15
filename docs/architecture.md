@@ -67,3 +67,14 @@ Every assistant action must be authorized on the server, not only hidden in Comp
 - sessionBookingOpen parses the configured session end time. It intentionally applies no start-time restriction, permitting advance booking, and rejects new bookings at or after the end time.
 - The appointments screen refreshes the date and cutoff state periodically. Date rollover archives the previous day and recreates both sessions as NOT_STARTED with token 0.
 - Session cutoff is currently evaluated with device local time. The shared backend must eventually enforce the clinic timezone and cutoff atomically for both Patient App and clinic-device bookings.
+
+## Stage 5.3 fee admission, token migration and 58 mm printing
+
+- Appointment now persists consultationFee, paymentStatus, paymentMethod and paidAt. Queue eligibility requires a non-pending payment status plus a stable receipt number.
+- confirmConsultationFee is permission checked, records FEE_CONFIRMED and RECEIPT_GENERATED audit events, changes BOOKED to ARRIVED and appends the patient to that session's service order.
+- Call next and Queue UI filter out unpaid appointments even if they already hold an online-booking token.
+- Token allocation takes the maximum only within the selected session. Receipt IDs include M or E so equal numeric tokens remain unambiguous.
+- Local schema version 2 migrates an installed daily-global token list into independent per-session numbering, infers legacy receipts as paid, preserves the doctor's fee and upgrades receipt-capable assistants with the new confirmation permission.
+- DoctorUiState.selectedSession is persisted and drives both Queue and Appointments instead of screen-local Compose state.
+- AndroidTokenReceiptPrinter requests a 58 mm custom medium, zero margins and 203 dpi, then centers every rendered line on a 164-point receipt canvas. The output includes fee status, amount, method and confirmation time. Printer-service scaling and paper feed still require physical ESC/POS device validation.
+- The shared backend must eventually make fee confirmation, token allocation and receipt identity transactional and server-authoritative; no real payment gateway is connected in this local stage.

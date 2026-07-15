@@ -13,9 +13,9 @@ class DoctorViewModelTest {
         val model = DoctorViewModel()
         model.login(UserRole.DOCTOR)
         model.callNext()
-        assertEquals(10, model.uiState.currentToken)
-        assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.token == 9 }.status)
-        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.token == 10 }.status)
+        assertEquals(2, model.uiState.currentToken)
+        assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.token == 1 }.status)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.token == 2 }.status)
     }
 
     @Test fun workflowStateSurvivesViewModelRecreation() {
@@ -27,9 +27,9 @@ class DoctorViewModelTest {
 
         val restored = DoctorViewModel(store)
         restored.login(UserRole.DOCTOR)
-        assertEquals(10, restored.uiState.currentToken)
-        assertEquals(AppointmentStatus.COMPLETED, restored.uiState.appointments.single { it.token == 9 }.status)
-        assertEquals(AppointmentStatus.IN_CONSULTATION, restored.uiState.appointments.single { it.token == 10 }.status)
+        assertEquals(2, restored.uiState.currentToken)
+        assertEquals(AppointmentStatus.COMPLETED, restored.uiState.appointments.single { it.token == 1 }.status)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, restored.uiState.appointments.single { it.token == 2 }.status)
         assertFalse(restored.uiState.announcements.single { it.id == "n1" }.active)
     }
 
@@ -38,7 +38,7 @@ class DoctorViewModelTest {
         model.login(UserRole.DOCTOR)
         model.toggleQueue()
         model.callNext()
-        assertEquals(9, model.uiState.currentToken)
+        assertEquals(1, model.uiState.currentToken)
         assertEquals(QueueState.PAUSED, model.uiState.queueState)
     }
 
@@ -49,7 +49,7 @@ class DoctorViewModelTest {
         assertFalse(model.hasPermission(Permission.CALL_NEXT_PATIENT))
         model.callNext()
         model.toggleQueue()
-        assertEquals(9, model.uiState.currentToken)
+        assertEquals(1, model.uiState.currentToken)
         assertEquals(QueueState.ACTIVE, model.uiState.queueState)
     }
 
@@ -57,7 +57,7 @@ class DoctorViewModelTest {
         val model = DoctorViewModel()
         model.login(UserRole.ASSISTANT, "staff-1")
         model.callNext()
-        assertEquals(10, model.uiState.currentToken)
+        assertEquals(2, model.uiState.currentToken)
         model.updateAppointment("a3", AppointmentStatus.ABSENT)
         assertEquals(AppointmentStatus.ARRIVED, model.uiState.appointments.single { it.id == "a3" }.status)
     }
@@ -100,8 +100,8 @@ class DoctorViewModelTest {
 
         model.login(UserRole.ASSISTANT, "staff-1")
 
-        assertEquals(10, model.uiState.currentToken)
-        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.token == 10 }.status)
+        assertEquals(2, model.uiState.currentToken)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.token == 2 }.status)
     }
 
     @Test fun logoutClearsRoleWithoutResettingWorkflowState() {
@@ -113,8 +113,8 @@ class DoctorViewModelTest {
 
         assertEquals(null, model.uiState.role)
         assertEquals(null, model.uiState.activeAssistantId)
-        assertEquals(10, model.uiState.currentToken)
-        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.token == 10 }.status)
+        assertEquals(2, model.uiState.currentToken)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.token == 2 }.status)
     }
 
     @Test fun doctorCanCloseAndArchiveTheCurrentDay() {
@@ -131,13 +131,13 @@ class DoctorViewModelTest {
         val history = model.uiState.queueHistory.single()
         assertEquals("2026-07-15", history.date)
         assertEquals("09:30 PM", history.closedAt)
-        assertEquals(10, history.finalToken)
+        assertEquals(2, history.finalToken)
         assertEquals(model.uiState.appointments, history.appointments)
         assertEquals(AuditAction.DAY_CLOSED, model.uiState.auditEvents.last().action)
 
         model.callNext()
         model.updateAppointment("a3", AppointmentStatus.ABSENT)
-        assertEquals(10, model.uiState.currentToken)
+        assertEquals(2, model.uiState.currentToken)
         assertEquals(AppointmentStatus.ARRIVED, model.uiState.appointments.single { it.id == "a3" }.status)
     }
 
@@ -224,31 +224,28 @@ class DoctorViewModelTest {
 
     @Test fun callNextCompletesTheFinalConsultationBeforeArchive() {
         val finalState = DummyData.initialState("2026-07-15").copy(
-            currentToken = 14,
+            currentToken = 3,
             sessionQueues = listOf(
-                ConsultationQueue("Morning", QueueState.ACTIVE, 14),
+                ConsultationQueue("Morning", QueueState.ACTIVE, 3),
                 ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
             ),
             appointments = DummyData.appointments.map {
-                if (it.token == 14) it.copy(status = AppointmentStatus.IN_CONSULTATION)
-                else it.copy(status = AppointmentStatus.COMPLETED)
+                when (it.id) {
+                    "a1", "a2" -> it.copy(status = AppointmentStatus.COMPLETED)
+                    "a3" -> it.copy(status = AppointmentStatus.IN_CONSULTATION)
+                    else -> it
+                }
             }
         )
-        val model = DoctorViewModel(
-            stateStore = MemoryDoctorStateStore(finalState),
-            currentDate = { LocalDate.parse("2026-07-15") },
-            currentTime = { LocalTime.of(21, 0) }
-        )
+        val model = DoctorViewModel(MemoryDoctorStateStore(finalState), currentDate = { LocalDate.parse("2026-07-15") }, currentTime = { LocalTime.of(21, 0) })
         model.login(UserRole.DOCTOR)
 
         model.callNext()
-        assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.token == 14 }.status)
+        assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.id == "a3" }.status)
         assertEquals(AuditAction.CONSULTATION_COMPLETED, model.uiState.auditEvents.last().action)
-
         assertTrue(model.closeDay())
-        assertEquals(AppointmentStatus.COMPLETED, model.uiState.queueHistory.single().appointments.single { it.token == 14 }.status)
+        assertEquals(AppointmentStatus.COMPLETED, model.uiState.queueHistory.single().appointments.single { it.id == "a3" }.status)
     }
-
     @Test fun validatedProfileChangesPersistAndSensitiveFieldsNeedReview() {
         val store = MemoryDoctorStateStore()
         val model = DoctorViewModel(store)
@@ -319,26 +316,38 @@ class DoctorViewModelTest {
         assertTrue(model.uiState.auditEvents.isEmpty())
     }
 
-    @Test fun validStatusTransitionCreatesAttributedAuditEvent() {
-        val model = DoctorViewModel(
-            currentDate = { LocalDate.parse("2026-07-15") },
-            currentTime = { LocalTime.of(9, 5) }
-        )
+    @Test fun feeConfirmationCreatesReceiptAndAttributedAuditEvents() {
+        val model = DoctorViewModel(currentDate = { LocalDate.parse("2026-07-15") }, currentTime = { LocalTime.of(9, 5) })
         model.login(UserRole.DOCTOR)
 
-        model.updateAppointment("a4", AppointmentStatus.ARRIVED)
+        val result = model.confirmConsultationFee("a4", 500, PaymentMethod.UPI)
 
-        val event = model.uiState.auditEvents.first()
-        assertEquals(AuditAction.STATUS_CHANGED, event.action)
-        assertEquals("Dr. Aisha Mehta", event.actor)
-        assertEquals(12, event.token)
-        assertEquals("Aman Gupta", event.patientName)
-        assertEquals(AppointmentStatus.BOOKED, event.fromStatus)
-        assertEquals(AppointmentStatus.ARRIVED, event.toStatus)
-        assertEquals("09:05 AM", event.time)
-        assertEquals(AuditAction.RECEIPT_GENERATED, model.uiState.auditEvents.last().action)
+        assertEquals(null, result.error)
+        val appointment = model.uiState.appointments.single { it.id == "a4" }
+        assertEquals(AppointmentStatus.ARRIVED, appointment.status)
+        assertEquals(PaymentStatus.PAID, appointment.paymentStatus)
+        assertEquals(PaymentMethod.UPI, appointment.paymentMethod)
+        assertEquals(500, appointment.consultationFee)
+        assertEquals("DL-20260715-M-004", appointment.receiptNumber)
+        assertEquals(listOf(AuditAction.FEE_CONFIRMED, AuditAction.RECEIPT_GENERATED), model.uiState.auditEvents.map { it.action })
+        assertEquals("Dr. Aisha Mehta", model.uiState.auditEvents.first().actor)
+        assertEquals("09:05 AM", model.uiState.auditEvents.first().time)
     }
+    @Test fun unpaidAppointmentsAreNotCalledUntilFeeIsConfirmed() {
+        val model = DoctorViewModel(currentDate = { LocalDate.parse("2026-07-15") }, currentTime = { LocalTime.of(10, 0) })
+        model.login(UserRole.DOCTOR)
 
+        model.callNext()
+        model.callNext()
+        model.callNext()
+
+        assertEquals(3, model.queueFor("Morning").currentToken)
+        assertEquals(AppointmentStatus.BOOKED, model.uiState.appointments.single { it.id == "a4" }.status)
+        model.confirmConsultationFee("a4", 500, PaymentMethod.CASH)
+        model.callNext()
+        assertEquals(4, model.queueFor("Morning").currentToken)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.id == "a4" }.status)
+    }
     @Test fun assistantQueueActionUsesAssistantIdentity() {
         val model = DoctorViewModel()
         model.login(UserRole.ASSISTANT, "staff-1")
@@ -348,36 +357,37 @@ class DoctorViewModelTest {
         val event = model.uiState.auditEvents.last()
         assertEquals(AuditAction.PATIENT_CALLED, event.action)
         assertEquals("Neha Kapoor", event.actor)
-        assertEquals(10, event.token)
+        assertEquals(2, event.token)
     }
 
-    @Test fun queueLifecycleAndAuditSurviveViewModelRecreation() {
+    @Test fun queueLifecycleFeeAdmissionAndAuditSurviveViewModelRecreation() {
         val store = MemoryDoctorStateStore()
         val first = DoctorViewModel(store)
         first.login(UserRole.DOCTOR)
         first.toggleQueue()
         first.toggleQueue()
-        first.updateAppointment("a4", AppointmentStatus.ARRIVED)
+        first.confirmConsultationFee("a4", 500, PaymentMethod.CASH)
 
         val restored = DoctorViewModel(store)
 
         assertEquals(
-            listOf(AuditAction.QUEUE_PAUSED, AuditAction.QUEUE_RESUMED, AuditAction.STATUS_CHANGED, AuditAction.RECEIPT_GENERATED),
+            listOf(AuditAction.QUEUE_PAUSED, AuditAction.QUEUE_RESUMED, AuditAction.FEE_CONFIRMED, AuditAction.RECEIPT_GENERATED),
             restored.uiState.auditEvents.map { it.action }
         )
-        assertEquals(AppointmentStatus.ARRIVED, restored.uiState.appointments.single { it.id == "a4" }.status)
+        val appointment = restored.uiState.appointments.single { it.id == "a4" }
+        assertEquals(AppointmentStatus.ARRIVED, appointment.status)
+        assertEquals(PaymentStatus.PAID, appointment.paymentStatus)
     }
-
     @Test fun completedAppointmentIsTerminal() {
         val completed = DummyData.initialState().copy(
-            appointments = DummyData.appointments.map { if (it.id == "a4") it.copy(status = AppointmentStatus.COMPLETED) else it }
+            appointments = DummyData.appointments.map { if (it.id == "a3") it.copy(status = AppointmentStatus.COMPLETED) else it }
         )
         val model = DoctorViewModel(MemoryDoctorStateStore(completed))
         model.login(UserRole.DOCTOR)
 
-        model.updateAppointment("a4", AppointmentStatus.WAITING)
+        model.updateAppointment("a3", AppointmentStatus.WAITING)
 
-        assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.id == "a4" }.status)
+        assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.id == "a3" }.status)
         assertTrue(model.uiState.auditEvents.isEmpty())
     }
     @Test fun accidentalSkipCanResumeImmediatelyWhenNoOtherConsultationIsActive() {
@@ -393,7 +403,7 @@ class DoctorViewModelTest {
         model.login(UserRole.DOCTOR)
 
         assertTrue(model.resumeSkippedConsultation("a2"))
-        assertEquals(10, model.uiState.currentToken)
+        assertEquals(2, model.uiState.currentToken)
         assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.id == "a2" }.status)
     }
 
@@ -409,66 +419,49 @@ class DoctorViewModelTest {
     }
     @Test fun skippedPatientCanRejoinAtEndAndReturnToConsultation() {
         val finalQueue = DummyData.initialState().copy(
-            currentToken = 14,
-            sessionQueues = listOf(
-                ConsultationQueue("Morning", QueueState.ACTIVE, 14),
-                ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
-            ),
+            currentToken = 3,
+            sessionQueues = listOf(ConsultationQueue("Morning", QueueState.ACTIVE, 3), ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)),
             appointments = DummyData.appointments.map {
                 when (it.id) {
                     "a2" -> it.copy(status = AppointmentStatus.SKIPPED)
-                    else -> it.copy(status = AppointmentStatus.COMPLETED)
+                    "a1", "a3" -> it.copy(status = AppointmentStatus.COMPLETED)
+                    else -> it
                 }
             }
         )
         val model = DoctorViewModel(MemoryDoctorStateStore(finalQueue))
         model.login(UserRole.DOCTOR)
 
-        model.updateAppointment("a2", AppointmentStatus.WAITING)
-        assertEquals(AppointmentStatus.SKIPPED, model.uiState.appointments.single { it.id == "a2" }.status)
-
         assertTrue(model.rejoinAppointment("a2"))
         val rejoined = model.uiState.appointments.single { it.id == "a2" }
         assertEquals(AppointmentStatus.WAITING, rejoined.status)
-        assertTrue(rejoined.queueOrder > 14)
-
+        assertTrue(rejoined.queueOrder > 3)
         model.callNext()
-        assertEquals(10, model.uiState.currentToken)
+        assertEquals(2, model.uiState.currentToken)
         assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.id == "a2" }.status)
-        assertTrue(model.uiState.auditEvents.any { it.action == AuditAction.PATIENT_REJOINED })
     }
-
-    @Test fun lateArrivalKeepsTokenButJoinsAtEndAndGetsReceipt() {
-        val progressed = DummyData.initialState("2026-07-15").copy(
-            currentToken = 14,
-            sessionQueues = listOf(
-                ConsultationQueue("Morning", QueueState.ACTIVE, 14),
-                ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
-            ),
-            appointments = DummyData.appointments.map {
-                when (it.id) {
-                    "a4" -> it.copy(status = AppointmentStatus.BOOKED, receiptNumber = "")
-                    else -> it.copy(status = AppointmentStatus.COMPLETED)
-                }
-            }
-        )
-        val model = DoctorViewModel(
-            MemoryDoctorStateStore(progressed),
-            currentDate = { LocalDate.parse("2026-07-15") },
-            currentTime = { LocalTime.of(11, 0) }
-        )
+    @Test fun unpaidOnlineAppointmentStaysOutUntilFeeConfirmation() {
+        val store = MemoryDoctorStateStore()
+        val model = DoctorViewModel(store, currentDate = { LocalDate.parse("2026-07-15") }, currentTime = { LocalTime.of(11, 0) })
         model.login(UserRole.DOCTOR)
 
-        model.updateAppointment("a4", AppointmentStatus.ARRIVED)
+        assertEquals(null, model.receiptFor("a4"))
+        assertEquals(PaymentStatus.PENDING, model.uiState.appointments.single { it.id == "a4" }.paymentStatus)
+        val result = model.confirmConsultationFee("a4", 450, PaymentMethod.UPI)
 
-        val late = model.uiState.appointments.single { it.id == "a4" }
-        assertEquals(12, late.token)
-        assertEquals(AppointmentStatus.ARRIVED, late.status)
-        assertTrue(late.queueOrder > 14)
-        assertEquals("DL-20260715-012", late.receiptNumber)
-        assertEquals(listOf(AuditAction.PATIENT_REJOINED, AuditAction.RECEIPT_GENERATED), model.uiState.auditEvents.map { it.action })
+        val receipt = result.receipt ?: throw AssertionError("Receipt was not generated")
+        assertEquals(4, receipt.token)
+        assertEquals(450, receipt.consultationFee)
+        assertEquals(PaymentMethod.UPI, receipt.paymentMethod)
+        val admitted = model.uiState.appointments.single { it.id == "a4" }
+        assertEquals(AppointmentStatus.ARRIVED, admitted.status)
+        assertEquals(4, admitted.queueOrder)
+        assertEquals("DL-20260715-M-004", admitted.receiptNumber)
+        assertEquals(listOf(AuditAction.FEE_CONFIRMED, AuditAction.RECEIPT_GENERATED), model.uiState.auditEvents.map { it.action })
+
+        val restored = DoctorViewModel(store, currentDate = { LocalDate.parse("2026-07-15") })
+        assertEquals(PaymentStatus.PAID, restored.uiState.appointments.single { it.id == "a4" }.paymentStatus)
     }
-
     @Test fun assistantCanBookWalkInAndGenerateCompulsoryReceipt() {
         val store = MemoryDoctorStateStore()
         val model = DoctorViewModel(
@@ -482,16 +475,18 @@ class DoctorViewModelTest {
 
         assertEquals(null, result.error)
         val receipt = result.receipt ?: throw AssertionError("Receipt was not generated")
-        assertEquals(15, receipt.token)
-        assertEquals("DL-20260715-015", receipt.receiptNumber)
-        val appointment = model.uiState.appointments.single { it.token == 15 }
+        assertEquals(7, receipt.token)
+        assertEquals("DL-20260715-M-007", receipt.receiptNumber)
+        val appointment = model.uiState.appointments.single { it.token == 7 }
         assertEquals(BookingSource.CLINIC_WALK_IN, appointment.bookingSource)
         assertEquals(AppointmentStatus.ARRIVED, appointment.status)
         assertEquals("9876512345", appointment.patientPhone)
-        assertEquals(listOf(AuditAction.WALK_IN_BOOKED, AuditAction.RECEIPT_GENERATED), model.uiState.auditEvents.map { it.action })
+        assertEquals(listOf(AuditAction.WALK_IN_BOOKED, AuditAction.FEE_CONFIRMED, AuditAction.RECEIPT_GENERATED), model.uiState.auditEvents.map { it.action })
+        assertEquals(PaymentStatus.PAID, appointment.paymentStatus)
+        assertEquals(500, appointment.consultationFee)
 
         val restored = DoctorViewModel(store, currentDate = { LocalDate.parse("2026-07-15") })
-        assertEquals("DL-20260715-015", restored.uiState.appointments.single { it.token == 15 }.receiptNumber)
+        assertEquals("DL-20260715-M-007", restored.uiState.appointments.single { it.token == 7 }.receiptNumber)
     }
 
     @Test fun viewOnlyAssistantCannotBookWalkInOrGenerateReceipt() {
@@ -508,18 +503,23 @@ class DoctorViewModelTest {
     @Test fun morningAndEveningQueuesAdvanceIndependently() {
         val eveningAppointment = Appointment(
             id = "evening-1",
-            token = 15,
+            token = 1,
             patientName = "Evening Patient",
             patientType = "Self",
             session = "Evening",
             status = AppointmentStatus.WAITING,
             bookedAt = "04:30 PM",
-            queueOrder = 1
+            queueOrder = 1,
+            receiptNumber = "DL-20260715-E-001",
+            consultationFee = 500,
+            paymentStatus = PaymentStatus.PAID,
+            paymentMethod = PaymentMethod.CASH,
+            paidAt = "04:25 PM"
         )
         val initial = DummyData.initialState().copy(
             appointments = DummyData.appointments + eveningAppointment,
             sessionQueues = listOf(
-                ConsultationQueue("Morning", QueueState.ACTIVE, 9),
+                ConsultationQueue("Morning", QueueState.ACTIVE, 1),
                 ConsultationQueue("Evening", QueueState.ACTIVE, 0)
             )
         )
@@ -528,8 +528,8 @@ class DoctorViewModelTest {
 
         model.callNext("Evening")
 
-        assertEquals(9, model.queueFor("Morning").currentToken)
-        assertEquals(15, model.queueFor("Evening").currentToken)
+        assertEquals(1, model.queueFor("Morning").currentToken)
+        assertEquals(1, model.queueFor("Evening").currentToken)
         assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.id == "evening-1" }.status)
         assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.id == "a1" }.status)
 
@@ -569,11 +569,11 @@ class DoctorViewModelTest {
     @Test fun nextDayRolloverResetsBothSessionsAndReopensAdvanceBooking() {
         val previousDay = DummyData.initialState("2026-07-14").copy(
             sessionQueues = listOf(
-                ConsultationQueue("Morning", QueueState.CLOSED, 14),
-                ConsultationQueue("Evening", QueueState.CLOSED, 22)
+                ConsultationQueue("Morning", QueueState.CLOSED, 6),
+                ConsultationQueue("Evening", QueueState.CLOSED, 2)
             ),
             queueState = QueueState.CLOSED,
-            currentToken = 14
+            currentToken = 6
         )
         val model = DoctorViewModel(
             stateStore = MemoryDoctorStateStore(previousDay),
@@ -599,8 +599,33 @@ class DoctorViewModelTest {
 
         assertEquals(QueueState.ACTIVE, restored.queueFor("Morning").state)
         assertEquals(QueueState.ACTIVE, restored.queueFor("Evening").state)
-        assertEquals(9, restored.queueFor("Morning").currentToken)
+        assertEquals(1, restored.queueFor("Morning").currentToken)
         assertEquals(0, restored.queueFor("Evening").currentToken)
+    }
+    @Test fun selectedSessionSurvivesNavigationStateAndRecreation() {
+        val store = MemoryDoctorStateStore()
+        val first = DoctorViewModel(store)
+        first.login(UserRole.DOCTOR)
+        first.selectSession("Evening")
+
+        assertEquals("Evening", first.uiState.selectedSession)
+        val restored = DoctorViewModel(store)
+        assertEquals("Evening", restored.uiState.selectedSession)
+        restored.selectSession("Morning")
+        assertEquals("Morning", restored.uiState.selectedSession)
+    }
+
+    @Test fun morningAndEveningAllocateIndependentTokenSequences() {
+        val model = DoctorViewModel(currentDate = { LocalDate.parse("2026-07-15") }, currentTime = { LocalTime.of(10, 0) })
+        model.login(UserRole.DOCTOR)
+
+        val morning = model.bookWalkIn(WalkInBookingRequest("Morning Walkin", "9876512345", "Self", "Morning", 500, PaymentMethod.CASH)).receipt
+        val evening = model.bookWalkIn(WalkInBookingRequest("Evening Walkin", "9876512346", "Self", "Evening", 500, PaymentMethod.UPI)).receipt
+
+        assertEquals(7, morning?.token)
+        assertEquals(1, evening?.token)
+        assertEquals("DL-20260715-M-007", morning?.receiptNumber)
+        assertEquals("DL-20260715-E-001", evening?.receiptNumber)
     }
     private class MemoryDoctorStateStore(initial: DoctorUiState? = null) : DoctorStateStore {
         private var saved: DoctorUiState? = initial

@@ -14,6 +14,7 @@ interface DoctorApi {
     suspend fun callNext(clinicId: String, session: String): ApiResult<Appointment>
     suspend fun updateAppointment(id: String, status: AppointmentStatus): ApiResult<Appointment>
     suspend fun bookWalkIn(request: WalkInBookingRequest): ApiResult<Appointment>
+    suspend fun confirmConsultationFee(appointmentId: String, amount: Int, method: PaymentMethod): ApiResult<Appointment>
     suspend fun resumeSkippedConsultation(id: String): ApiResult<Appointment>
     suspend fun rejoinAppointment(id: String): ApiResult<Appointment>
     suspend fun announcements(): ApiResult<List<Announcement>>

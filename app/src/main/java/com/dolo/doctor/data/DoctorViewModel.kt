@@ -47,6 +47,13 @@ class DoctorViewModel(
         val morning = queues.first { it.session == "Morning" }
         return state.copy(sessionQueues = queues, queueState = morning.state, currentToken = morning.currentToken)
     }
+    private fun admittedToQueue(appointment: Appointment): Boolean =
+        appointment.paymentStatus != PaymentStatus.PENDING && appointment.receiptNumber.isNotBlank()
+
+    fun selectSession(session: String) {
+        if (session !in setOf("Morning", "Evening") || session == uiState.selectedSession) return
+        persist(uiState.copy(selectedSession = session))
+    }
     private fun actorName(): String = when (uiState.role) {
         UserRole.DOCTOR -> uiState.profile.name
         UserRole.ASSISTANT -> uiState.assistants.firstOrNull { it.id == uiState.activeAssistantId }?.name ?: "Assistant"
@@ -170,10 +177,10 @@ class DoctorViewModel(
         val queue = queueFor(session)
         if (queue.state != QueueState.ACTIVE || !hasPermission(Permission.CALL_NEXT_PATIENT)) return
         val current = uiState.appointments.firstOrNull {
-            it.session == session && it.token == queue.currentToken && it.status == AppointmentStatus.IN_CONSULTATION
+            it.session == session && admittedToQueue(it) && it.token == queue.currentToken && it.status == AppointmentStatus.IN_CONSULTATION
         }
         val next = uiState.appointments
-            .filter { it.session == session && it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }
+            .filter { it.session == session && admittedToQueue(it) && it.status in setOf(AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }
             .minByOrNull { it.queueOrder }
 
         if (next == null) {
@@ -209,16 +216,14 @@ class DoctorViewModel(
         }
         if (!hasPermission(required)) return
         val appointment = uiState.appointments.firstOrNull { it.id == id } ?: return
-        if (queueFor(appointment.session).state == QueueState.CLOSED) return
+        if (!admittedToQueue(appointment) || queueFor(appointment.session).state == QueueState.CLOSED) return
         if (!canTransition(appointment.status, status)) return
 
         val progressedOrder = uiState.appointments.filter { it.session == appointment.session && it.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED) }.maxOfOrNull { it.queueOrder } ?: 0
         val lateArrival = status == AppointmentStatus.ARRIVED && appointment.queueOrder < progressedOrder
-        val needsReceipt = status == AppointmentStatus.ARRIVED && appointment.receiptNumber.isBlank()
         val changed = appointment.copy(
             status = status,
-            queueOrder = if (lateArrival) nextQueueOrder(appointment.session) else appointment.queueOrder,
-            receiptNumber = if (needsReceipt) receiptNumber(appointment.token) else appointment.receiptNumber
+            queueOrder = if (lateArrival) nextQueueOrder(appointment.session) else appointment.queueOrder
         )
         var updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == id) changed else it })
         val action = when {
@@ -232,9 +237,6 @@ class DoctorViewModel(
             "Changed token " + appointment.token + " from " + appointment.status.name + " to " + status.name
         }
         updated = withAudit(updated, action, detail, appointment, appointment.status, status)
-        if (needsReceipt) {
-            updated = withAudit(updated, AuditAction.RECEIPT_GENERATED, "Generated compulsory token receipt " + changed.receiptNumber, changed)
-        }
         persist(updated)
     }
 
@@ -267,57 +269,71 @@ class DoctorViewModel(
     }
     fun bookWalkIn(request: WalkInBookingRequest): WalkInBookingResult {
         rollOverIfNeeded()
-        if (!hasPermission(Permission.BOOK_WALK_IN_APPOINTMENT)) return WalkInBookingResult(error = "This account cannot book walk-in patients.")
+        if (!hasPermission(Permission.BOOK_WALK_IN_APPOINTMENT) || !hasPermission(Permission.CONFIRM_CONSULTATION_FEE)) return WalkInBookingResult(error = "This account cannot collect fees and book walk-in patients.")
         val name = request.patientName.trim()
         val phone = request.patientPhone.filter(Char::isDigit)
         val patientType = request.patientType.trim()
         val session = request.session.trim()
         val clinic = uiState.clinics.firstOrNull() ?: return WalkInBookingResult(error = "Clinic details are unavailable.")
-        val sessionQueue = queueFor(session)
+        val fee = if (request.paymentMethod == PaymentMethod.WAIVED) 0 else request.consultationFee.takeIf { it > 0 } ?: uiState.profile.consultationFee
         val error = when {
-            sessionQueue.state == QueueState.CLOSED -> session + " queue is closed."
+            queueFor(session).state == QueueState.CLOSED -> session + " queue is closed."
             !sessionBookingOpen(session) -> session + " booking has closed because the session end time has passed."
             name.length < 3 -> "Enter the patient's full name."
             phone.length != 10 -> "Enter a valid 10-digit mobile number."
             patientType.isBlank() -> "Select the patient type."
             session !in setOf("Morning", "Evening") -> "Select Morning or Evening session."
+            fee !in 0..100000 || (request.paymentMethod != PaymentMethod.WAIVED && fee == 0) -> "Enter a valid fee or select Waived."
             uiState.appointments.count { it.session == session } >= clinic.maxTokensPerSession -> "The selected session has reached its token limit."
             else -> null
         }
         if (error != null) return WalkInBookingResult(error = error)
-
-        val token = (uiState.appointments.maxOfOrNull { it.token } ?: 0) + 1
+        val token = (uiState.appointments.filter { it.session == session }.maxOfOrNull { it.token } ?: 0) + 1
+        val paymentStatus = if (request.paymentMethod == PaymentMethod.WAIVED) PaymentStatus.WAIVED else PaymentStatus.PAID
         val appointment = Appointment(
-            id = "walkin-" + uiState.queueDate + "-" + token + "-" + currentTime().toSecondOfDay(),
-            token = token,
-            patientName = name,
-            patientType = patientType,
-            session = session,
-            status = AppointmentStatus.ARRIVED,
-            bookedAt = currentTime().format(timeFormatter),
-            queueOrder = nextQueueOrder(session),
-            bookingSource = BookingSource.CLINIC_WALK_IN,
-            patientPhone = phone,
-            receiptNumber = receiptNumber(token)
+            id = "walkin-" + uiState.queueDate + "-" + session.first() + "-" + token + "-" + currentTime().toSecondOfDay(), token = token,
+            patientName = name, patientType = patientType, session = session, status = AppointmentStatus.ARRIVED,
+            bookedAt = currentTime().format(timeFormatter), queueOrder = nextQueueOrder(session), bookingSource = BookingSource.CLINIC_WALK_IN,
+            patientPhone = phone, receiptNumber = receiptNumber(session, token), consultationFee = fee, paymentStatus = paymentStatus,
+            paymentMethod = request.paymentMethod, paidAt = currentTime().format(timeFormatter)
         )
-        var updated = uiState.copy(appointments = (uiState.appointments + appointment).sortedBy { it.queueOrder })
-        updated = withAudit(updated, AuditAction.WALK_IN_BOOKED, "Booked clinic walk-in and allotted token " + token, appointment)
+        var updated = uiState.copy(appointments = uiState.appointments + appointment)
+        updated = withAudit(updated, AuditAction.WALK_IN_BOOKED, "Booked clinic walk-in and allotted " + session.lowercase() + " token " + token, appointment)
+        updated = withAudit(updated, AuditAction.FEE_CONFIRMED, "Confirmed " + paymentStatus.name.lowercase() + " consultation fee INR " + fee + " by " + request.paymentMethod.name, appointment)
         updated = withAudit(updated, AuditAction.RECEIPT_GENERATED, "Generated compulsory token receipt " + appointment.receiptNumber, appointment)
         persist(updated)
         return WalkInBookingResult(receipt = tokenReceipt(appointment))
     }
 
+    fun confirmConsultationFee(appointmentId: String, amount: Int, method: PaymentMethod): FeeConfirmationResult {
+        rollOverIfNeeded()
+        if (!hasPermission(Permission.CONFIRM_CONSULTATION_FEE) || !hasPermission(Permission.GENERATE_TOKEN_RECEIPT)) return FeeConfirmationResult(error = "This account cannot confirm consultation fees.")
+        val appointment = uiState.appointments.firstOrNull { it.id == appointmentId } ?: return FeeConfirmationResult(error = "Appointment was not found.")
+        if (appointment.paymentStatus != PaymentStatus.PENDING) return FeeConfirmationResult(receipt = receiptFor(appointmentId))
+        if (appointment.status != AppointmentStatus.BOOKED) return FeeConfirmationResult(error = "Only a booked appointment can be admitted after fee confirmation.")
+        if (queueFor(appointment.session).state == QueueState.CLOSED) return FeeConfirmationResult(error = appointment.session + " queue is closed.")
+        val fee = if (method == PaymentMethod.WAIVED) 0 else amount
+        if (fee !in 0..100000 || (method != PaymentMethod.WAIVED && fee == 0)) return FeeConfirmationResult(error = "Enter a valid fee or select Waived.")
+        val confirmed = appointment.copy(
+            status = AppointmentStatus.ARRIVED, queueOrder = nextQueueOrder(appointment.session),
+            receiptNumber = receiptNumber(appointment.session, appointment.token), consultationFee = fee,
+            paymentStatus = if (method == PaymentMethod.WAIVED) PaymentStatus.WAIVED else PaymentStatus.PAID,
+            paymentMethod = method, paidAt = currentTime().format(timeFormatter)
+        )
+        var updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == appointmentId) confirmed else it })
+        updated = withAudit(updated, AuditAction.FEE_CONFIRMED, "Confirmed " + confirmed.paymentStatus.name.lowercase() + " consultation fee INR " + fee + " by " + method.name + " and admitted patient to " + appointment.session.lowercase() + " queue", confirmed, appointment.status, AppointmentStatus.ARRIVED)
+        updated = withAudit(updated, AuditAction.RECEIPT_GENERATED, "Generated compulsory token receipt " + confirmed.receiptNumber, confirmed)
+        persist(updated)
+        return FeeConfirmationResult(receipt = tokenReceipt(confirmed))
+    }
+
     fun receiptFor(appointmentId: String): TokenReceipt? {
         if (!hasPermission(Permission.GENERATE_TOKEN_RECEIPT)) return null
         val appointment = uiState.appointments.firstOrNull { it.id == appointmentId } ?: return null
-        if (appointment.receiptNumber.isNotBlank()) return tokenReceipt(appointment)
-        val withReceipt = appointment.copy(receiptNumber = receiptNumber(appointment.token))
-        val updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == appointmentId) withReceipt else it })
-        persist(withAudit(updated, AuditAction.RECEIPT_GENERATED, "Generated compulsory token receipt " + withReceipt.receiptNumber, withReceipt))
-        return tokenReceipt(withReceipt)
+        if (!admittedToQueue(appointment)) return null
+        return tokenReceipt(appointment)
     }
-
-    private fun nextQueueOrder(session: String): Int = (uiState.appointments.filter { it.session == session }.maxOfOrNull { it.queueOrder } ?: 0) + 1
+    private fun nextQueueOrder(session: String): Int = (uiState.appointments.filter { it.session == session && admittedToQueue(it) }.maxOfOrNull { it.queueOrder } ?: 0) + 1
 
     fun refreshDate() = rollOverIfNeeded()
 
@@ -337,7 +353,7 @@ class DoctorViewModel(
         val end = runCatching { LocalTime.parse(parts[1].trim(), timeFormatter) }.getOrNull() ?: return null
         return (start to end).takeIf { start.isBefore(end) }
     }
-    private fun receiptNumber(token: Int): String = "DL-" + uiState.queueDate.replace("-", "") + "-" + token.toString().padStart(3, '0')
+    private fun receiptNumber(session: String, token: Int): String = "DL-" + uiState.queueDate.replace("-", "") + "-" + session.first().uppercaseChar() + "-" + token.toString().padStart(3, '0')
 
     private fun tokenReceipt(appointment: Appointment): TokenReceipt {
         val clinic = uiState.clinics.first()
@@ -353,7 +369,11 @@ class DoctorViewModel(
             clinicName = clinic.name,
             clinicAddress = clinic.address,
             session = appointment.session,
-            bookingSource = appointment.bookingSource
+            bookingSource = appointment.bookingSource,
+            consultationFee = appointment.consultationFee,
+            paymentStatus = appointment.paymentStatus,
+            paymentMethod = appointment.paymentMethod ?: PaymentMethod.CASH,
+            paidAt = appointment.paidAt
         )
     }
     fun closeDay(): Boolean {

@@ -5,6 +5,8 @@ import com.dolo.doctor.data.model.AppointmentStatus
 import com.dolo.doctor.data.model.DailyQueueHistory
 import com.dolo.doctor.data.model.AuditAction
 import com.dolo.doctor.data.model.QueueAuditEvent
+import com.dolo.doctor.data.model.PaymentMethod
+import com.dolo.doctor.data.model.PaymentStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -21,7 +23,11 @@ class QueueStateCodecTest {
             queueOrder = 57,
             bookingSource = com.dolo.doctor.data.model.BookingSource.CLINIC_WALK_IN,
             patientPhone = "9876512345",
-            receiptNumber = "DL-20260715-042"
+            receiptNumber = "DL-20260715-E-042",
+            consultationFee = 500,
+            paymentStatus = PaymentStatus.PAID,
+            paymentMethod = PaymentMethod.UPI,
+            paidAt = "06:10 PM"
         )
 
         assertEquals(appointment, QueueStateCodec.decodeAppointment(QueueStateCodec.encodeAppointment(appointment)))
@@ -36,6 +42,15 @@ class QueueStateCodecTest {
         assertEquals(8, decoded.queueOrder)
         assertEquals(com.dolo.doctor.data.model.BookingSource.PATIENT_APP, decoded.bookingSource)
         assertEquals("", decoded.receiptNumber)
+    }
+    @Test fun legacyReceiptInfersPaidStatusForMigration() {
+        val fields = listOf("legacy-paid", "12", "Old Patient", "Self", "Morning", "WAITING", "08:00 AM", "12", "PATIENT_APP", "9876500000", "DL-OLD-012")
+        val legacy = fields.joinToString(",") { java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray()) }
+
+        val decoded = QueueStateCodec.decodeAppointment(legacy) ?: throw AssertionError("Legacy paid appointment was not decoded")
+
+        assertEquals(PaymentStatus.PAID, decoded.paymentStatus)
+        assertEquals(PaymentMethod.CASH, decoded.paymentMethod)
     }
     @Test fun dailyHistoryRoundTripKeepsAppointments() {
         val history = DailyQueueHistory(

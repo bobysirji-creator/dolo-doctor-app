@@ -20,16 +20,16 @@ object DummyData {
     )
 
     val appointments = listOf(
-        Appointment("a1", 9, "Riya Sharma", "Self", "Morning", AppointmentStatus.IN_CONSULTATION, "08:42 AM", receiptNumber = "DL-DEMO-009"),
-        Appointment("a2", 10, "Rahul Sharma", "Self", "Morning", AppointmentStatus.WAITING, "08:47 AM", receiptNumber = "DL-DEMO-010"),
-        Appointment("a3", 11, "Maya Sharma", "Family member", "Morning", AppointmentStatus.ARRIVED, "08:50 AM", receiptNumber = "DL-DEMO-011"),
-        Appointment("a4", 12, "Aman Gupta", "Self", "Morning", AppointmentStatus.BOOKED, "09:03 AM"),
-        Appointment("a5", 13, "Nisha Verma", "Self", "Morning", AppointmentStatus.BOOKED, "09:10 AM"),
-        Appointment("a6", 14, "Kabir Singh", "Family member", "Morning", AppointmentStatus.BOOKED, "09:16 AM")
+        Appointment("a1", 1, "Riya Sharma", "Self", "Morning", AppointmentStatus.IN_CONSULTATION, "08:42 AM", queueOrder = 1, receiptNumber = "DL-DEMO-M-001", consultationFee = 500, paymentStatus = PaymentStatus.PAID, paymentMethod = PaymentMethod.CASH, paidAt = "08:40 AM"),
+        Appointment("a2", 2, "Rahul Sharma", "Self", "Morning", AppointmentStatus.WAITING, "08:47 AM", queueOrder = 2, receiptNumber = "DL-DEMO-M-002", consultationFee = 500, paymentStatus = PaymentStatus.PAID, paymentMethod = PaymentMethod.UPI, paidAt = "08:45 AM"),
+        Appointment("a3", 3, "Maya Sharma", "Family member", "Morning", AppointmentStatus.ARRIVED, "08:50 AM", queueOrder = 3, receiptNumber = "DL-DEMO-M-003", consultationFee = 500, paymentStatus = PaymentStatus.PAID, paymentMethod = PaymentMethod.CARD, paidAt = "08:49 AM"),
+        Appointment("a4", 4, "Aman Gupta", "Self", "Morning", AppointmentStatus.BOOKED, "09:03 AM", queueOrder = 0),
+        Appointment("a5", 5, "Nisha Verma", "Self", "Morning", AppointmentStatus.BOOKED, "09:10 AM", queueOrder = 0),
+        Appointment("a6", 6, "Kabir Singh", "Family member", "Morning", AppointmentStatus.BOOKED, "09:16 AM", queueOrder = 0)
     )
 
     val assistants = listOf(
-        Assistant("staff-1", "Neha Kapoor", "9876543210", true, setOf(Permission.VIEW_QUEUE, Permission.UPDATE_QUEUE, Permission.CALL_NEXT_PATIENT, Permission.MARK_PATIENT_ARRIVED, Permission.VIEW_TODAY_APPOINTMENTS, Permission.BOOK_WALK_IN_APPOINTMENT, Permission.GENERATE_TOKEN_RECEIPT)),
+        Assistant("staff-1", "Neha Kapoor", "9876543210", true, setOf(Permission.VIEW_QUEUE, Permission.UPDATE_QUEUE, Permission.CALL_NEXT_PATIENT, Permission.MARK_PATIENT_ARRIVED, Permission.VIEW_TODAY_APPOINTMENTS, Permission.BOOK_WALK_IN_APPOINTMENT, Permission.GENERATE_TOKEN_RECEIPT, Permission.CONFIRM_CONSULTATION_FEE)),
         Assistant("staff-2", "Ravi Kumar", "9876501234", true, setOf(Permission.VIEW_QUEUE, Permission.VIEW_TODAY_APPOINTMENTS))
     )
 
@@ -52,10 +52,10 @@ object DummyData {
         availabilityBlocks = availabilityBlocks,
         queueDate = queueDate,
         sessionQueues = listOf(
-            ConsultationQueue("Morning", QueueState.ACTIVE, 9),
+            ConsultationQueue("Morning", QueueState.ACTIVE, 1),
             ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
         ),
         queueState = QueueState.ACTIVE,
-        currentToken = 9
+        currentToken = 1
     )
 }
