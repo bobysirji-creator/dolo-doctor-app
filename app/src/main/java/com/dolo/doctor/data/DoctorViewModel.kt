@@ -6,10 +6,23 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.dolo.doctor.data.model.*
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
-class DoctorViewModel(private val stateStore: DoctorStateStore = NoOpDoctorStateStore) : ViewModel() {
-    var uiState by mutableStateOf(stateStore.restore(DummyData.initialState()))
+class DoctorViewModel(
+    private val stateStore: DoctorStateStore = NoOpDoctorStateStore,
+    private val currentDate: () -> LocalDate = LocalDate::now,
+    private val currentTime: () -> LocalTime = LocalTime::now
+) : ViewModel() {
+    var uiState by mutableStateOf(stateStore.restore(DummyData.initialState(currentDate().toString())))
         private set
+
+    private val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
+
+    init {
+        rollOverIfNeeded()
+    }
 
     private fun currentStateWithout(removedAssistantIds: Set<String>): DoctorUiState =
         uiState.copy(assistants = uiState.assistants.filterNot { it.id in removedAssistantIds })
@@ -19,7 +32,39 @@ class DoctorViewModel(private val stateStore: DoctorStateStore = NoOpDoctorState
         stateStore.save(state)
     }
 
+    private fun archivedHistory(state: DoctorUiState, closureReason: String): List<DailyQueueHistory> {
+        if (state.appointments.isEmpty() && state.currentToken == 0) return state.queueHistory
+        if (state.queueState == QueueState.CLOSED && state.queueHistory.any { it.date == state.queueDate }) {
+            return state.queueHistory
+        }
+        val record = DailyQueueHistory(
+            date = state.queueDate,
+            clinicName = state.clinics.firstOrNull()?.name ?: "Clinic",
+            closedAt = currentTime().format(timeFormatter),
+            closureReason = closureReason,
+            finalToken = state.currentToken,
+            appointments = state.appointments.map { it.copy() }
+        )
+        return (state.queueHistory.filterNot { it.date == state.queueDate } + record)
+            .sortedByDescending { it.date }
+    }
+
+    private fun rollOverIfNeeded() {
+        val today = currentDate().toString()
+        if (uiState.queueDate >= today) return
+        persist(
+            uiState.copy(
+                queueDate = today,
+                queueHistory = archivedHistory(uiState, "Automatic date rollover"),
+                appointments = emptyList(),
+                queueState = QueueState.NOT_STARTED,
+                currentToken = 0
+            )
+        )
+    }
+
     fun login(role: UserRole, assistantId: String? = null, removedAssistantIds: Set<String> = emptySet()) {
+        rollOverIfNeeded()
         uiState = currentStateWithout(removedAssistantIds).copy(
             role = role,
             activeAssistantId = if (role == UserRole.ASSISTANT) assistantId else null
@@ -27,6 +72,7 @@ class DoctorViewModel(private val stateStore: DoctorStateStore = NoOpDoctorState
     }
 
     fun logout(removedAssistantIds: Set<String> = emptySet()) {
+        rollOverIfNeeded()
         uiState = currentStateWithout(removedAssistantIds).copy(
             role = null,
             activeAssistantId = null
@@ -42,6 +88,7 @@ class DoctorViewModel(private val stateStore: DoctorStateStore = NoOpDoctorState
     fun hasPermission(permission: Permission): Boolean = permission in permissions()
 
     fun toggleQueue() {
+        rollOverIfNeeded()
         if (!hasPermission(Permission.UPDATE_QUEUE)) return
         val next = when (uiState.queueState) {
             QueueState.ACTIVE -> QueueState.PAUSED
@@ -52,6 +99,7 @@ class DoctorViewModel(private val stateStore: DoctorStateStore = NoOpDoctorState
     }
 
     fun callNext() {
+        rollOverIfNeeded()
         if (uiState.queueState != QueueState.ACTIVE || !hasPermission(Permission.CALL_NEXT_PATIENT)) return
         val next = uiState.appointments
             .filter { it.token > uiState.currentToken && it.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.COMPLETED) }
@@ -67,6 +115,8 @@ class DoctorViewModel(private val stateStore: DoctorStateStore = NoOpDoctorState
     }
 
     fun updateAppointment(id: String, status: AppointmentStatus) {
+        rollOverIfNeeded()
+        if (uiState.queueState == QueueState.CLOSED) return
         val required = when (status) {
             AppointmentStatus.ARRIVED -> Permission.MARK_PATIENT_ARRIVED
             AppointmentStatus.ABSENT -> Permission.MARK_PATIENT_ABSENT
@@ -75,6 +125,18 @@ class DoctorViewModel(private val stateStore: DoctorStateStore = NoOpDoctorState
         }
         if (!hasPermission(required)) return
         persist(uiState.copy(appointments = uiState.appointments.map { if (it.id == id) it.copy(status = status) else it }))
+    }
+
+    fun closeDay(): Boolean {
+        rollOverIfNeeded()
+        if (uiState.role != UserRole.DOCTOR || uiState.queueState == QueueState.CLOSED) return false
+        persist(
+            uiState.copy(
+                queueState = QueueState.CLOSED,
+                queueHistory = archivedHistory(uiState, "Closed manually by doctor", includeEmpty = true)
+            )
+        )
+        return true
     }
 
     fun toggleAnnouncement(id: String) {

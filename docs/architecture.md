@@ -25,3 +25,11 @@ The Android app must never embed production SMS, payment, map, push or privilege
 - `/admin/broadcasts`, `/admin/doctor-verification`
 
 Every assistant action must be authorized on the server, not only hidden in Compose navigation.
+## Stage 3 local queue lifecycle
+
+- DoctorUiState.queueDate identifies the active clinic day using ISO yyyy-MM-dd.
+- DailyQueueHistory is an immutable local snapshot of the closed date, final token and complete appointment list.
+- QueueStateCodec uses URL-safe Base64 field encoding before storing current appointments and history records in SharedPreferences.
+- Manual close is Doctor-only. A closed date rejects queue and appointment mutations.
+- A later device date archives the previous queue once and initializes an empty NOT_STARTED queue.
+- The shared backend will eventually replace device time and local storage as the authoritative clinic timezone, queue session and audit source.

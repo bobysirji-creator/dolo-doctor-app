@@ -25,3 +25,13 @@ Run on both Vivo and Samsung devices.
 1. As Doctor, delete one Assistant and confirm the dialog.
 2. Remove the app from Recents and relaunch.
 3. Confirm the Assistant remains removed and their credentials are rejected.
+## Stage 3 daily queue lifecycle
+
+1. Login as Doctor and note the displayed queue date, current token and patient statuses.
+2. Press **Call next**, then open **Close and archive day** and dismiss the confirmation; the queue must remain active.
+3. Open it again and confirm. Queue status must become CLOSED; Pause/Resume, Call next and appointment updates must no longer change data.
+4. Return Home, open **Queue history**, and confirm the date, final token, appointment count, patient names and final statuses match the closed queue.
+5. Close the app, remove it from Recents and relaunch. The closed queue and history entry must remain.
+6. Logout and login again. The archived history must remain unchanged.
+7. Login as either Assistant and confirm no Close-day control or Queue-history route is available.
+8. Automatic next-date rollover is covered by unit tests for this prototype; do not change the phone date solely for testing unless comfortable restoring automatic date/time afterward.

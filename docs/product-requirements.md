@@ -17,6 +17,7 @@ Individual credentials with backend-enforced modular permissions. Assistants mus
 ## Core workflows
 
 - review today's appointments;
+- close and archive a dated queue, then review immutable daily appointment history;
 - start, pause, resume and close a clinic queue;
 - call next token and update arrival, waiting, consultation, completion, absence or skipped status;
 - configure clinics, sessions, token capacity and average consultation time;
@@ -28,6 +29,7 @@ Individual credentials with backend-enforced modular permissions. Assistants mus
 ## Cross-app rules
 
 - Patient tokens and queue state become server-authoritative when the backend is connected.
+- Queue rollover uses the clinic timezone; each doctor, clinic and date receives a separate queue session and token sequence.
 - Doctor availability blocks must disable affected Patient App booking dates.
 - Existing affected appointments must be notified and offered a controlled reschedule path; they must not silently disappear.
 - Active doctor announcements appear under that doctor's Patient App profile and expire automatically.

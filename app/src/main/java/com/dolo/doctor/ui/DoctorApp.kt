@@ -22,6 +22,7 @@ private object Routes {
     const val HOME = "home"
     const val QUEUE = "queue"
     const val APPOINTMENTS = "appointments"
+    const val HISTORY = "history"
     const val CLINIC = "clinic"
     const val AVAILABILITY = "availability"
     const val ANNOUNCEMENTS = "announcements"
@@ -72,12 +73,42 @@ private object Routes {
             LoginScreen(authState, authViewModel::selectRole, authViewModel::updatePhone, authViewModel::updatePin, authViewModel::login)
         }
         composable(Routes.HOME) {
-            DashboardScreen(state, permissions, darkTheme, onToggleTheme, ::queue, ::appointments, { protectedDoctorRoute(Routes.CLINIC) }, { protectedDoctorRoute(Routes.AVAILABILITY) }, { protectedDoctorRoute(Routes.ANNOUNCEMENTS) }, { protectedDoctorRoute(Routes.ASSISTANTS) }, ::profile, {
-                authViewModel.logout(); doctorViewModel.logout(authRepository.removedAssistantIds()); nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
-            })
+            DashboardScreen(
+                state,
+                permissions,
+                darkTheme,
+                onToggleTheme,
+                ::queue,
+                ::appointments,
+                { protectedDoctorRoute(Routes.HISTORY) },
+                { protectedDoctorRoute(Routes.CLINIC) },
+                { protectedDoctorRoute(Routes.AVAILABILITY) },
+                { protectedDoctorRoute(Routes.ANNOUNCEMENTS) },
+                { protectedDoctorRoute(Routes.ASSISTANTS) },
+                ::profile,
+                {
+                    authViewModel.logout()
+                    doctorViewModel.logout(authRepository.removedAssistantIds())
+                    nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
+                }
+            )
         }
-        composable(Routes.QUEUE) { QueueScreen(state, permissions, nav::popBackStack, ::home, ::appointments, ::profile, doctorViewModel::toggleQueue, doctorViewModel::callNext, doctorViewModel::updateAppointment) }
+        composable(Routes.QUEUE) {
+            QueueScreen(
+                state,
+                permissions,
+                nav::popBackStack,
+                ::home,
+                ::appointments,
+                ::profile,
+                doctorViewModel::toggleQueue,
+                doctorViewModel::callNext,
+                doctorViewModel::updateAppointment,
+                doctorViewModel::closeDay
+            )
+        }
         composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::queue, ::profile) }
+        composable(Routes.HISTORY) { QueueHistoryScreen(state, nav::popBackStack) }
         composable(Routes.CLINIC) { ClinicScreen(state, nav::popBackStack) }
         composable(Routes.AVAILABILITY) { AvailabilityScreen(state, nav::popBackStack, doctorViewModel::toggleAppointments) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen(state, nav::popBackStack, doctorViewModel::toggleAnnouncement) }

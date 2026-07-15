@@ -1,6 +1,7 @@
 package com.dolo.doctor.data
 
 import com.dolo.doctor.data.model.*
+import java.time.LocalDate
 
 object DummyData {
     val profile = DoctorProfile(
@@ -42,13 +43,14 @@ object DummyData {
         AvailabilityBlock("b1", "clinic-1", "22 Jul 2026", "22 Jul 2026", "Evening", "Medical conference", false)
     )
 
-    fun initialState() = DoctorUiState(
+    fun initialState(queueDate: String = LocalDate.now().toString()) = DoctorUiState(
         profile = profile,
         clinics = clinics,
         appointments = appointments,
         assistants = assistants,
         announcements = announcements,
         availabilityBlocks = availabilityBlocks,
+        queueDate = queueDate,
         queueState = QueueState.ACTIVE,
         currentToken = 9
     )

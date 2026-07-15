@@ -52,3 +52,14 @@ The Home logout icon now opens a confirmation dialog. Android Back and task remo
 Version 0.2.4-stage2 (version code 6) clarifies the physical-device report: authentication was retained, but `DoctorViewModel` recreated `DummyData` after process death. A dedicated `SharedPreferencesDoctorStateStore` now restores and saves the current token, queue status, every appointment status, active announcements, appointment-availability toggles and assistant permissions. Every permitted mutation is committed immediately. Logout changes authentication only and does not reset the clinic workflow.
 
 A ViewModel recreation unit test advances the queue, changes an announcement, constructs a new ViewModel with the same store and verifies the operational state is restored.
+## Stage 3 daily queue lifecycle
+
+Version 0.3.0-stage3 (version code 7) assigns every local queue an ISO clinic date. A Doctor can use **Close and archive day** from Live queue after confirming the irreversible daily close. The queue becomes read-only and its current token plus every appointment and final status are stored as a dated DailyQueueHistory snapshot.
+
+When the app restores a queue whose date is earlier than the device date, it archives that queue if necessary and starts a new empty NOT_STARTED queue with token 0. The rollover runs during ViewModel creation, login and queue mutations so it also protects an app left open across midnight. Logout continues to clear authentication only and never deletes clinic workflow history.
+
+SharedPreferencesDoctorStateStore now persists the queue date, full current appointment list and encoded daily history. Missing keys migrate from the Stage 2 status-only format. The Doctor dashboard exposes Queue history; assistants cannot close a day or open Doctor-only history.
+
+Unit coverage now includes manual close, post-close mutation blocking, unauthorized Assistant close, automatic next-date rollover, ViewModel recreation and lossless appointment/history encoding.
+
+Next recommended stage: editable doctor profile, clinic and consultation schedules with validation, persistence and Admin-review flags for sensitive profile fields.

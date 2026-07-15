@@ -5,6 +5,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
+import java.time.LocalTime
 
 class DoctorViewModelTest {
     @Test fun doctorCanCallNext() {
@@ -115,8 +117,106 @@ class DoctorViewModelTest {
         assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.token == 10 }.status)
     }
 
-    private class MemoryDoctorStateStore : DoctorStateStore {
-        private var saved: DoctorUiState? = null
+    @Test fun doctorCanCloseAndArchiveTheCurrentDay() {
+        val model = DoctorViewModel(
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(21, 30) }
+        )
+        model.login(UserRole.DOCTOR)
+        model.callNext()
+
+        assertTrue(model.closeDay())
+        assertEquals(QueueState.CLOSED, model.uiState.queueState)
+        assertEquals(1, model.uiState.queueHistory.size)
+        val history = model.uiState.queueHistory.single()
+        assertEquals("2026-07-15", history.date)
+        assertEquals("09:30 PM", history.closedAt)
+        assertEquals(10, history.finalToken)
+        assertEquals(model.uiState.appointments, history.appointments)
+
+        model.callNext()
+        model.updateAppointment("a3", AppointmentStatus.ABSENT)
+        assertEquals(10, model.uiState.currentToken)
+        assertEquals(AppointmentStatus.ARRIVED, model.uiState.appointments.single { it.id == "a3" }.status)
+    }
+
+    @Test fun assistantCannotCloseTheDay() {
+        val model = DoctorViewModel()
+        model.login(UserRole.ASSISTANT, "staff-1")
+
+        assertFalse(model.closeDay())
+        assertEquals(QueueState.ACTIVE, model.uiState.queueState)
+        assertTrue(model.uiState.queueHistory.isEmpty())
+    }
+
+    @Test fun nextDateArchivesOldQueueAndStartsEmptyDay() {
+        val store = MemoryDoctorStateStore(DummyData.initialState("2026-07-14"))
+        val model = DoctorViewModel(
+            stateStore = store,
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(7, 0) }
+        )
+
+        assertEquals("2026-07-15", model.uiState.queueDate)
+        assertEquals(QueueState.NOT_STARTED, model.uiState.queueState)
+        assertEquals(0, model.uiState.currentToken)
+        assertTrue(model.uiState.appointments.isEmpty())
+        assertEquals("2026-07-14", model.uiState.queueHistory.single().date)
+        assertEquals("Automatic date rollover", model.uiState.queueHistory.single().closureReason)
+
+        val restored = DoctorViewModel(
+            stateStore = store,
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(7, 1) }
+        )
+        assertTrue(restored.uiState.appointments.isEmpty())
+        assertEquals(1, restored.uiState.queueHistory.size)
+    }
+
+    @Test fun doctorCanArchiveAnEmptyDay() {
+        val store = MemoryDoctorStateStore(
+            DummyData.initialState("2026-07-15").copy(
+                appointments = emptyList(),
+                queueState = QueueState.NOT_STARTED,
+                currentToken = 0
+            )
+        )
+        val model = DoctorViewModel(
+            stateStore = store,
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(18, 0) }
+        )
+        model.login(UserRole.DOCTOR)
+
+        assertTrue(model.closeDay())
+        assertEquals(QueueState.CLOSED, model.uiState.queueState)
+        assertTrue(model.uiState.queueHistory.single().appointments.isEmpty())
+        assertEquals(0, model.uiState.queueHistory.single().finalToken)
+    }
+
+    @Test fun archivedHistorySurvivesViewModelRecreation() {
+        val store = MemoryDoctorStateStore()
+        val first = DoctorViewModel(
+            stateStore = store,
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(20, 45) }
+        )
+        first.login(UserRole.DOCTOR)
+        first.closeDay()
+
+        val restored = DoctorViewModel(
+            stateStore = store,
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(20, 46) }
+        )
+
+        assertEquals(QueueState.CLOSED, restored.uiState.queueState)
+        assertEquals(1, restored.uiState.queueHistory.size)
+        assertEquals(first.uiState.appointments, restored.uiState.queueHistory.single().appointments)
+    }
+
+    private class MemoryDoctorStateStore(initial: DoctorUiState? = null) : DoctorStateStore {
+        private var saved: DoctorUiState? = initial
         override fun restore(defaultState: DoctorUiState): DoctorUiState = saved ?: defaultState
         override fun save(state: DoctorUiState): Boolean {
             saved = state

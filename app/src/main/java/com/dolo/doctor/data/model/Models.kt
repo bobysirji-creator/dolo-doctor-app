@@ -48,6 +48,15 @@ data class Appointment(
     val bookedAt: String
 )
 
+data class DailyQueueHistory(
+    val date: String,
+    val clinicName: String,
+    val closedAt: String,
+    val closureReason: String,
+    val finalToken: Int,
+    val appointments: List<Appointment>
+)
+
 data class Assistant(
     val id: String,
     val name: String,
@@ -85,6 +94,8 @@ data class DoctorUiState(
     val assistants: List<Assistant>,
     val announcements: List<Announcement>,
     val availabilityBlocks: List<AvailabilityBlock>,
+    val queueDate: String,
+    val queueHistory: List<DailyQueueHistory> = emptyList(),
     val queueState: QueueState = QueueState.NOT_STARTED,
     val currentToken: Int = 0
 )

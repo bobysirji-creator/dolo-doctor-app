@@ -86,6 +86,7 @@ import com.dolo.doctor.ui.components.*
     onToggleTheme: () -> Unit,
     onQueue: () -> Unit,
     onAppointments: () -> Unit,
+    onHistory: () -> Unit,
     onClinic: () -> Unit,
     onAvailability: () -> Unit,
     onAnnouncements: () -> Unit,
@@ -108,9 +109,9 @@ import com.dolo.doctor.ui.components.*
                 }
             }
             item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("Current token", state.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Waiting", state.appointments.count { it.status in listOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
-            item { ElevatedSection("Today's queue", state.clinics.first().name) { Row(verticalAlignment = Alignment.CenterVertically) { StatusPill(state.queueState.name.replace("_", " "), state.queueState == QueueState.ACTIVE); Spacer(Modifier.weight(1f)); Text("Avg. ${state.clinics.first().averageConsultationMinutes} min", color = MaterialTheme.colorScheme.onSurfaceVariant) }; PrimaryAction("Open live queue", onQueue, enabled = canViewQueue, icon = Icons.Outlined.FormatListNumbered) } }
+            item { ElevatedSection("Today's queue", state.clinics.first().name + " • " + state.queueDate) { Row(verticalAlignment = Alignment.CenterVertically) { StatusPill(state.queueState.name.replace("_", " "), state.queueState == QueueState.ACTIVE); Spacer(Modifier.weight(1f)); Text("Avg. ${state.clinics.first().averageConsultationMinutes} min", color = MaterialTheme.colorScheme.onSurfaceVariant) }; PrimaryAction("Open live queue", onQueue, enabled = canViewQueue, icon = Icons.Outlined.FormatListNumbered) } }
             item { Text("Clinic tools", style = MaterialTheme.typography.titleLarge) }
-            item { ToolRow(onAppointments, onClinic, canViewAppointments, doctorMode) }
+            item { ToolRow(onAppointments, if (doctorMode) onHistory else onClinic, canViewAppointments, doctorMode, secondLabel = if (doctorMode) "Queue history" else "Clinic", secondIcon = if (doctorMode) Icons.Outlined.History else Icons.Outlined.Business) }
             if (doctorMode) {
                 item { ToolRow(onAvailability, onAnnouncements, true, true, "Availability", "Updates", Icons.Outlined.EventBusy, Icons.Outlined.Campaign) }
                 item { ToolRow(onAssistants, onProfile, true, true, "Assistants", "Profile", Icons.Outlined.Groups, Icons.Outlined.Person) }
@@ -146,23 +147,60 @@ import com.dolo.doctor.ui.components.*
     }
 }
 
-@Composable fun QueueScreen(state: DoctorUiState, permissions: Set<Permission>, onBack: () -> Unit, onHome: () -> Unit, onAppointments: () -> Unit, onProfile: () -> Unit, onToggleQueue: () -> Unit, onCallNext: () -> Unit, onUpdate: (String, AppointmentStatus) -> Unit) {
+@Composable fun QueueScreen(state: DoctorUiState, permissions: Set<Permission>, onBack: () -> Unit, onHome: () -> Unit, onAppointments: () -> Unit, onProfile: () -> Unit, onToggleQueue: () -> Unit, onCallNext: () -> Unit, onUpdate: (String, AppointmentStatus) -> Unit, onCloseDay: () -> Boolean) {
     val doctorMode = state.role == UserRole.DOCTOR
     val canView = doctorMode || Permission.VIEW_QUEUE in permissions
     val canUpdate = doctorMode || Permission.UPDATE_QUEUE in permissions
     val canCallNext = doctorMode || Permission.CALL_NEXT_PATIENT in permissions
     val canMarkArrived = doctorMode || Permission.MARK_PATIENT_ARRIVED in permissions
     val canMarkAbsent = doctorMode || Permission.MARK_PATIENT_ABSENT in permissions
+    var confirmCloseDay by remember { mutableStateOf(false) }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.QUEUE, onHome, {}, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Live queue", onBack) }
             if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_QUEUE permission.", color = MaterialTheme.colorScheme.error) } }
             else {
                 item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("In consultation", state.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Remaining", state.appointments.count { it.token > state.currentToken && it.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.COMPLETED) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
-                item { ElevatedSection("Queue controls", "Status: ${state.queueState.name.lowercase().replaceFirstChar(Char::uppercase)}") { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Button(onToggleQueue, Modifier.weight(1f), enabled = canUpdate, elevation = ButtonDefaults.buttonElevation(7.dp)) { Text(if (state.queueState == QueueState.ACTIVE) "Pause" else "Resume") }; Button(onCallNext, Modifier.weight(1f), enabled = state.queueState == QueueState.ACTIVE && canCallNext, elevation = ButtonDefaults.buttonElevation(7.dp)) { Text("Call next") } }; if (!canUpdate || !canCallNext) Text("Some controls are disabled by assistant permissions.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) } }
-                items(state.appointments.sortedBy { it.token }, key = { it.id }) { appointment -> QueueAppointmentCard(appointment, canMarkArrived, canMarkAbsent, canUpdate, onUpdate) }
+                item {
+                    ElevatedSection("Queue controls", "Status: ${state.queueState.name.lowercase().replaceFirstChar(Char::uppercase)}") {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Button(onToggleQueue, Modifier.weight(1f), enabled = canUpdate && state.queueState != QueueState.CLOSED, elevation = ButtonDefaults.buttonElevation(7.dp)) {
+                                Text(when (state.queueState) { QueueState.ACTIVE -> "Pause"; QueueState.NOT_STARTED -> "Start queue"; QueueState.PAUSED -> "Resume"; QueueState.CLOSED -> "Day closed" })
+                            }
+                            Button(onCallNext, Modifier.weight(1f), enabled = state.queueState == QueueState.ACTIVE && canCallNext, elevation = ButtonDefaults.buttonElevation(7.dp)) {
+                                Text("Call next")
+                            }
+                        }
+                        if (doctorMode) {
+                            OutlinedButton(
+                                onClick = { confirmCloseDay = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = state.queueState != QueueState.CLOSED
+                            ) {
+                                Icon(Icons.Outlined.EventAvailable, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(if (state.queueState == QueueState.CLOSED) "Day closed" else "Close and archive day")
+                            }
+                        }
+                        if (!canUpdate || !canCallNext) Text("Some controls are disabled by assistant permissions.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    }
+                }
+                if (state.appointments.isEmpty()) {
+                    item { ElevatedSection("No appointments for " + state.queueDate) { Text("The new daily queue is ready for appointments from the shared backend.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+                }
+                items(state.appointments.sortedBy { it.token }, key = { it.id }) { appointment -> QueueAppointmentCard(appointment, canMarkArrived && state.queueState != QueueState.CLOSED, canMarkAbsent && state.queueState != QueueState.CLOSED, canUpdate && state.queueState != QueueState.CLOSED, onUpdate) }
             }
         }
+    }
+    if (confirmCloseDay) {
+        AlertDialog(
+            onDismissRequest = { confirmCloseDay = false },
+            icon = { Icon(Icons.Outlined.EventAvailable, null) },
+            title = { Text("Close today's queue?") },
+            text = { Text("The complete token and appointment status will be saved under " + state.queueDate + ". Queue controls will remain locked until the date changes.") },
+            confirmButton = { TextButton(onClick = { if (onCloseDay()) confirmCloseDay = false }) { Text("Close and archive") } },
+            dismissButton = { TextButton(onClick = { confirmCloseDay = false }) { Text("Keep queue open") } }
+        )
     }
 }
 
@@ -182,6 +220,40 @@ import com.dolo.doctor.ui.components.*
             else {
                 item { ElevatedSection("Morning session") { Text("${state.appointments.size} booked patients • maximum ${state.clinics.first().maxTokensPerSession} tokens", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                 items(state.appointments.sortedBy { it.token }, key = { it.id }) { appointment -> ElevatedSection("Token ${appointment.token} • ${appointment.patientName}", "${appointment.patientType} • ${appointment.bookedAt}") { Row { StatusPill(appointment.status.name.replace("_", " "), appointment.status != AppointmentStatus.ABSENT); Spacer(Modifier.weight(1f)); Text(appointment.session, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
+            }
+        }
+    }
+}
+@Composable fun QueueHistoryScreen(state: DoctorUiState, onBack: () -> Unit) {
+    LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+        item { PageHeader("Queue history", onBack) }
+        item {
+            ElevatedSection("Daily archive", "Closed queues remain grouped by clinic date and preserve every patient's final status.") {
+                Text(state.queueHistory.size.toString() + " archived day(s)", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (state.queueHistory.isEmpty()) {
+            item { ElevatedSection("No archived queues") { Text("Use Close and archive day from Live queue, or let the app roll over automatically on the next date.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+        }
+        items(state.queueHistory.sortedByDescending { it.date }, key = { it.date }) { history ->
+            ElevatedSection(history.date, history.clinicName + " • " + history.closureReason + " at " + history.closedAt) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MetricTile("Final token", history.finalToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error)
+                    MetricTile("Appointments", history.appointments.size.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary)
+                }
+                val completed = history.appointments.count { it.status == AppointmentStatus.COMPLETED }
+                val absent = history.appointments.count { it.status == AppointmentStatus.ABSENT }
+                Text(completed.toString() + " completed • " + absent.toString() + " absent", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                history.appointments.sortedBy { it.token }.forEach { appointment ->
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Token " + appointment.token + " • " + appointment.patientName, fontWeight = FontWeight.Bold)
+                            Text(appointment.patientType + " • " + appointment.session, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        }
+                        StatusPill(appointment.status.name.replace("_", " "), appointment.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.SKIPPED))
+                    }
+                }
             }
         }
     }
