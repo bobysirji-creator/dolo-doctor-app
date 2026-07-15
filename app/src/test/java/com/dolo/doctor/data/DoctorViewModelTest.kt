@@ -743,9 +743,9 @@ class DoctorViewModelTest {
         )
         first.login(UserRole.DOCTOR)
         first.saveAvailabilityBlock(
-            AvailabilityBlock("", "clinic-1", "2026-07-15", "2026-07-16", "Both", "Medical conference", false)
+            AvailabilityBlock("", "clinic-1", "2026-07-15", "2026-07-16", "Both", "Regional training workshop", false)
         )
-        val block = first.uiState.availabilityBlocks.single { it.reason == "Medical conference" }
+        val block = first.uiState.availabilityBlocks.single { it.reason == "Regional training workshop" }
         assertTrue(first.updateAffectedPatientStatus("a2", AvailabilityImpactStatus.PATIENT_NOTIFIED))
 
         val restored = DoctorViewModel(
