@@ -32,6 +32,47 @@ class DoctorViewModel(
         stateStore.save(state)
     }
 
+    private fun actorName(): String = when (uiState.role) {
+        UserRole.DOCTOR -> uiState.profile.name
+        UserRole.ASSISTANT -> uiState.assistants.firstOrNull { it.id == uiState.activeAssistantId }?.name ?: "Assistant"
+        null -> "System"
+    }
+
+    private fun withAudit(
+        state: DoctorUiState,
+        action: AuditAction,
+        detail: String,
+        appointment: Appointment? = null,
+        fromStatus: AppointmentStatus? = null,
+        toStatus: AppointmentStatus? = null,
+        actorOverride: String? = null
+    ): DoctorUiState {
+        val sequence = (state.auditEvents.maxOfOrNull { it.sequence } ?: 0) + 1
+        val event = QueueAuditEvent(
+            id = currentDate().toString() + "-" + sequence,
+            sequence = sequence,
+            date = currentDate().toString(),
+            time = currentTime().format(timeFormatter),
+            actor = actorOverride ?: actorName(),
+            action = action,
+            token = appointment?.token,
+            patientName = appointment?.patientName,
+            fromStatus = fromStatus,
+            toStatus = toStatus,
+            detail = detail
+        )
+        return state.copy(auditEvents = (state.auditEvents + event).takeLast(500))
+    }
+
+    private fun canTransition(from: AppointmentStatus, to: AppointmentStatus): Boolean = when (from) {
+        AppointmentStatus.BOOKED -> to in setOf(AppointmentStatus.ARRIVED, AppointmentStatus.ABSENT)
+        AppointmentStatus.ARRIVED -> to in setOf(AppointmentStatus.WAITING, AppointmentStatus.IN_CONSULTATION, AppointmentStatus.ABSENT)
+        AppointmentStatus.WAITING -> to in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.ABSENT, AppointmentStatus.SKIPPED)
+        AppointmentStatus.IN_CONSULTATION -> to in setOf(AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED)
+        AppointmentStatus.SKIPPED -> to in setOf(AppointmentStatus.WAITING, AppointmentStatus.IN_CONSULTATION, AppointmentStatus.ABSENT)
+        AppointmentStatus.COMPLETED, AppointmentStatus.ABSENT -> false
+    }
+
     private fun archivedHistory(state: DoctorUiState, closureReason: String, includeEmpty: Boolean = false): List<DailyQueueHistory> {
         if (!includeEmpty && state.appointments.isEmpty() && state.currentToken == 0) return state.queueHistory
         if (state.queueState == QueueState.CLOSED && state.queueHistory.any { it.date == state.queueDate }) {
@@ -52,17 +93,16 @@ class DoctorViewModel(
     private fun rollOverIfNeeded() {
         val today = currentDate().toString()
         if (uiState.queueDate >= today) return
-        persist(
-            uiState.copy(
-                queueDate = today,
-                queueHistory = archivedHistory(uiState, "Automatic date rollover"),
-                appointments = emptyList(),
-                queueState = QueueState.NOT_STARTED,
-                currentToken = 0
-            )
+        val previousDate = uiState.queueDate
+        val rolled = uiState.copy(
+            queueDate = today,
+            queueHistory = archivedHistory(uiState, "Automatic date rollover"),
+            appointments = emptyList(),
+            queueState = QueueState.NOT_STARTED,
+            currentToken = 0
         )
+        persist(withAudit(rolled, AuditAction.DAY_ROLLED_OVER, "Started a new queue day after " + previousDate, actorOverride = "System"))
     }
-
     fun login(role: UserRole, assistantId: String? = null, removedAssistantIds: Set<String> = emptySet()) {
         rollOverIfNeeded()
         uiState = currentStateWithout(removedAssistantIds).copy(
@@ -90,14 +130,20 @@ class DoctorViewModel(
     fun toggleQueue() {
         rollOverIfNeeded()
         if (!hasPermission(Permission.UPDATE_QUEUE)) return
-        val next = when (uiState.queueState) {
+        val previous = uiState.queueState
+        val next = when (previous) {
             QueueState.ACTIVE -> QueueState.PAUSED
             QueueState.PAUSED, QueueState.NOT_STARTED -> QueueState.ACTIVE
             QueueState.CLOSED -> QueueState.CLOSED
         }
-        persist(uiState.copy(queueState = next))
+        if (next == previous) return
+        val action = when {
+            previous == QueueState.NOT_STARTED -> AuditAction.QUEUE_STARTED
+            next == QueueState.PAUSED -> AuditAction.QUEUE_PAUSED
+            else -> AuditAction.QUEUE_RESUMED
+        }
+        persist(withAudit(uiState.copy(queueState = next), action, "Queue changed from " + previous.name + " to " + next.name))
     }
-
     fun callNext() {
         rollOverIfNeeded()
         if (uiState.queueState != QueueState.ACTIVE || !hasPermission(Permission.CALL_NEXT_PATIENT)) return
@@ -110,23 +156,29 @@ class DoctorViewModel(
 
         if (next == null) {
             if (current != null) {
-                persist(uiState.copy(appointments = uiState.appointments.map {
+                val updatedAppointments = uiState.appointments.map {
                     if (it.id == current.id) it.copy(status = AppointmentStatus.COMPLETED) else it
-                }))
+                }
+                val updated = uiState.copy(appointments = updatedAppointments)
+                persist(withAudit(updated, AuditAction.CONSULTATION_COMPLETED, "Completed the final consultation", current, AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED))
             }
             return
         }
 
-        val updated = uiState.appointments.map { appointment ->
+        val updatedAppointments = uiState.appointments.map { appointment ->
             when {
                 appointment.id == current?.id -> appointment.copy(status = AppointmentStatus.COMPLETED)
                 appointment.id == next.id -> appointment.copy(status = AppointmentStatus.IN_CONSULTATION)
                 else -> appointment
             }
         }
-        persist(uiState.copy(appointments = updated, currentToken = next.token))
+        var updated = uiState.copy(appointments = updatedAppointments, currentToken = next.token)
+        if (current != null) {
+            updated = withAudit(updated, AuditAction.CONSULTATION_COMPLETED, "Completed consultation before calling the next token", current, AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED)
+        }
+        updated = withAudit(updated, AuditAction.PATIENT_CALLED, "Called token " + next.token, next, next.status, AppointmentStatus.IN_CONSULTATION)
+        persist(updated)
     }
-
     fun updateAppointment(id: String, status: AppointmentStatus) {
         rollOverIfNeeded()
         if (uiState.queueState == QueueState.CLOSED) return
@@ -137,21 +189,24 @@ class DoctorViewModel(
             else -> Permission.UPDATE_QUEUE
         }
         if (!hasPermission(required)) return
-        persist(uiState.copy(appointments = uiState.appointments.map { if (it.id == id) it.copy(status = status) else it }))
-    }
+        val appointment = uiState.appointments.firstOrNull { it.id == id } ?: return
+        if (!canTransition(appointment.status, status)) return
 
+        val changed = appointment.copy(status = status)
+        val updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == id) changed else it })
+        val action = if (status == AppointmentStatus.COMPLETED) AuditAction.CONSULTATION_COMPLETED else AuditAction.STATUS_CHANGED
+        persist(withAudit(updated, action, "Changed token " + appointment.token + " from " + appointment.status.name + " to " + status.name, appointment, appointment.status, status))
+    }
     fun closeDay(): Boolean {
         rollOverIfNeeded()
         if (uiState.role != UserRole.DOCTOR || uiState.queueState == QueueState.CLOSED) return false
-        persist(
-            uiState.copy(
-                queueState = QueueState.CLOSED,
-                queueHistory = archivedHistory(uiState, "Closed manually by doctor", includeEmpty = true)
-            )
+        val closed = uiState.copy(
+            queueState = QueueState.CLOSED,
+            queueHistory = archivedHistory(uiState, "Closed manually by doctor", includeEmpty = true)
         )
+        persist(withAudit(closed, AuditAction.DAY_CLOSED, "Closed and archived queue day " + uiState.queueDate))
         return true
     }
-
     fun updateProfile(updated: DoctorProfile): String? {
         if (uiState.role != UserRole.DOCTOR) return "Only the doctor can update the profile."
         val cleaned = updated.copy(

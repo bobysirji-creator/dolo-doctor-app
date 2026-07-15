@@ -133,6 +133,7 @@ class DoctorViewModelTest {
         assertEquals("09:30 PM", history.closedAt)
         assertEquals(10, history.finalToken)
         assertEquals(model.uiState.appointments, history.appointments)
+        assertEquals(AuditAction.DAY_CLOSED, model.uiState.auditEvents.last().action)
 
         model.callNext()
         model.updateAppointment("a3", AppointmentStatus.ABSENT)
@@ -163,6 +164,8 @@ class DoctorViewModelTest {
         assertTrue(model.uiState.appointments.isEmpty())
         assertEquals("2026-07-14", model.uiState.queueHistory.single().date)
         assertEquals("Automatic date rollover", model.uiState.queueHistory.single().closureReason)
+        assertEquals(AuditAction.DAY_ROLLED_OVER, model.uiState.auditEvents.single().action)
+        assertEquals("System", model.uiState.auditEvents.single().actor)
 
         val restored = DoctorViewModel(
             stateStore = store,
@@ -232,6 +235,7 @@ class DoctorViewModelTest {
 
         model.callNext()
         assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.token == 14 }.status)
+        assertEquals(AuditAction.CONSULTATION_COMPLETED, model.uiState.auditEvents.last().action)
 
         assertTrue(model.closeDay())
         assertEquals(AppointmentStatus.COMPLETED, model.uiState.queueHistory.single().appointments.single { it.token == 14 }.status)
@@ -294,6 +298,76 @@ class DoctorViewModelTest {
         model.login(UserRole.ASSISTANT, "staff-1")
         assertTrue(model.updateClinic(original.copy(name = "Assistant Edit Clinic")) != null)
         assertEquals(original, model.uiState.clinics.first())
+    }
+    @Test fun invalidAppointmentTransitionIsRejectedWithoutAudit() {
+        val model = DoctorViewModel()
+        model.login(UserRole.DOCTOR)
+
+        model.updateAppointment("a4", AppointmentStatus.COMPLETED)
+
+        assertEquals(AppointmentStatus.BOOKED, model.uiState.appointments.single { it.id == "a4" }.status)
+        assertTrue(model.uiState.auditEvents.isEmpty())
+    }
+
+    @Test fun validStatusTransitionCreatesAttributedAuditEvent() {
+        val model = DoctorViewModel(
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(9, 5) }
+        )
+        model.login(UserRole.DOCTOR)
+
+        model.updateAppointment("a4", AppointmentStatus.ARRIVED)
+
+        val event = model.uiState.auditEvents.single()
+        assertEquals(AuditAction.STATUS_CHANGED, event.action)
+        assertEquals("Dr. Aisha Mehta", event.actor)
+        assertEquals(12, event.token)
+        assertEquals("Aman Gupta", event.patientName)
+        assertEquals(AppointmentStatus.BOOKED, event.fromStatus)
+        assertEquals(AppointmentStatus.ARRIVED, event.toStatus)
+        assertEquals("09:05 AM", event.time)
+    }
+
+    @Test fun assistantQueueActionUsesAssistantIdentity() {
+        val model = DoctorViewModel()
+        model.login(UserRole.ASSISTANT, "staff-1")
+
+        model.callNext()
+
+        val event = model.uiState.auditEvents.last()
+        assertEquals(AuditAction.PATIENT_CALLED, event.action)
+        assertEquals("Neha Kapoor", event.actor)
+        assertEquals(10, event.token)
+    }
+
+    @Test fun queueLifecycleAndAuditSurviveViewModelRecreation() {
+        val store = MemoryDoctorStateStore()
+        val first = DoctorViewModel(store)
+        first.login(UserRole.DOCTOR)
+        first.toggleQueue()
+        first.toggleQueue()
+        first.updateAppointment("a4", AppointmentStatus.ARRIVED)
+
+        val restored = DoctorViewModel(store)
+
+        assertEquals(
+            listOf(AuditAction.QUEUE_PAUSED, AuditAction.QUEUE_RESUMED, AuditAction.STATUS_CHANGED),
+            restored.uiState.auditEvents.map { it.action }
+        )
+        assertEquals(AppointmentStatus.ARRIVED, restored.uiState.appointments.single { it.id == "a4" }.status)
+    }
+
+    @Test fun completedAppointmentIsTerminal() {
+        val completed = DummyData.initialState().copy(
+            appointments = DummyData.appointments.map { if (it.id == "a4") it.copy(status = AppointmentStatus.COMPLETED) else it }
+        )
+        val model = DoctorViewModel(MemoryDoctorStateStore(completed))
+        model.login(UserRole.DOCTOR)
+
+        model.updateAppointment("a4", AppointmentStatus.WAITING)
+
+        assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.id == "a4" }.status)
+        assertTrue(model.uiState.auditEvents.isEmpty())
     }
     private class MemoryDoctorStateStore(initial: DoctorUiState? = null) : DoctorStateStore {
         private var saved: DoctorUiState? = initial

@@ -23,6 +23,7 @@ private object Routes {
     const val QUEUE = "queue"
     const val APPOINTMENTS = "appointments"
     const val HISTORY = "history"
+    const val ACTIVITY = "activity"
     const val CLINIC = "clinic"
     const val AVAILABILITY = "availability"
     const val ANNOUNCEMENTS = "announcements"
@@ -82,6 +83,7 @@ private object Routes {
                 ::appointments,
                 { protectedDoctorRoute(Routes.HISTORY) },
                 { protectedDoctorRoute(Routes.CLINIC) },
+                { protectedDoctorRoute(Routes.ACTIVITY) },
                 { protectedDoctorRoute(Routes.AVAILABILITY) },
                 { protectedDoctorRoute(Routes.ANNOUNCEMENTS) },
                 { protectedDoctorRoute(Routes.ASSISTANTS) },
@@ -109,6 +111,7 @@ private object Routes {
         }
         composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::queue, ::profile) }
         composable(Routes.HISTORY) { QueueHistoryScreen(state, nav::popBackStack) }
+        composable(Routes.ACTIVITY) { QueueActivityScreen(state, nav::popBackStack) }
         composable(Routes.CLINIC) { ClinicScreen(state, nav::popBackStack, doctorViewModel::updateClinic) }
         composable(Routes.AVAILABILITY) { AvailabilityScreen(state, nav::popBackStack, doctorViewModel::toggleAppointments) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen(state, nav::popBackStack, doctorViewModel::toggleAnnouncement) }

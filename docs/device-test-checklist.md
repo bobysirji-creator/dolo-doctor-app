@@ -45,3 +45,14 @@ Run on both Vivo and Samsung devices.
 6. Open Clinic, edit contact details, morning and evening sessions, token capacity and average consultation minutes, then save.
 7. Close the app, remove it from Recents and relaunch. Confirm profile and clinic or schedule changes remain.
 8. Login as an Assistant and confirm Profile and Clinic editing routes remain unavailable.
+## Stage 5 appointment transitions and activity log
+
+1. Login as Doctor, open **Activity log**, and note its current event count.
+2. Return to Live queue. Pause and resume the queue, then confirm both actions appear at the top of Activity log with the Doctor name, date and time.
+3. Mark a BOOKED patient Arrived, then Waiting. Confirm both legal changes persist and their before/after statuses appear in Activity log.
+4. Confirm a WAITING patient does not show another Waiting action and a COMPLETED or ABSENT patient has no reopening controls.
+5. For the IN_CONSULTATION patient, press **Complete consultation** and confirm status becomes COMPLETED with a consultation-completed audit event.
+6. Login as the queue-enabled Assistant, call the next eligible patient, and confirm Activity log later attributes that call to **Neha Kapoor** rather than the Doctor.
+7. Login as the view-only Assistant and confirm queue mutation controls remain disabled; the event count must not change from attempted navigation.
+8. Close the app, remove it from Recents and relaunch. Confirm appointment statuses and Activity log entries remain intact.
+9. As Doctor, close and archive the day. Confirm the final Activity log entry records the day close and Queue history preserves every final status.

@@ -5,6 +5,7 @@ enum class QueueState { NOT_STARTED, ACTIVE, PAUSED, CLOSED }
 enum class AppointmentStatus { BOOKED, ARRIVED, WAITING, IN_CONSULTATION, COMPLETED, ABSENT, SKIPPED }
 enum class AnnouncementType { AVAILABILITY, CAMP, OFFER, GENERAL }
 enum class ProfileReviewStatus { VERIFIED, PENDING_REVIEW }
+enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, CONSULTATION_COMPLETED, DAY_CLOSED, DAY_ROLLED_OVER }
 enum class Permission {
     VIEW_QUEUE,
     UPDATE_QUEUE,
@@ -59,6 +60,20 @@ data class DailyQueueHistory(
     val appointments: List<Appointment>
 )
 
+
+data class QueueAuditEvent(
+    val id: String,
+    val sequence: Int,
+    val date: String,
+    val time: String,
+    val actor: String,
+    val action: AuditAction,
+    val token: Int? = null,
+    val patientName: String? = null,
+    val fromStatus: AppointmentStatus? = null,
+    val toStatus: AppointmentStatus? = null,
+    val detail: String
+)
 data class Assistant(
     val id: String,
     val name: String,
@@ -98,6 +113,7 @@ data class DoctorUiState(
     val availabilityBlocks: List<AvailabilityBlock>,
     val queueDate: String,
     val queueHistory: List<DailyQueueHistory> = emptyList(),
+    val auditEvents: List<QueueAuditEvent> = emptyList(),
     val queueState: QueueState = QueueState.NOT_STARTED,
     val currentToken: Int = 0
 )

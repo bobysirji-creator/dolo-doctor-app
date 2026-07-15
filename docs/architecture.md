@@ -1,6 +1,6 @@
 # Architecture
 
-## Current Stage 1
+## Current prototype
 
 - Kotlin and Jetpack Compose single-module Android app
 - Material 3 mobile-first UI
@@ -40,3 +40,11 @@ Every assistant action must be authorized on the server, not only hidden in Comp
 - Sensitive profile edits set a pending Admin-review marker; the shared backend will eventually store proposed and approved values separately.
 - QueueStateCodec serializes the complete profile and clinic records for local process-safe persistence.
 - Session schedules remain display strings in the local prototype. The backend stage will replace them with timezone-aware structured session records.
+## Stage 5 appointment workflow and audit trail
+
+- Appointment status changes are checked against explicit forward transition rules in DoctorViewModel; terminal COMPLETED and ABSENT records cannot be reopened locally.
+- Call next remains a dedicated queue operation: it completes the current consultation, advances the next eligible token and records both operations.
+- Every successful queue start, pause, resume, call-next, status update, consultation completion, day close and date rollover creates a QueueAuditEvent.
+- Audit records include a monotonic local sequence, clinic date/time, Doctor or Assistant actor, token/patient context and before/after status when applicable.
+- QueueStateCodec persists the newest 500 events in the local prototype. Invalid, unauthorized and no-op actions create no audit event.
+- This local audit trail is for workflow testing. The shared backend must eventually assign authoritative IDs/timestamps and retain an immutable server-side log.

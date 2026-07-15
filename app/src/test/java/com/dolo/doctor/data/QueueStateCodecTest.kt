@@ -3,6 +3,8 @@ package com.dolo.doctor.data
 import com.dolo.doctor.data.model.Appointment
 import com.dolo.doctor.data.model.AppointmentStatus
 import com.dolo.doctor.data.model.DailyQueueHistory
+import com.dolo.doctor.data.model.AuditAction
+import com.dolo.doctor.data.model.QueueAuditEvent
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -51,6 +53,23 @@ class QueueStateCodecTest {
         assertEquals(clinic, QueueStateCodec.decodeClinic(QueueStateCodec.encodeClinic(clinic)))
     }
 
+    @Test fun auditEventRoundTripKeepsActorAndTransitionContext() {
+        val event = QueueAuditEvent(
+            id = "2026-07-15-42",
+            sequence = 42,
+            date = "2026-07-15",
+            time = "09:05 AM",
+            actor = "Neha Kapoor",
+            action = AuditAction.STATUS_CHANGED,
+            token = 12,
+            patientName = "Aman Gupta",
+            fromStatus = AppointmentStatus.BOOKED,
+            toStatus = AppointmentStatus.ARRIVED,
+            detail = "Changed queue status"
+        )
+
+        assertEquals(event, QueueStateCodec.decodeAuditEvent(QueueStateCodec.encodeAuditEvent(event)))
+    }
     @Test fun malformedValuesAreIgnored() {
         assertEquals(null, QueueStateCodec.decodeAppointment("invalid"))
         assertEquals(null, QueueStateCodec.decodeHistory("invalid"))

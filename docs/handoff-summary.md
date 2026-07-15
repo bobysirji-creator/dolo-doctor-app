@@ -74,3 +74,12 @@ ViewModel validation rejects unauthorized Assistant calls, missing or short iden
 The queue correction in this release changes Call next behavior when no later token exists: the current final IN_CONSULTATION appointment becomes COMPLETED, the button changes to **Complete consultation**, and a subsequent daily archive preserves that final status.
 
 Next recommended stage: expanded appointment workflow and queue audit events, including explicit action history and status-transition rules.
+## Stage 5 appointment workflow and audit trail
+
+Version 0.5.0-stage5 (version code 9) adds explicit appointment status-transition validation. Invalid, terminal, unauthorized and no-op status changes are rejected without changing state or producing misleading audit records. Queue cards expose the legal local actions for booked, arrived, waiting, skipped and in-consultation patients, including a permission-aware Complete consultation control.
+
+Every successful queue start, pause, resume, patient call, status change, consultation completion, manual day close and automatic date rollover now creates a persisted QueueAuditEvent. Each event records sequence, date/time, Doctor or Assistant actor, action, token/patient context, before/after status and a readable detail. The Doctor dashboard now exposes Clinic and Activity log as separate tools; the activity screen lists newest events first. Local history is capped at the latest 500 events pending the authoritative backend audit service.
+
+Unit tests cover valid and invalid transitions, terminal-state protection, Doctor/Assistant attribution, queue lifecycle persistence and lossless audit-event encoding. GitHub Actions remains the build, lint and unit-test gate because the low-resource development PC does not host the Android toolchain.
+
+Next recommended stage: Stage 6 appointment availability blocks and the affected-patient workflow.

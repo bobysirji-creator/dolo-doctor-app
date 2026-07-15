@@ -2,7 +2,7 @@
 
 DO-LO Doctor is the dedicated lightweight Android app for doctors and permission-limited assistants in the DO-LO walk-in appointment ecosystem.
 
-Current prototype: **0.4.0-stage4** (version code 8).
+Current prototype: **0.5.0-stage5** (version code 9).
 
 ## Current prototype includes
 
@@ -10,7 +10,8 @@ Current prototype: **0.4.0-stage4** (version code 8).
 - Patient App-aligned light theme, saved low-glare dark theme, doctor dashboard and role-aware navigation;
 - persisted current token, queue date, queue state, appointment statuses and interactive queue controls;
 - Doctor-only close-day confirmation, automatic next-date rollover and persisted daily queue history;
-- pause/resume queue, call-next and patient-status demo controls, including completion of the final active consultation;
+- pause/resume queue, call-next and permission-aware patient-status controls, including completion of the final active consultation;
+- explicit appointment status-transition rules and a persistent Doctor activity log with actor, time, token/patient and before/after status context;
 - editable, validated and persisted Doctor profile with Admin-review status for sensitive changes;
 - editable, validated and persisted clinic contact details, session schedules, token limits and average consultation time;
 - appointment availability blocks;
@@ -43,6 +44,7 @@ gradle --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
 3. The queue-enabled and view-only Assistant accounts demonstrate different per-user permissions.
 4. Restart the app to confirm the local session is restored, then use Logout to clear it.
 5. Queue controls operate on local prototype data and resume their latest saved state after relaunch.
-6. Use **Close and archive day** to lock the queue and save its complete appointment snapshot under **Queue history**.
+6. Open **Activity log** to inspect successful queue actions and confirm invalid or unauthorized actions create no event.
+7. Use **Close and archive day** to lock the queue and save its complete appointment snapshot under **Queue history**.
 
 See `docs/roadmap.md` and `docs/handoff-summary.md` for staged development.

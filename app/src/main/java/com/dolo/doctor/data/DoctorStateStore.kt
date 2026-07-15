@@ -30,6 +30,9 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         val history = preferences.getStringSet(KEY_QUEUE_HISTORY, emptySet()).orEmpty()
             .mapNotNull(QueueStateCodec::decodeHistory)
             .sortedByDescending { it.date }
+        val auditEvents = preferences.getStringSet(KEY_AUDIT_EVENTS, emptySet()).orEmpty()
+            .mapNotNull(QueueStateCodec::decodeAuditEvent)
+            .sortedBy { it.sequence }
         val profile = preferences.getString(KEY_DOCTOR_PROFILE, null)
             ?.let(QueueStateCodec::decodeProfile)
             ?: defaultState.profile
@@ -54,6 +57,7 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
             clinics = clinics,
             queueDate = preferences.getString(KEY_QUEUE_DATE, defaultState.queueDate) ?: defaultState.queueDate,
             queueHistory = history,
+            auditEvents = auditEvents,
             queueState = queueState,
             currentToken = preferences.getInt(KEY_CURRENT_TOKEN, defaultState.currentToken),
             appointments = currentAppointments,
@@ -78,6 +82,7 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         .putInt(KEY_CURRENT_TOKEN, state.currentToken)
         .putStringSet(KEY_CURRENT_APPOINTMENTS, state.appointments.mapTo(mutableSetOf(), QueueStateCodec::encodeAppointment))
         .putStringSet(KEY_QUEUE_HISTORY, state.queueHistory.mapTo(mutableSetOf(), QueueStateCodec::encodeHistory))
+        .putStringSet(KEY_AUDIT_EVENTS, state.auditEvents.takeLast(500).mapTo(mutableSetOf(), QueueStateCodec::encodeAuditEvent))
         .putStringSet(KEY_APPOINTMENT_STATUSES, state.appointments.mapTo(mutableSetOf()) { "${it.id}|${it.status.name}" })
         .putStringSet(KEY_ACTIVE_ANNOUNCEMENTS, state.announcements.filter { it.active }.mapTo(mutableSetOf()) { it.id })
         .putStringSet(KEY_ENABLED_AVAILABILITY, state.availabilityBlocks.filter { it.appointmentsEnabled }.mapTo(mutableSetOf()) { it.id })
@@ -107,6 +112,7 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         const val KEY_CURRENT_TOKEN = "doctor_current_token"
         const val KEY_CURRENT_APPOINTMENTS = "doctor_current_appointments"
         const val KEY_QUEUE_HISTORY = "doctor_queue_history"
+        const val KEY_AUDIT_EVENTS = "doctor_queue_audit_events"
         const val KEY_APPOINTMENT_STATUSES = "doctor_appointment_statuses"
         const val KEY_ACTIVE_ANNOUNCEMENTS = "doctor_active_announcements"
         const val KEY_ENABLED_AVAILABILITY = "doctor_enabled_availability"

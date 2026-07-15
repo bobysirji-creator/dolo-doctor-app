@@ -88,6 +88,7 @@ import com.dolo.doctor.ui.components.*
     onAppointments: () -> Unit,
     onHistory: () -> Unit,
     onClinic: () -> Unit,
+    onActivity: () -> Unit,
     onAvailability: () -> Unit,
     onAnnouncements: () -> Unit,
     onAssistants: () -> Unit,
@@ -113,6 +114,7 @@ import com.dolo.doctor.ui.components.*
             item { Text("Clinic tools", style = MaterialTheme.typography.titleLarge) }
             item { ToolRow(onAppointments, if (doctorMode) onHistory else onClinic, canViewAppointments, doctorMode, secondLabel = if (doctorMode) "Queue history" else "Clinic", secondIcon = if (doctorMode) Icons.Outlined.History else Icons.Outlined.Business) }
             if (doctorMode) {
+                item { ToolRow(onClinic, onActivity, true, true, "Clinic", "Activity log", Icons.Outlined.Business, Icons.Outlined.FactCheck) }
                 item { ToolRow(onAvailability, onAnnouncements, true, true, "Availability", "Updates", Icons.Outlined.EventBusy, Icons.Outlined.Campaign) }
                 item { ToolRow(onAssistants, onProfile, true, true, "Assistants", "Profile", Icons.Outlined.Groups, Icons.Outlined.Person) }
             } else {
@@ -154,6 +156,7 @@ import com.dolo.doctor.ui.components.*
     val canCallNext = doctorMode || Permission.CALL_NEXT_PATIENT in permissions
     val canMarkArrived = doctorMode || Permission.MARK_PATIENT_ARRIVED in permissions
     val canMarkAbsent = doctorMode || Permission.MARK_PATIENT_ABSENT in permissions
+    val canMarkCompleted = doctorMode || Permission.MARK_PATIENT_COMPLETED in permissions
     val hasNextPatient = state.appointments.any { it.token > state.currentToken && it.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.COMPLETED) }
     val hasCurrentConsultation = state.appointments.any { it.token == state.currentToken && it.status == AppointmentStatus.IN_CONSULTATION }
     var confirmCloseDay by remember { mutableStateOf(false) }
@@ -190,7 +193,7 @@ import com.dolo.doctor.ui.components.*
                 if (state.appointments.isEmpty()) {
                     item { ElevatedSection("No appointments for " + state.queueDate) { Text("The new daily queue is ready for appointments from the shared backend.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                 }
-                items(state.appointments.sortedBy { it.token }, key = { it.id }) { appointment -> QueueAppointmentCard(appointment, canMarkArrived && state.queueState != QueueState.CLOSED, canMarkAbsent && state.queueState != QueueState.CLOSED, canUpdate && state.queueState != QueueState.CLOSED, onUpdate) }
+                items(state.appointments.sortedBy { it.token }, key = { it.id }) { appointment -> QueueAppointmentCard(appointment, canMarkArrived && state.queueState != QueueState.CLOSED, canMarkAbsent && state.queueState != QueueState.CLOSED, canMarkCompleted && state.queueState != QueueState.CLOSED, canUpdate && state.queueState != QueueState.CLOSED, onUpdate) }
             }
         }
     }
@@ -206,10 +209,49 @@ import com.dolo.doctor.ui.components.*
     }
 }
 
-@Composable private fun QueueAppointmentCard(appointment: Appointment, canMarkArrived: Boolean, canMarkAbsent: Boolean, canUpdate: Boolean, onUpdate: (String, AppointmentStatus) -> Unit) {
+@Composable private fun QueueAppointmentCard(
+    appointment: Appointment,
+    canMarkArrived: Boolean,
+    canMarkAbsent: Boolean,
+    canMarkCompleted: Boolean,
+    canUpdate: Boolean,
+    onUpdate: (String, AppointmentStatus) -> Unit
+) {
     ElevatedSection("Token ${appointment.token} • ${appointment.patientName}", "${appointment.patientType} • ${appointment.session} • booked ${appointment.bookedAt}") {
-        Row(verticalAlignment = Alignment.CenterVertically) { StatusPill(appointment.status.name.replace("_", " "), appointment.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.SKIPPED)); Spacer(Modifier.weight(1f)); if (appointment.status == AppointmentStatus.BOOKED && canMarkArrived) TextButton({ onUpdate(appointment.id, AppointmentStatus.ARRIVED) }) { Text("Mark arrived") } }
-        if (appointment.status in setOf(AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) && (canMarkAbsent || canUpdate)) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { if (canMarkAbsent) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.ABSENT) }, Modifier.weight(1f)) { Text("Absent") }; if (canUpdate) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.WAITING) }, Modifier.weight(1f)) { Text("Waiting") } }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StatusPill(appointment.status.name.replace("_", " "), appointment.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.SKIPPED))
+            Spacer(Modifier.weight(1f))
+            if (appointment.status == AppointmentStatus.BOOKED && canMarkArrived) {
+                TextButton({ onUpdate(appointment.id, AppointmentStatus.ARRIVED) }) { Text("Mark arrived") }
+            }
+        }
+        when (appointment.status) {
+            AppointmentStatus.ARRIVED -> if (canMarkAbsent || canUpdate) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (canMarkAbsent) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.ABSENT) }, Modifier.weight(1f)) { Text("Absent") }
+                    if (canUpdate) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.WAITING) }, Modifier.weight(1f)) { Text("Waiting") }
+                }
+            }
+            AppointmentStatus.WAITING -> if (canMarkAbsent || canUpdate) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (canMarkAbsent) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.ABSENT) }, Modifier.weight(1f)) { Text("Absent") }
+                    if (canUpdate) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.SKIPPED) }, Modifier.weight(1f)) { Text("Skip") }
+                }
+            }
+            AppointmentStatus.SKIPPED -> if (canMarkAbsent || canUpdate) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (canMarkAbsent) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.ABSENT) }, Modifier.weight(1f)) { Text("Absent") }
+                    if (canUpdate) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.WAITING) }, Modifier.weight(1f)) { Text("Resume waiting") }
+                }
+            }
+            AppointmentStatus.IN_CONSULTATION -> if (canMarkCompleted || canUpdate) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (canUpdate) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.SKIPPED) }, Modifier.weight(1f)) { Text("Skip") }
+                    if (canMarkCompleted) Button({ onUpdate(appointment.id, AppointmentStatus.COMPLETED) }, Modifier.weight(1f)) { Text("Complete") }
+                }
+            }
+            else -> Unit
+        }
     }
 }
 @Composable fun AppointmentsScreen(state: DoctorUiState, permissions: Set<Permission>, onBack: () -> Unit, onHome: () -> Unit, onQueue: () -> Unit, onProfile: () -> Unit) {
@@ -256,6 +298,35 @@ import com.dolo.doctor.ui.components.*
                         StatusPill(appointment.status.name.replace("_", " "), appointment.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.SKIPPED))
                     }
                 }
+            }
+        }
+    }
+}
+@Composable fun QueueActivityScreen(state: DoctorUiState, onBack: () -> Unit) {
+    LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        item { PageHeader("Queue activity", onBack) }
+        item {
+            ElevatedSection("Audit trail", "Successful queue actions are recorded with actor, time and status context.") {
+                Text(state.auditEvents.size.toString() + " recorded event(s)", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (state.auditEvents.isEmpty()) {
+            item { ElevatedSection("No activity yet") { Text("Start or update the queue to create the first audit event.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+        }
+        items(state.auditEvents.sortedByDescending { it.sequence }, key = { it.id }) { event ->
+            ElevatedSection(
+                event.action.name.replace("_", " ").lowercase().replaceFirstChar(Char::uppercase),
+                event.date + " at " + event.time + " by " + event.actor
+            ) {
+                if (event.token != null) Text("Token " + event.token + (event.patientName?.let { " • " + it } ?: ""), fontWeight = FontWeight.Bold)
+                if (event.fromStatus != null || event.toStatus != null) {
+                    Text(
+                        (event.fromStatus?.name?.replace("_", " ") ?: "-") + " → " + (event.toStatus?.name?.replace("_", " ") ?: "-"),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Text(event.detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

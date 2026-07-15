@@ -12,8 +12,8 @@ android {
         applicationId = "com.dolo.doctor"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.4.0-stage4"
+        versionCode = 9
+        versionName = "0.5.0-stage5"
     }
 
     buildFeatures { compose = true }
