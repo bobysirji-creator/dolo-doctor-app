@@ -30,6 +30,12 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         val history = preferences.getStringSet(KEY_QUEUE_HISTORY, emptySet()).orEmpty()
             .mapNotNull(QueueStateCodec::decodeHistory)
             .sortedByDescending { it.date }
+        val profile = preferences.getString(KEY_DOCTOR_PROFILE, null)
+            ?.let(QueueStateCodec::decodeProfile)
+            ?: defaultState.profile
+        val decodedClinics = preferences.getStringSet(KEY_CLINICS, emptySet()).orEmpty()
+            .mapNotNull(QueueStateCodec::decodeClinic)
+        val clinics = decodedClinics.ifEmpty { defaultState.clinics }
         val activeAnnouncements = preferences.getStringSet(KEY_ACTIVE_ANNOUNCEMENTS, emptySet()).orEmpty()
         val enabledAvailability = preferences.getStringSet(KEY_ENABLED_AVAILABILITY, emptySet()).orEmpty()
         val permissionEntries = preferences.getStringSet(KEY_ASSISTANT_PERMISSIONS, emptySet()).orEmpty()
@@ -44,6 +50,8 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
             ?: defaultState.queueState
 
         return defaultState.copy(
+            profile = profile,
+            clinics = clinics,
             queueDate = preferences.getString(KEY_QUEUE_DATE, defaultState.queueDate) ?: defaultState.queueDate,
             queueHistory = history,
             queueState = queueState,
@@ -63,6 +71,8 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
 
     override fun save(state: DoctorUiState): Boolean = preferences.edit()
         .putBoolean(KEY_INITIALIZED, true)
+        .putString(KEY_DOCTOR_PROFILE, QueueStateCodec.encodeProfile(state.profile))
+        .putStringSet(KEY_CLINICS, state.clinics.mapTo(mutableSetOf(), QueueStateCodec::encodeClinic))
         .putString(KEY_QUEUE_DATE, state.queueDate)
         .putString(KEY_QUEUE_STATE, state.queueState.name)
         .putInt(KEY_CURRENT_TOKEN, state.currentToken)
@@ -90,6 +100,8 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
 
     private companion object {
         const val KEY_INITIALIZED = "doctor_state_initialized"
+        const val KEY_DOCTOR_PROFILE = "doctor_profile"
+        const val KEY_CLINICS = "doctor_clinics"
         const val KEY_QUEUE_DATE = "doctor_queue_date"
         const val KEY_QUEUE_STATE = "doctor_queue_state"
         const val KEY_CURRENT_TOKEN = "doctor_current_token"

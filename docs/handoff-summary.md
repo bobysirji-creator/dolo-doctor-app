@@ -63,3 +63,14 @@ SharedPreferencesDoctorStateStore now persists the queue date, full current appo
 Unit coverage now includes manual close, post-close mutation blocking, unauthorized Assistant close, automatic next-date rollover, ViewModel recreation and lossless appointment/history encoding.
 
 Next recommended stage: editable doctor profile, clinic and consultation schedules with validation, persistence and Admin-review flags for sensitive profile fields.
+## Stage 4 profile, clinic and schedule management
+
+Version 0.4.0-stage4 (version code 8) makes the Doctor profile and clinic schedule forms functional. Doctors can update name, specialty, qualification, registration number, experience, consultation fee and About. Name, fee, experience and About apply immediately; changes to specialty, qualifications or registration number set ProfileReviewStatus.PENDING_REVIEW so the future Admin workflow can approve sensitive public-profile changes.
+
+Clinic editing now validates and saves clinic name, address, phone, morning and evening session text, maximum tokens per session and average consultation minutes. SharedPreferencesDoctorStateStore persists the full profile and clinic collection through lossless encoded records, with Stage 3 installations migrating from their existing defaults.
+
+ViewModel validation rejects unauthorized Assistant calls, missing or short identity fields, invalid numeric ranges, invalid phone length and unknown clinic IDs. Compose forms show validation errors without closing and reload persisted values after process recreation.
+
+The queue correction in this release changes Call next behavior when no later token exists: the current final IN_CONSULTATION appointment becomes COMPLETED, the button changes to **Complete consultation**, and a subsequent daily archive preserves that final status.
+
+Next recommended stage: expanded appointment workflow and queue audit events, including explicit action history and status-transition rules.

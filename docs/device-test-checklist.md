@@ -35,3 +35,13 @@ Run on both Vivo and Samsung devices.
 6. Logout and login again. The archived history must remain unchanged.
 7. Login as either Assistant and confirm no Close-day control or Queue-history route is available.
 8. Automatic next-date rollover is covered by unit tests for this prototype; do not change the phone date solely for testing unless comfortable restoring automatic date/time afterward.
+## Stage 4 final patient, profile and clinic editing
+
+1. Advance the queue until token 14 is IN_CONSULTATION. Press **Complete consultation** and confirm token 14 becomes COMPLETED.
+2. Close and archive the day, open Queue history and confirm token 14 is archived as COMPLETED.
+3. Open Profile, edit only name, fee, experience or About, save, and confirm the profile remains verified.
+4. Change specialty, qualification or registration number and confirm **Sensitive changes pending Admin review** appears.
+5. Enter invalid profile values and confirm the form stays open with a validation message.
+6. Open Clinic, edit contact details, morning and evening sessions, token capacity and average consultation minutes, then save.
+7. Close the app, remove it from Recents and relaunch. Confirm profile and clinic or schedule changes remain.
+8. Login as an Assistant and confirm Profile and Clinic editing routes remain unavailable.

@@ -34,6 +34,23 @@ class QueueStateCodecTest {
         assertEquals(history, QueueStateCodec.decodeHistory(QueueStateCodec.encodeHistory(history)))
     }
 
+    @Test fun profileAndClinicRoundTripsKeepEditableFields() {
+        val profile = DummyData.profile.copy(
+            name = "Dr. Updated Name",
+            specialty = "Internal Medicine",
+            consultationFee = 700,
+            reviewStatus = com.dolo.doctor.data.model.ProfileReviewStatus.PENDING_REVIEW
+        )
+        val clinic = DummyData.clinics.first().copy(
+            morningSession = "08:30 AM - 12:30 PM",
+            maxTokensPerSession = 40,
+            averageConsultationMinutes = 15
+        )
+
+        assertEquals(profile, QueueStateCodec.decodeProfile(QueueStateCodec.encodeProfile(profile)))
+        assertEquals(clinic, QueueStateCodec.decodeClinic(QueueStateCodec.encodeClinic(clinic)))
+    }
+
     @Test fun malformedValuesAreIgnored() {
         assertEquals(null, QueueStateCodec.decodeAppointment("invalid"))
         assertEquals(null, QueueStateCodec.decodeHistory("invalid"))

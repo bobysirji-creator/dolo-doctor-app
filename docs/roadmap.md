@@ -3,7 +3,7 @@
 - [x] Stage 1 - lightweight Compose project, Doctor/Assistant login, navigation and feature skeletons
 - [x] Stage 2 - process-safe authentication and workflow state, Patient-aligned light/dark themes, permission-aware assistant access and Doctor-only removal
 - [x] Stage 3 - dated queue lifecycle, Doctor-only close-day archival, automatic next-day reset and persisted appointment history
-- [ ] Stage 4 - doctor profile, clinic and consultation schedule management
+- [x] Stage 4 - validated, persisted doctor profile, clinic and consultation schedule management
 - [ ] Stage 5 - expanded appointment workflow with queue audit events
 - [ ] Stage 6 - appointment availability blocks and affected-patient workflow
 - [ ] Stage 7 - announcements, camps, offers and Patient App profile feed contracts

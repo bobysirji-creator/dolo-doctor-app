@@ -154,21 +154,23 @@ import com.dolo.doctor.ui.components.*
     val canCallNext = doctorMode || Permission.CALL_NEXT_PATIENT in permissions
     val canMarkArrived = doctorMode || Permission.MARK_PATIENT_ARRIVED in permissions
     val canMarkAbsent = doctorMode || Permission.MARK_PATIENT_ABSENT in permissions
+    val hasNextPatient = state.appointments.any { it.token > state.currentToken && it.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.COMPLETED) }
+    val hasCurrentConsultation = state.appointments.any { it.token == state.currentToken && it.status == AppointmentStatus.IN_CONSULTATION }
     var confirmCloseDay by remember { mutableStateOf(false) }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.QUEUE, onHome, {}, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Live queue", onBack) }
             if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_QUEUE permission.", color = MaterialTheme.colorScheme.error) } }
             else {
-                item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("In consultation", state.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Remaining", state.appointments.count { it.token > state.currentToken && it.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.COMPLETED) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
+                item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile(if (hasCurrentConsultation) "In consultation" else "Last token", state.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Remaining", state.appointments.count { it.token > state.currentToken && it.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.COMPLETED) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
                 item {
                     ElevatedSection("Queue controls", "Status: ${state.queueState.name.lowercase().replaceFirstChar(Char::uppercase)}") {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Button(onToggleQueue, Modifier.weight(1f), enabled = canUpdate && state.queueState != QueueState.CLOSED, elevation = ButtonDefaults.buttonElevation(7.dp)) {
                                 Text(when (state.queueState) { QueueState.ACTIVE -> "Pause"; QueueState.NOT_STARTED -> "Start queue"; QueueState.PAUSED -> "Resume"; QueueState.CLOSED -> "Day closed" })
                             }
-                            Button(onCallNext, Modifier.weight(1f), enabled = state.queueState == QueueState.ACTIVE && canCallNext, elevation = ButtonDefaults.buttonElevation(7.dp)) {
-                                Text("Call next")
+                            Button(onCallNext, Modifier.weight(1f), enabled = state.queueState == QueueState.ACTIVE && canCallNext && (hasNextPatient || hasCurrentConsultation), elevation = ButtonDefaults.buttonElevation(7.dp)) {
+                                Text(if (hasNextPatient) "Call next" else "Complete consultation")
                             }
                         }
                         if (doctorMode) {
@@ -258,21 +260,76 @@ import com.dolo.doctor.ui.components.*
         }
     }
 }
-@Composable fun ClinicScreen(state: DoctorUiState, onBack: () -> Unit) {
+@Composable fun ClinicScreen(state: DoctorUiState, onBack: () -> Unit, onSaveClinic: (Clinic) -> String?) {
+    var editingClinic by remember { mutableStateOf<Clinic?>(null) }
     LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
         item { PageHeader("Clinic & schedule", onBack) }
+        item { ElevatedSection("Consultation setup", "Update clinic contact details, morning/evening sessions, token capacity and average consultation time.") { Text("Changes are stored locally in this stage and will later sync through the shared backend.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         items(state.clinics, key = { it.id }) { clinic ->
             ElevatedSection(clinic.name, clinic.address) {
                 DetailLine(Icons.Outlined.Phone, clinic.phone)
-                DetailLine(Icons.Outlined.LightMode, "Morning: ${clinic.morningSession}")
-                DetailLine(Icons.Outlined.DarkMode, "Evening: ${clinic.eveningSession}")
-                DetailLine(Icons.Outlined.ConfirmationNumber, "${clinic.maxTokensPerSession} tokens per session")
-                PrimaryAction("Edit clinic schedule", {}, icon = Icons.Outlined.CalendarMonth)
+                DetailLine(Icons.Outlined.LightMode, "Morning: " + clinic.morningSession)
+                DetailLine(Icons.Outlined.DarkMode, "Evening: " + clinic.eveningSession)
+                DetailLine(Icons.Outlined.ConfirmationNumber, clinic.maxTokensPerSession.toString() + " tokens per session")
+                DetailLine(Icons.Outlined.Schedule, "Average consultation: " + clinic.averageConsultationMinutes + " minutes")
+                PrimaryAction("Edit clinic & schedule", { editingClinic = clinic }, icon = Icons.Outlined.CalendarMonth)
             }
         }
     }
+    editingClinic?.let { clinic ->
+        ClinicEditDialog(
+            clinic = clinic,
+            onDismiss = { editingClinic = null },
+            onSave = onSaveClinic
+        )
+    }
 }
 
+@Composable private fun ClinicEditDialog(clinic: Clinic, onDismiss: () -> Unit, onSave: (Clinic) -> String?) {
+    var name by remember(clinic.id) { mutableStateOf(clinic.name) }
+    var address by remember(clinic.id) { mutableStateOf(clinic.address) }
+    var phone by remember(clinic.id) { mutableStateOf(clinic.phone) }
+    var morning by remember(clinic.id) { mutableStateOf(clinic.morningSession) }
+    var evening by remember(clinic.id) { mutableStateOf(clinic.eveningSession) }
+    var maxTokens by remember(clinic.id) { mutableStateOf(clinic.maxTokensPerSession.toString()) }
+    var averageMinutes by remember(clinic.id) { mutableStateOf(clinic.averageConsultationMinutes.toString()) }
+    var error by remember(clinic.id) { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit clinic & schedule") },
+        text = {
+            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(name, { name = it }, label = { Text("Clinic name") }, singleLine = true)
+                OutlinedTextField(address, { address = it }, label = { Text("Clinic address") }, minLines = 2)
+                OutlinedTextField(phone, { phone = it }, label = { Text("Clinic phone") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+                OutlinedTextField(morning, { morning = it }, label = { Text("Morning session") }, supportingText = { Text("Example: 09:00 AM - 01:00 PM") }, singleLine = true)
+                OutlinedTextField(evening, { evening = it }, label = { Text("Evening session") }, supportingText = { Text("Example: 05:00 PM - 09:00 PM") }, singleLine = true)
+                OutlinedTextField(maxTokens, { maxTokens = it.filter(Char::isDigit) }, label = { Text("Maximum tokens per session") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                OutlinedTextField(averageMinutes, { averageMinutes = it.filter(Char::isDigit) }, label = { Text("Average consultation minutes") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val result = onSave(
+                    clinic.copy(
+                        name = name,
+                        address = address,
+                        phone = phone,
+                        morningSession = morning,
+                        eveningSession = evening,
+                        maxTokensPerSession = maxTokens.toIntOrNull() ?: -1,
+                        averageConsultationMinutes = averageMinutes.toIntOrNull() ?: -1
+                    )
+                )
+                error = result
+                if (result == null) onDismiss()
+            }) { Text("Save changes") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
 @Composable fun AvailabilityScreen(state: DoctorUiState, onBack: () -> Unit, onToggle: (String) -> Unit) {
     LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
         item { PageHeader("Availability", onBack) }
@@ -345,15 +402,89 @@ import com.dolo.doctor.ui.components.*
         )
     }
 }
-@Composable fun ProfileScreen(state: DoctorUiState, onBack: () -> Unit, onHome: () -> Unit, onQueue: () -> Unit, onAppointments: () -> Unit) {
+@Composable fun ProfileScreen(state: DoctorUiState, onBack: () -> Unit, onHome: () -> Unit, onQueue: () -> Unit, onAppointments: () -> Unit, onSaveProfile: (DoctorProfile) -> String?) {
+    var editingProfile by remember { mutableStateOf(false) }
+    val pendingReview = state.profile.reviewStatus == ProfileReviewStatus.PENDING_REVIEW
     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.PROFILE, onHome, onQueue, onAppointments, {}) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
             item { PageHeader("Doctor profile", onBack) }
-            item { ElevatedSection(state.profile.name, state.profile.specialty) { Row(verticalAlignment = Alignment.CenterVertically) { StatusPill(if (state.profile.verified) "Verified profile" else "Verification pending", state.profile.verified); Spacer(Modifier.weight(1f)); Icon(Icons.Outlined.Verified, null, tint = MaterialTheme.colorScheme.primary) }; DetailLine(Icons.Outlined.School, state.profile.qualification); DetailLine(Icons.Outlined.Badge, state.profile.registrationNumber); DetailLine(Icons.Outlined.WorkHistory, "${state.profile.experienceYears} years experience"); DetailLine(Icons.Outlined.Payments, "₹${state.profile.consultationFee} consultation fee") } }
-            item { ElevatedSection("About") { Text(state.profile.about, color = MaterialTheme.colorScheme.onSurfaceVariant); PrimaryAction("Edit profile information", {}, icon = Icons.Outlined.Edit) } }
-            item { ElevatedSection("Verification rule") { Text("Changes to registration number, specialty or credentials will require Admin review.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            item {
+                ElevatedSection(state.profile.name, state.profile.specialty) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        StatusPill(
+                            if (pendingReview) "Sensitive changes pending Admin review" else if (state.profile.verified) "Verified profile" else "Verification pending",
+                            state.profile.verified && !pendingReview
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Icon(Icons.Outlined.Verified, null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                    DetailLine(Icons.Outlined.School, state.profile.qualification)
+                    DetailLine(Icons.Outlined.Badge, state.profile.registrationNumber)
+                    DetailLine(Icons.Outlined.WorkHistory, state.profile.experienceYears.toString() + " years experience")
+                    DetailLine(Icons.Outlined.Payments, "₹" + state.profile.consultationFee + " consultation fee")
+                }
+            }
+            item {
+                ElevatedSection("About") {
+                    Text(state.profile.about, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    PrimaryAction("Edit profile information", { editingProfile = true }, icon = Icons.Outlined.Edit)
+                }
+            }
+            item { ElevatedSection("Verification rule") { Text("Name, fee, experience and About update immediately. Changes to registration number, specialty or qualifications are marked for Admin review.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         }
+    }
+    if (editingProfile) {
+        ProfileEditDialog(
+            profile = state.profile,
+            onDismiss = { editingProfile = false },
+            onSave = onSaveProfile
+        )
     }
 }
 
+@Composable private fun ProfileEditDialog(profile: DoctorProfile, onDismiss: () -> Unit, onSave: (DoctorProfile) -> String?) {
+    var name by remember(profile) { mutableStateOf(profile.name) }
+    var specialty by remember(profile) { mutableStateOf(profile.specialty) }
+    var qualification by remember(profile) { mutableStateOf(profile.qualification) }
+    var registration by remember(profile) { mutableStateOf(profile.registrationNumber) }
+    var experience by remember(profile) { mutableStateOf(profile.experienceYears.toString()) }
+    var fee by remember(profile) { mutableStateOf(profile.consultationFee.toString()) }
+    var about by remember(profile) { mutableStateOf(profile.about) }
+    var error by remember(profile) { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit doctor profile") },
+        text = {
+            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(name, { name = it }, label = { Text("Doctor name") }, singleLine = true)
+                OutlinedTextField(specialty, { specialty = it }, label = { Text("Specialty") }, supportingText = { Text("Changes require Admin review") }, singleLine = true)
+                OutlinedTextField(qualification, { qualification = it }, label = { Text("Qualifications") }, supportingText = { Text("Changes require Admin review") }, singleLine = true)
+                OutlinedTextField(registration, { registration = it }, label = { Text("Registration number") }, supportingText = { Text("Changes require Admin review") }, singleLine = true)
+                OutlinedTextField(experience, { experience = it.filter(Char::isDigit) }, label = { Text("Experience in years") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                OutlinedTextField(fee, { fee = it.filter(Char::isDigit) }, label = { Text("Consultation fee") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                OutlinedTextField(about, { about = it }, label = { Text("About") }, minLines = 3, supportingText = { Text(about.length.toString() + "/500") })
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val result = onSave(
+                    profile.copy(
+                        name = name,
+                        specialty = specialty,
+                        qualification = qualification,
+                        registrationNumber = registration,
+                        experienceYears = experience.toIntOrNull() ?: -1,
+                        consultationFee = fee.toIntOrNull() ?: -1,
+                        about = about
+                    )
+                )
+                error = result
+                if (result == null) onDismiss()
+            }) { Text("Save profile") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
 @Composable private fun DetailLine(icon: ImageVector, text: String) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(11.dp)); Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant) } }

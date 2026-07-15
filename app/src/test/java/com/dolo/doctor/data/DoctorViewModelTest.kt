@@ -215,6 +215,86 @@ class DoctorViewModelTest {
         assertEquals(first.uiState.appointments, restored.uiState.queueHistory.single().appointments)
     }
 
+    @Test fun callNextCompletesTheFinalConsultationBeforeArchive() {
+        val finalState = DummyData.initialState("2026-07-15").copy(
+            currentToken = 14,
+            appointments = DummyData.appointments.map {
+                if (it.token == 14) it.copy(status = AppointmentStatus.IN_CONSULTATION)
+                else it.copy(status = AppointmentStatus.COMPLETED)
+            }
+        )
+        val model = DoctorViewModel(
+            stateStore = MemoryDoctorStateStore(finalState),
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(21, 0) }
+        )
+        model.login(UserRole.DOCTOR)
+
+        model.callNext()
+        assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.token == 14 }.status)
+
+        assertTrue(model.closeDay())
+        assertEquals(AppointmentStatus.COMPLETED, model.uiState.queueHistory.single().appointments.single { it.token == 14 }.status)
+    }
+
+    @Test fun validatedProfileChangesPersistAndSensitiveFieldsNeedReview() {
+        val store = MemoryDoctorStateStore()
+        val model = DoctorViewModel(store)
+        model.login(UserRole.DOCTOR)
+
+        assertEquals(null, model.updateProfile(model.uiState.profile.copy(name = "Dr. Aisha M. Mehta", consultationFee = 650)))
+        assertEquals(ProfileReviewStatus.VERIFIED, model.uiState.profile.reviewStatus)
+
+        assertEquals(null, model.updateProfile(model.uiState.profile.copy(specialty = "Internal Medicine")))
+        assertEquals(ProfileReviewStatus.PENDING_REVIEW, model.uiState.profile.reviewStatus)
+
+        val restored = DoctorViewModel(store)
+        assertEquals("Dr. Aisha M. Mehta", restored.uiState.profile.name)
+        assertEquals(650, restored.uiState.profile.consultationFee)
+        assertEquals("Internal Medicine", restored.uiState.profile.specialty)
+        assertEquals(ProfileReviewStatus.PENDING_REVIEW, restored.uiState.profile.reviewStatus)
+    }
+
+    @Test fun invalidOrAssistantProfileChangesAreRejected() {
+        val model = DoctorViewModel()
+        model.login(UserRole.DOCTOR)
+        val original = model.uiState.profile
+        assertTrue(model.updateProfile(original.copy(name = "A")) != null)
+        assertEquals(original, model.uiState.profile)
+
+        model.login(UserRole.ASSISTANT, "staff-1")
+        assertTrue(model.updateProfile(original.copy(name = "Dr. Changed Name")) != null)
+        assertEquals(original, model.uiState.profile)
+    }
+
+    @Test fun validatedClinicAndScheduleChangesPersist() {
+        val store = MemoryDoctorStateStore()
+        val model = DoctorViewModel(store)
+        model.login(UserRole.DOCTOR)
+        val updated = model.uiState.clinics.first().copy(
+            phone = "+91 11 4444 5555",
+            morningSession = "08:30 AM - 12:30 PM",
+            maxTokensPerSession = 40,
+            averageConsultationMinutes = 15
+        )
+
+        assertEquals(null, model.updateClinic(updated))
+        val restored = DoctorViewModel(store)
+        assertEquals(updated, restored.uiState.clinics.first())
+    }
+
+    @Test fun invalidClinicScheduleIsRejected() {
+        val model = DoctorViewModel()
+        model.login(UserRole.DOCTOR)
+        val original = model.uiState.clinics.first()
+
+        assertTrue(model.updateClinic(original.copy(maxTokensPerSession = 0, averageConsultationMinutes = 2)) != null)
+        assertEquals(original, model.uiState.clinics.first())
+
+        model.login(UserRole.ASSISTANT, "staff-1")
+        assertTrue(model.updateClinic(original.copy(name = "Assistant Edit Clinic")) != null)
+        assertEquals(original, model.uiState.clinics.first())
+    }
     private class MemoryDoctorStateStore(initial: DoctorUiState? = null) : DoctorStateStore {
         private var saved: DoctorUiState? = initial
         override fun restore(defaultState: DoctorUiState): DoctorUiState = saved ?: defaultState

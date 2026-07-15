@@ -109,10 +109,10 @@ private object Routes {
         }
         composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::queue, ::profile) }
         composable(Routes.HISTORY) { QueueHistoryScreen(state, nav::popBackStack) }
-        composable(Routes.CLINIC) { ClinicScreen(state, nav::popBackStack) }
+        composable(Routes.CLINIC) { ClinicScreen(state, nav::popBackStack, doctorViewModel::updateClinic) }
         composable(Routes.AVAILABILITY) { AvailabilityScreen(state, nav::popBackStack, doctorViewModel::toggleAppointments) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementsScreen(state, nav::popBackStack, doctorViewModel::toggleAnnouncement) }
         composable(Routes.ASSISTANTS) { AssistantsScreen(state, nav::popBackStack, doctorViewModel::togglePermission) { assistantId -> if (doctorViewModel.deleteAssistant(assistantId)) authRepository.removeAssistant(assistantId) } }
-        composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::queue, ::appointments) }
+        composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::queue, ::appointments, doctorViewModel::updateProfile) }
     }
 }

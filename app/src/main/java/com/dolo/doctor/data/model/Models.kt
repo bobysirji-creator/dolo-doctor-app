@@ -4,6 +4,7 @@ enum class UserRole { DOCTOR, ASSISTANT }
 enum class QueueState { NOT_STARTED, ACTIVE, PAUSED, CLOSED }
 enum class AppointmentStatus { BOOKED, ARRIVED, WAITING, IN_CONSULTATION, COMPLETED, ABSENT, SKIPPED }
 enum class AnnouncementType { AVAILABILITY, CAMP, OFFER, GENERAL }
+enum class ProfileReviewStatus { VERIFIED, PENDING_REVIEW }
 enum class Permission {
     VIEW_QUEUE,
     UPDATE_QUEUE,
@@ -24,7 +25,8 @@ data class DoctorProfile(
     val experienceYears: Int,
     val consultationFee: Int,
     val about: String,
-    val verified: Boolean
+    val verified: Boolean,
+    val reviewStatus: ProfileReviewStatus = ProfileReviewStatus.VERIFIED
 )
 
 data class Clinic(

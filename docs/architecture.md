@@ -33,3 +33,10 @@ Every assistant action must be authorized on the server, not only hidden in Comp
 - Manual close is Doctor-only. A closed date rejects queue and appointment mutations.
 - A later device date archives the previous queue once and initializes an empty NOT_STARTED queue.
 - The shared backend will eventually replace device time and local storage as the authoritative clinic timezone, queue session and audit source.
+## Stage 4 editable configuration
+
+- Doctor profile and clinic mutations are accepted only while the active role is Doctor.
+- Validation is enforced in DoctorViewModel in addition to Compose form constraints.
+- Sensitive profile edits set a pending Admin-review marker; the shared backend will eventually store proposed and approved values separately.
+- QueueStateCodec serializes the complete profile and clinic records for local process-safe persistence.
+- Session schedules remain display strings in the local prototype. The backend stage will replace them with timezone-aware structured session records.
