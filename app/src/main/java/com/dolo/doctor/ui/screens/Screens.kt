@@ -301,6 +301,7 @@ import kotlinx.coroutines.delay
                 color = MaterialTheme.colorScheme.error,
                 fontSize = 12.sp
             )
+        } else when (appointment.status) {
             AppointmentStatus.ARRIVED -> if (canMarkAbsent || canUpdate) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (canMarkAbsent) OutlinedButton({ onUpdate(appointment.id, AppointmentStatus.ABSENT) }, Modifier.weight(1f)) { Text("Absent") }
