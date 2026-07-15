@@ -111,7 +111,7 @@ private object Routes {
                 doctorViewModel::closeDay
             )
         }
-        composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::queue, ::profile, doctorViewModel::bookWalkIn, doctorViewModel::receiptFor) }
+        composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::queue, ::profile, doctorViewModel::bookWalkIn, doctorViewModel::receiptFor, doctorViewModel::sessionBookingOpen, doctorViewModel::refreshDate) }
         composable(Routes.HISTORY) { QueueHistoryScreen(state, nav::popBackStack) }
         composable(Routes.ACTIVITY) { QueueActivityScreen(state, nav::popBackStack) }
         composable(Routes.CLINIC) { ClinicScreen(state, nav::popBackStack, doctorViewModel::updateClinic) }

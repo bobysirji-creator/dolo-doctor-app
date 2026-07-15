@@ -44,6 +44,11 @@ data class Clinic(
     val averageConsultationMinutes: Int
 )
 
+data class ConsultationQueue(
+    val session: String,
+    val state: QueueState,
+    val currentToken: Int
+)
 data class Appointment(
     val id: String,
     val token: Int,
@@ -144,6 +149,7 @@ data class DoctorUiState(
     val queueDate: String,
     val queueHistory: List<DailyQueueHistory> = emptyList(),
     val auditEvents: List<QueueAuditEvent> = emptyList(),
+    val sessionQueues: List<ConsultationQueue> = emptyList(),
     val queueState: QueueState = QueueState.NOT_STARTED,
     val currentToken: Int = 0
 )

@@ -46,3 +46,11 @@ Appointments have two sources: PATIENT_APP and CLINIC_WALK_IN. Both sources must
 A token receipt is compulsory for every arrived patient, whether booked online or at the clinic. It displays the token prominently plus receipt number, patient, doctor, clinic, date, session, source and generation time. The patient hands the physical receipt to the doctor at consultation. Reprints retain the same token and receipt number and must not create another appointment.
 
 Skipped patients are recoverable. If Skip was accidental and no other consultation has started, staff can resume the same patient immediately. Otherwise staff can rejoin the patient at the end of the active queue. A patient arriving after their original turn keeps the original token but receives a new queue position at the end. ABSENT and COMPLETED remain terminal statuses.
+
+## Consultation-session queues and booking cutoff
+
+Morning and Evening are independent operational queues for the same clinic day. Each has its own NOT_STARTED, ACTIVE, PAUSED or CLOSED state, current token and queue order. Starting, pausing, resuming or calling the next patient in one session must not advance or change the other session.
+
+The patient-facing token remains unique across the complete clinic day, including both sessions. Staff must explicitly select Morning or Evening for every clinic walk-in so it joins the correct queue.
+
+A session accepts advance bookings from the beginning of the clinic day; its configured start time does not act as an enable gate. New bookings close automatically when the configured session end time is reached. Closing Morning booking must not close Evening booking. At the next clinic-date rollover both session queues reset to NOT_STARTED and become bookable again until their respective end times. Existing consultations may still be completed after the booking cutoff.

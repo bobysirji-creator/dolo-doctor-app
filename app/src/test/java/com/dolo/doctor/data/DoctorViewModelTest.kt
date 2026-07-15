@@ -180,6 +180,10 @@ class DoctorViewModelTest {
         val store = MemoryDoctorStateStore(
             DummyData.initialState("2026-07-15").copy(
                 appointments = emptyList(),
+                sessionQueues = listOf(
+                    ConsultationQueue("Morning", QueueState.NOT_STARTED, 0),
+                    ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+                ),
                 queueState = QueueState.NOT_STARTED,
                 currentToken = 0
             )
@@ -221,6 +225,10 @@ class DoctorViewModelTest {
     @Test fun callNextCompletesTheFinalConsultationBeforeArchive() {
         val finalState = DummyData.initialState("2026-07-15").copy(
             currentToken = 14,
+            sessionQueues = listOf(
+                ConsultationQueue("Morning", QueueState.ACTIVE, 14),
+                ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+            ),
             appointments = DummyData.appointments.map {
                 if (it.token == 14) it.copy(status = AppointmentStatus.IN_CONSULTATION)
                 else it.copy(status = AppointmentStatus.COMPLETED)
@@ -293,6 +301,8 @@ class DoctorViewModelTest {
         val original = model.uiState.clinics.first()
 
         assertTrue(model.updateClinic(original.copy(maxTokensPerSession = 0, averageConsultationMinutes = 2)) != null)
+        assertTrue(model.updateClinic(original.copy(morningSession = "bad schedule")) != null)
+        assertTrue(model.updateClinic(original.copy(eveningSession = "09:00 PM - 04:00 PM")) != null)
         assertEquals(original, model.uiState.clinics.first())
 
         model.login(UserRole.ASSISTANT, "staff-1")
@@ -400,6 +410,10 @@ class DoctorViewModelTest {
     @Test fun skippedPatientCanRejoinAtEndAndReturnToConsultation() {
         val finalQueue = DummyData.initialState().copy(
             currentToken = 14,
+            sessionQueues = listOf(
+                ConsultationQueue("Morning", QueueState.ACTIVE, 14),
+                ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+            ),
             appointments = DummyData.appointments.map {
                 when (it.id) {
                     "a2" -> it.copy(status = AppointmentStatus.SKIPPED)
@@ -427,6 +441,10 @@ class DoctorViewModelTest {
     @Test fun lateArrivalKeepsTokenButJoinsAtEndAndGetsReceipt() {
         val progressed = DummyData.initialState("2026-07-15").copy(
             currentToken = 14,
+            sessionQueues = listOf(
+                ConsultationQueue("Morning", QueueState.ACTIVE, 14),
+                ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+            ),
             appointments = DummyData.appointments.map {
                 when (it.id) {
                     "a4" -> it.copy(status = AppointmentStatus.BOOKED, receiptNumber = "")
@@ -486,6 +504,103 @@ class DoctorViewModelTest {
         assertEquals(6, model.uiState.appointments.size)
         assertEquals(null, model.receiptFor("a4"))
         assertTrue(model.uiState.auditEvents.isEmpty())
+    }
+    @Test fun morningAndEveningQueuesAdvanceIndependently() {
+        val eveningAppointment = Appointment(
+            id = "evening-1",
+            token = 15,
+            patientName = "Evening Patient",
+            patientType = "Self",
+            session = "Evening",
+            status = AppointmentStatus.WAITING,
+            bookedAt = "04:30 PM",
+            queueOrder = 1
+        )
+        val initial = DummyData.initialState().copy(
+            appointments = DummyData.appointments + eveningAppointment,
+            sessionQueues = listOf(
+                ConsultationQueue("Morning", QueueState.ACTIVE, 9),
+                ConsultationQueue("Evening", QueueState.ACTIVE, 0)
+            )
+        )
+        val model = DoctorViewModel(MemoryDoctorStateStore(initial))
+        model.login(UserRole.DOCTOR)
+
+        model.callNext("Evening")
+
+        assertEquals(9, model.queueFor("Morning").currentToken)
+        assertEquals(15, model.queueFor("Evening").currentToken)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.id == "evening-1" }.status)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.id == "a1" }.status)
+
+        model.toggleQueue("Morning")
+        assertEquals(QueueState.PAUSED, model.queueFor("Morning").state)
+        assertEquals(QueueState.ACTIVE, model.queueFor("Evening").state)
+    }
+
+    @Test fun sessionsAllowAdvanceBookingButCloseAtTheirOwnEndTime() {
+        val beforeMorningEnd = DoctorViewModel(
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(12, 59) }
+        )
+        beforeMorningEnd.login(UserRole.DOCTOR)
+        assertTrue(beforeMorningEnd.sessionBookingOpen("Morning"))
+        assertTrue(beforeMorningEnd.sessionBookingOpen("Evening"))
+
+        val atMorningEnd = DoctorViewModel(
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(13, 0) }
+        )
+        atMorningEnd.login(UserRole.DOCTOR)
+        assertFalse(atMorningEnd.sessionBookingOpen("Morning"))
+        assertTrue(atMorningEnd.sessionBookingOpen("Evening"))
+        assertTrue(atMorningEnd.bookWalkIn(WalkInBookingRequest("Morning Closed", "9876512345", "Self", "Morning")).error != null)
+        assertEquals(null, atMorningEnd.bookWalkIn(WalkInBookingRequest("Evening Advance", "9876512345", "Self", "Evening")).error)
+
+        val atEveningEnd = DoctorViewModel(
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(21, 0) }
+        )
+        atEveningEnd.login(UserRole.DOCTOR)
+        assertFalse(atEveningEnd.sessionBookingOpen("Morning"))
+        assertFalse(atEveningEnd.sessionBookingOpen("Evening"))
+    }
+
+    @Test fun nextDayRolloverResetsBothSessionsAndReopensAdvanceBooking() {
+        val previousDay = DummyData.initialState("2026-07-14").copy(
+            sessionQueues = listOf(
+                ConsultationQueue("Morning", QueueState.CLOSED, 14),
+                ConsultationQueue("Evening", QueueState.CLOSED, 22)
+            ),
+            queueState = QueueState.CLOSED,
+            currentToken = 14
+        )
+        val model = DoctorViewModel(
+            stateStore = MemoryDoctorStateStore(previousDay),
+            currentDate = { LocalDate.parse("2026-07-15") },
+            currentTime = { LocalTime.of(8, 0) }
+        )
+
+        assertEquals(QueueState.NOT_STARTED, model.queueFor("Morning").state)
+        assertEquals(QueueState.NOT_STARTED, model.queueFor("Evening").state)
+        assertEquals(0, model.queueFor("Morning").currentToken)
+        assertEquals(0, model.queueFor("Evening").currentToken)
+        assertTrue(model.sessionBookingOpen("Morning"))
+        assertTrue(model.sessionBookingOpen("Evening"))
+    }
+
+    @Test fun independentSessionQueuesSurviveViewModelRecreation() {
+        val store = MemoryDoctorStateStore()
+        val first = DoctorViewModel(store)
+        first.login(UserRole.DOCTOR)
+        first.toggleQueue("Evening")
+
+        val restored = DoctorViewModel(store)
+
+        assertEquals(QueueState.ACTIVE, restored.queueFor("Morning").state)
+        assertEquals(QueueState.ACTIVE, restored.queueFor("Evening").state)
+        assertEquals(9, restored.queueFor("Morning").currentToken)
+        assertEquals(0, restored.queueFor("Evening").currentToken)
     }
     private class MemoryDoctorStateStore(initial: DoctorUiState? = null) : DoctorStateStore {
         private var saved: DoctorUiState? = initial

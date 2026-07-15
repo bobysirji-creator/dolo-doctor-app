@@ -6,6 +6,8 @@ import com.dolo.doctor.data.model.BookingSource
 import com.dolo.doctor.data.model.DailyQueueHistory
 import com.dolo.doctor.data.model.DoctorProfile
 import com.dolo.doctor.data.model.Clinic
+import com.dolo.doctor.data.model.ConsultationQueue
+import com.dolo.doctor.data.model.QueueState
 import com.dolo.doctor.data.model.ProfileReviewStatus
 import com.dolo.doctor.data.model.QueueAuditEvent
 import com.dolo.doctor.data.model.AuditAction
@@ -58,6 +60,19 @@ internal object QueueStateCodec {
         return Clinic(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], maxTokens, averageMinutes)
     }
 
+    fun encodeSessionQueue(queue: ConsultationQueue): String = listOf(
+        queue.session,
+        queue.state.name,
+        queue.currentToken.toString()
+    ).joinToString("|") { encode(it) }
+
+    fun decodeSessionQueue(value: String): ConsultationQueue? {
+        val fields = value.split("|").mapNotNull(::decode)
+        if (fields.size != 3) return null
+        val state = runCatching { QueueState.valueOf(fields[1]) }.getOrNull() ?: return null
+        val token = fields[2].toIntOrNull() ?: return null
+        return ConsultationQueue(fields[0], state, token)
+    }
     fun encodeAuditEvent(event: QueueAuditEvent): String = listOf(
         event.id,
         event.sequence.toString(),

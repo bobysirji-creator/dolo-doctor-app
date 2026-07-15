@@ -51,6 +51,19 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         val queueState = preferences.getString(KEY_QUEUE_STATE, null)
             ?.let { runCatching { QueueState.valueOf(it) }.getOrNull() }
             ?: defaultState.queueState
+        val currentToken = preferences.getInt(KEY_CURRENT_TOKEN, defaultState.currentToken)
+        val decodedSessionQueues = preferences.getStringSet(KEY_SESSION_QUEUES, emptySet()).orEmpty()
+            .mapNotNull(QueueStateCodec::decodeSessionQueue)
+        val sessionQueues = if (decodedSessionQueues.isNotEmpty()) {
+            listOf("Morning", "Evening").map { session ->
+                decodedSessionQueues.firstOrNull { it.session == session } ?: ConsultationQueue(session, QueueState.NOT_STARTED, 0)
+            }
+        } else {
+            listOf(
+                ConsultationQueue("Morning", queueState, currentToken),
+                ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+            )
+        }
 
         return defaultState.copy(
             profile = profile,
@@ -58,8 +71,9 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
             queueDate = preferences.getString(KEY_QUEUE_DATE, defaultState.queueDate) ?: defaultState.queueDate,
             queueHistory = history,
             auditEvents = auditEvents,
-            queueState = queueState,
-            currentToken = preferences.getInt(KEY_CURRENT_TOKEN, defaultState.currentToken),
+            sessionQueues = sessionQueues,
+            queueState = sessionQueues.first { it.session == "Morning" }.state,
+            currentToken = sessionQueues.first { it.session == "Morning" }.currentToken,
             appointments = currentAppointments,
             announcements = defaultState.announcements.map { announcement ->
                 announcement.copy(active = announcement.id in activeAnnouncements)
@@ -80,6 +94,7 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         .putString(KEY_QUEUE_DATE, state.queueDate)
         .putString(KEY_QUEUE_STATE, state.queueState.name)
         .putInt(KEY_CURRENT_TOKEN, state.currentToken)
+        .putStringSet(KEY_SESSION_QUEUES, state.sessionQueues.mapTo(mutableSetOf(), QueueStateCodec::encodeSessionQueue))
         .putStringSet(KEY_CURRENT_APPOINTMENTS, state.appointments.mapTo(mutableSetOf(), QueueStateCodec::encodeAppointment))
         .putStringSet(KEY_QUEUE_HISTORY, state.queueHistory.mapTo(mutableSetOf(), QueueStateCodec::encodeHistory))
         .putStringSet(KEY_AUDIT_EVENTS, state.auditEvents.takeLast(500).mapTo(mutableSetOf(), QueueStateCodec::encodeAuditEvent))
@@ -110,6 +125,7 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         const val KEY_QUEUE_DATE = "doctor_queue_date"
         const val KEY_QUEUE_STATE = "doctor_queue_state"
         const val KEY_CURRENT_TOKEN = "doctor_current_token"
+        const val KEY_SESSION_QUEUES = "doctor_session_queues"
         const val KEY_CURRENT_APPOINTMENTS = "doctor_current_appointments"
         const val KEY_QUEUE_HISTORY = "doctor_queue_history"
         const val KEY_AUDIT_EVENTS = "doctor_queue_audit_events"

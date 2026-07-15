@@ -93,3 +93,13 @@ Appointments now record PATIENT_APP or CLINIC_WALK_IN source, mobile number, que
 Every appointment exposes receipt generation or reprint. The receipt includes clinic, doctor, patient, token, date, session, source and receipt number. Print receipt uses Android's system print service and can save PDF or reach printers supported by an installed Android print service. Direct Bluetooth ESC/POS thermal printing is intentionally not hard-coded; TokenReceiptGateway reserves that provider integration once actual printer models are chosen.
 
 Next recommended work remains Stage 6 availability blocks and affected-patient handling, followed by backend synchronization where token allocation and printing acknowledgements become authoritative.
+
+## Stage 5.2 independent session queues and booking deadlines
+
+Version 0.5.2-stage5 (version code 11) separates Morning and Evening into persisted ConsultationQueue records. Each session now has its own lifecycle state, current token, patient ordering, queue controls and Call next operation. Today's appointments and Live queue provide Morning/Evening selectors, and clinic walk-ins must join the selected session. Daily token numbers remain unique across both sessions.
+
+New appointments are accepted before a session's configured start time, matching the advance-booking requirement. Morning automatically stops accepting bookings at its own end time while Evening remains available until its end time. There is no same-day automatic re-enable rule. At the next date rollover both queues reset to NOT_STARTED and accept bookings again until their respective cutoff. The appointments page refreshes cutoff/date state every minute, and ViewModel validation independently blocks stale UI submissions.
+
+Existing Stage 5.1 receipt generation and Android system printing are unchanged. Physical thermal-printer output remains deferred until printer hardware/model and its Android print path can be tested.
+
+Unit coverage includes independent queue advancement, per-session end-time boundaries, advance Evening booking, next-day reset/reopening, persistence across ViewModel recreation and session-queue codec round trips. Next recommended work remains Stage 6 availability blocks and affected-patient handling after this build passes GitHub Actions and physical-device session tests.

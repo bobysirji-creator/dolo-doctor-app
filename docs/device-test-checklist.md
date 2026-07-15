@@ -70,3 +70,17 @@ Run on both Vivo and Samsung devices.
 9. Mark a future online booking Arrived and confirm its receipt is generated and available from Today's appointments.
 10. Login as the view-only Assistant and confirm walk-in booking and receipt actions are unavailable.
 11. Remove the app from Recents and relaunch. Confirm walk-in appointment, queue order, booking source and receipt number persist.
+
+## Stage 5.2 Morning and Evening session queues
+
+1. Open Live queue and confirm Morning and Evening selectors show independent status, current token and appointment lists.
+2. Start or pause Morning, switch to Evening, and confirm the Evening state and token did not change. Repeat in the opposite direction.
+3. Book an Evening walk-in before the displayed Evening start time. Confirm it succeeds, appears only in Evening, receives the next unique daily token and starts at the end of the Evening order.
+4. Call next in Evening and confirm no Morning appointment status or current token changes. Then call next in Morning and confirm Evening remains unchanged.
+5. In Clinic, temporarily set the Morning end time a few minutes ahead, save, wait until that time, and return to Today's appointments. Within one minute Morning must show booking closed while Evening remains bookable.
+6. Confirm the walk-in dialog disables the closed Morning choice and a direct Morning booking attempt is also rejected by the workflow layer.
+7. Temporarily set the Evening end time a few minutes ahead and confirm Evening also closes at that time. Existing queue controls must remain usable so already-booked consultations can finish.
+8. Restore the intended clinic schedule after cutoff testing.
+9. Close the app, remove it from Recents and relaunch. Confirm both session states/current tokens and their appointment membership persist.
+10. Next-day reset/reopening is covered by unit tests; do not change the phone date solely for testing unless comfortable restoring automatic date/time afterward.
+11. Thermal receipt printing is intentionally deferred until the target printer is available; confirm only that receipt generation/reopen still works in this build.

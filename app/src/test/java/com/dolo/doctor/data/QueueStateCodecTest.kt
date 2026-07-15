@@ -67,6 +67,11 @@ class QueueStateCodecTest {
         assertEquals(clinic, QueueStateCodec.decodeClinic(QueueStateCodec.encodeClinic(clinic)))
     }
 
+    @Test fun sessionQueueRoundTripKeepsIndependentState() {
+        val queue = com.dolo.doctor.data.model.ConsultationQueue("Evening", com.dolo.doctor.data.model.QueueState.PAUSED, 23)
+
+        assertEquals(queue, QueueStateCodec.decodeSessionQueue(QueueStateCodec.encodeSessionQueue(queue)))
+    }
     @Test fun auditEventRoundTripKeepsActorAndTransitionContext() {
         val event = QueueAuditEvent(
             id = "2026-07-15-42",

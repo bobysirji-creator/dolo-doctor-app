@@ -10,8 +10,8 @@ sealed interface ApiResult<out T> {
 interface DoctorApi {
     suspend fun profile(): ApiResult<DoctorProfile>
     suspend fun clinics(): ApiResult<List<Clinic>>
-    suspend fun todayAppointments(clinicId: String): ApiResult<List<Appointment>>
-    suspend fun callNext(clinicId: String): ApiResult<Appointment>
+    suspend fun todayAppointments(clinicId: String, session: String? = null): ApiResult<List<Appointment>>
+    suspend fun callNext(clinicId: String, session: String): ApiResult<Appointment>
     suspend fun updateAppointment(id: String, status: AppointmentStatus): ApiResult<Appointment>
     suspend fun bookWalkIn(request: WalkInBookingRequest): ApiResult<Appointment>
     suspend fun resumeSkippedConsultation(id: String): ApiResult<Appointment>

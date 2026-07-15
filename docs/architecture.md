@@ -58,3 +58,12 @@ Every assistant action must be authorized on the server, not only hidden in Comp
 - Arriving online patients and new clinic walk-ins receive a stable receiptNumber. Receipt generation and walk-in booking are permission checked and audited.
 - AndroidTokenReceiptPrinter creates a one-page print document and opens the Android print service. Direct Bluetooth ESC/POS support remains behind TokenReceiptGateway until supported printer models and paper widths are selected.
 - The backend must allocate token and queueOrder transactionally to prevent duplicate tokens when multiple clinic devices and the Patient App book concurrently.
+
+## Stage 5.2 independent consultation sessions
+
+- DoctorUiState.sessionQueues stores separate Morning and Evening ConsultationQueue records. The older queueState/currentToken fields remain a Morning-session compatibility alias for migration from installed builds.
+- Appointment.queueOrder is calculated within its selected session, while Appointment.token remains unique across all appointments for the clinic day.
+- Queue controls and Call next filter by session, so one session cannot progress, pause or complete the other session's patients.
+- sessionBookingOpen parses the configured session end time. It intentionally applies no start-time restriction, permitting advance booking, and rejects new bookings at or after the end time.
+- The appointments screen refreshes the date and cutoff state periodically. Date rollover archives the previous day and recreates both sessions as NOT_STARTED with token 0.
+- Session cutoff is currently evaluated with device local time. The shared backend must eventually enforce the clinic timezone and cutoff atomically for both Patient App and clinic-device bookings.

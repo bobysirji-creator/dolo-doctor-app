@@ -51,6 +51,10 @@ object DummyData {
         announcements = announcements,
         availabilityBlocks = availabilityBlocks,
         queueDate = queueDate,
+        sessionQueues = listOf(
+            ConsultationQueue("Morning", QueueState.ACTIVE, 9),
+            ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+        ),
         queueState = QueueState.ACTIVE,
         currentToken = 9
     )
