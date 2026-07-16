@@ -293,11 +293,13 @@ class DoctorViewModelTest {
             maxTokensPerSession = 40,
             averageConsultationMinutes = 15,
             futureBookingEnabled = true,
-            advanceBookingDays = 21
+            advanceBookingDays = 21,
+            weeklyClosures = mapOf(DayOfWeek.SUNDAY to WeeklyClosureScope.BOTH)
         )
 
         assertEquals(null, model.updateClinic(updated))
-        assertEquals(AuditAction.FUTURE_BOOKING_POLICY_CHANGED, model.uiState.auditEvents.last().action)
+        assertTrue(model.uiState.auditEvents.any { it.action == AuditAction.FUTURE_BOOKING_POLICY_CHANGED })
+        assertEquals(AuditAction.WEEKLY_SCHEDULE_CHANGED, model.uiState.auditEvents.last().action)
         val restored = DoctorViewModel(store)
         assertEquals(updated, restored.uiState.clinics.first())
     }
@@ -1108,4 +1110,41 @@ class DoctorViewModelTest {
         )
         assertEquals(0L, model.uiState.syncRevision)
      }
+    @Test fun recurringWeeklyClosureBlocksOnlyConfiguredSessionAndQueueStart() {
+        val initial = DummyData.initialState("2026-07-19").copy(
+            sessionQueues = listOf(
+                ConsultationQueue("Morning", QueueState.NOT_STARTED, 0),
+                ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+            ),
+            queueState = QueueState.NOT_STARTED,
+            currentToken = 0
+        )
+        val model = DoctorViewModel(
+            stateStore = MemoryDoctorStateStore(initial),
+            currentDate = { LocalDate.parse("2026-07-19") },
+            currentTime = { LocalTime.of(10, 0) }
+        )
+        model.login(UserRole.DOCTOR)
+        val clinic = model.uiState.clinics.first().copy(
+            weeklyClosures = mapOf(DayOfWeek.SUNDAY to WeeklyClosureScope.MORNING)
+        )
+
+        assertEquals(null, model.updateClinic(clinic))
+        assertTrue(model.recurringSessionClosed("Morning"))
+        assertFalse(model.recurringSessionClosed("Evening"))
+        assertFalse(model.sessionBookingOpen("Morning"))
+        assertTrue(model.sessionBookingOpen("Evening"))
+        assertTrue(
+            model.bookWalkIn(
+                WalkInBookingRequest("Sunday Patient", "9876512345", "Self", "Morning")
+            ).error?.contains("closed every Sunday") == true
+        )
+
+        assertTrue(model.confirmConsultationFee("a4", 500, PaymentMethod.CASH).error?.contains("weekly schedule") == true)
+
+        model.toggleQueue("Morning")
+        assertEquals(QueueState.NOT_STARTED, model.queueFor("Morning").state)
+        model.toggleQueue("Evening")
+        assertEquals(QueueState.ACTIVE, model.queueFor("Evening").state)
+    }
 }

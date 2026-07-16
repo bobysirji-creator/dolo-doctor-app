@@ -40,7 +40,7 @@ fun AvailabilityManagementScreen(
         item {
             ElevatedSection(
                 "Booking control",
-                "Disable one or both sessions for an ISO date or range, then follow up every affected patient."
+                "Use this page for exceptional dates or ranges. Configure recurring weekday/session closures under Clinic & schedule."
             ) {
                 Text(
                     "Active blocks prevent new Patient App and clinic walk-in bookings. Existing appointments remain visible until contacted or marked for rescheduling.",

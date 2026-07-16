@@ -15,6 +15,8 @@ import com.dolo.doctor.data.model.Assistant
 import com.dolo.doctor.data.model.Permission
 import com.dolo.doctor.data.model.PatientFeedback
 import com.dolo.doctor.data.model.QueueDelayNotice
+import com.dolo.doctor.data.model.WeeklyClosureScope
+import java.time.DayOfWeek
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -88,7 +90,11 @@ class QueueStateCodecTest {
             maxTokensPerSession = 40,
             averageConsultationMinutes = 15,
             futureBookingEnabled = true,
-            advanceBookingDays = 21
+            advanceBookingDays = 21,
+            weeklyClosures = mapOf(
+                DayOfWeek.SUNDAY to WeeklyClosureScope.BOTH,
+                DayOfWeek.WEDNESDAY to WeeklyClosureScope.EVENING
+            )
         )
 
         assertEquals(profile, QueueStateCodec.decodeProfile(QueueStateCodec.encodeProfile(profile)))
@@ -109,6 +115,23 @@ class QueueStateCodecTest {
 
         assertEquals(false, decoded.futureBookingEnabled)
         assertEquals(7, decoded.advanceBookingDays)
+        assertEquals(emptyMap<DayOfWeek, WeeklyClosureScope>(), decoded.weeklyClosures)
+    }
+    @Test fun stageElevenClinicDefaultsToOpenWeeklySchedule() {
+        val fields = listOf(
+            "clinic-stage11", "Stage 11 Clinic", "22 Green Park, New Delhi", "01140002200",
+            "09:00 AM - 01:00 PM", "05:00 PM - 09:00 PM", "30", "12", "true", "14"
+        )
+        val legacy = fields.joinToString("|") {
+            java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray())
+        }
+
+        val decoded = QueueStateCodec.decodeClinic(legacy)
+            ?: throw AssertionError("Stage 11 clinic was not decoded")
+
+        assertEquals(true, decoded.futureBookingEnabled)
+        assertEquals(14, decoded.advanceBookingDays)
+        assertEquals(emptyMap<DayOfWeek, WeeklyClosureScope>(), decoded.weeklyClosures)
     }
     @Test fun announcementRoundTripKeepsCompletePublishedRecord() {
         val announcement = Announcement(

@@ -4,6 +4,8 @@ import com.dolo.doctor.data.DummyData
 import com.dolo.doctor.data.model.AppointmentStatus
 import com.dolo.doctor.data.model.BookingSource
 import com.dolo.doctor.data.model.PaymentStatus
+import com.dolo.doctor.data.model.WeeklyClosureScope
+import java.time.DayOfWeek
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -145,5 +147,32 @@ class SharedBackendTest {
         val unchanged = enabledGateway.pull("clinic-1")
             as SharedBackendResult.Success<SharedClinicSnapshot>
         assertEquals(enabledPublished.value.appointments, unchanged.value.appointments)
+    }
+    @Test fun mockRejectsPatientBookingForRecurringClosedSession() {
+        val gateway = LocalMockSharedBackendGateway()
+        val scheduled = snapshot().copy(
+            clinic = snapshot().clinic.copy(
+                weeklyClosures = mapOf(DayOfWeek.THURSDAY to WeeklyClosureScope.MORNING)
+            )
+        )
+        val published = gateway.publish(PublishClinicCommand("publish-weekly", 0, scheduled))
+            as SharedBackendResult.Success<SharedClinicSnapshot>
+
+        val result = gateway.bookFromPatientApp(
+            PatientBookingCommand(
+                "booking-weekly-closed",
+                published.value.revision,
+                "clinic-1",
+                "2026-07-16",
+                "Morning",
+                "Thursday Patient",
+                "9876504444",
+                "Self",
+                "09:00 AM"
+            )
+        )
+
+        assertTrue(result is SharedBackendResult.Failure)
+        assertTrue((result as SharedBackendResult.Failure).message.contains("Thursday"))
     }
 }

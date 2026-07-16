@@ -115,11 +115,15 @@ class LocalMockSharedBackendGateway(
         if (command.clinicId != current.clinic.id) {
             return SharedBackendResult.Failure("The booking does not match the active clinic.", false)
         }
+        if (command.session !in setOf("Morning", "Evening")) {
+            return SharedBackendResult.Failure("Select Morning or Evening.", false)
+        }
         val policy = BookingPolicyEvaluator.evaluate(
             current.clinic,
             current.queueDate,
             command.appointmentDate,
-            BookingSource.PATIENT_APP
+            BookingSource.PATIENT_APP,
+            command.session
         )
         if (!policy.allowed) return SharedBackendResult.Failure(policy.message, false)
         if (command.appointmentDate != current.queueDate) {
@@ -127,9 +131,6 @@ class LocalMockSharedBackendGateway(
                 "The policy allows this future date, but the Stage 11 local mock stores only the current clinic day. Use the hosted backend for scheduled appointments.",
                 false
             )
-        }
-        if (command.session !in setOf("Morning", "Evening")) {
-            return SharedBackendResult.Failure("Select Morning or Evening.", false)
         }
         val queue = current.queues.firstOrNull { it.session == command.session }
             ?: ConsultationQueue(command.session, QueueState.NOT_STARTED, 0)

@@ -1,3 +1,15 @@
+## Stage 11.1 recurring weekly schedule
+
+1. As Doctor, open Clinic & schedule and mark Sunday Morning and Evening off. Save and confirm Sunday displays Full day off.
+2. Relaunch after removing the app from Recents. Confirm the Sunday closure persists.
+3. On the configured weekday, confirm both walk-in session choices are closed and neither queue can be started.
+4. Change Sunday to Morning off only. Confirm Morning remains unavailable while Evening can book and start independently.
+5. Configure a different weekday as Evening off and confirm Morning remains available.
+6. Clear both checkboxes for a weekday and confirm both sessions return to the normal time/capacity rules.
+7. Enable future Patient App booking, publish the clinic snapshot and verify the recurring schedule is included and the sync state behaves normally.
+8. Login as an Assistant with View clinic. Confirm the weekly schedule is visible but cannot be edited.
+9. Confirm Activity and Notifications record the weekly schedule change.
+10. Confirm date-specific Availability blocks still work independently for holidays or one-time leave.
 ## Stage 11 future-booking control and hardening
 
 1. Upgrade over the accepted Stage 10 APK without clearing data. Confirm existing clinic, queue, assistants, appointments and sync revision remain present.

@@ -26,6 +26,8 @@ This checklist qualifies a local physical-device prototype. Passing it does not 
 - Announcements, feedback, delay notices and sync events persist.
 - Patient App future-booking policy persists and old clinic data migrates to current-day-only.
 - Clinic walk-in booking remains current-day-only even when Patient future booking is enabled.
+- Recurring full-day and single-session weekday closures persist and block only the intended session.
+- Clearing a recurring closure restores normal eligibility automatically on open weekdays.
 
 ## Accessibility
 

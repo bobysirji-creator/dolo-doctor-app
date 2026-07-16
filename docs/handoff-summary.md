@@ -1,3 +1,10 @@
+## Stage 11.1 recurring weekly schedule
+
+Version 0.11.1-stage11 (version code 20) adds Doctor-managed recurring weekday closures under Clinic & schedule. Morning and Evening can be disabled independently; selecting both creates a full-day clinic closure. Authorized Assistants retain read-only visibility.
+
+The policy is persisted and included in shared clinic snapshots. Patient App booking validation evaluates the requested date, while clinic walk-ins, fee admission and queue start use the current clinic date. Exceptional holidays and leave remain date-range Availability blocks. Legacy clinic records migrate to an open weekly schedule.
+
+GitHub Actions is the authoritative compile/lint/test gate. The next physical-device check should verify a full Sunday closure, a single-session closure, persistence after process death, and automatic availability on the next open weekday.
 ## Stage 11 future-booking policy and hardening
 
 Version 0.11.0-stage11 (version code 19) adds Doctor-controlled Patient App future-booking policy to each clinic. The Doctor may keep current-day-only booking or allow 1 to 90 advance days. Existing installed clinic records migrate safely to current-day-only. Authorized Assistants can see the policy but cannot edit Clinic settings.

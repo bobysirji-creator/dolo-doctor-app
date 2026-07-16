@@ -30,6 +30,7 @@ import com.dolo.doctor.data.model.*
 import com.dolo.doctor.ui.components.*
 import com.dolo.doctor.printing.AndroidTokenReceiptPrinter
 import kotlinx.coroutines.delay
+import java.time.DayOfWeek
 
 @Composable private fun page() = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
 
@@ -189,6 +190,7 @@ import kotlinx.coroutines.delay
     onAppointments: () -> Unit,
     onProfile: () -> Unit,
     onSelectSession: (String) -> Unit,
+    isRecurringSessionClosed: (String) -> Boolean,
     onToggleQueue: (String) -> Unit,
     onCallNext: (String) -> Unit,
     onUpdate: (String, AppointmentStatus) -> Unit,
@@ -204,6 +206,7 @@ import kotlinx.coroutines.delay
     val canMarkAbsent = doctorMode || Permission.MARK_PATIENT_ABSENT in permissions
     val canMarkCompleted = doctorMode || Permission.MARK_PATIENT_COMPLETED in permissions
     val selectedSession = state.selectedSession
+    val weeklyClosed = isRecurringSessionClosed(selectedSession)
     val queue = state.sessionQueues.firstOrNull { it.session == selectedSession }
         ?: ConsultationQueue(selectedSession, if (selectedSession == "Morning") state.queueState else QueueState.NOT_STARTED, if (selectedSession == "Morning") state.currentToken else 0)
     val sessionAppointments = state.appointments.filter { it.session == selectedSession && it.paymentStatus != PaymentStatus.PENDING && it.receiptNumber.isNotBlank() }
@@ -235,10 +238,10 @@ import kotlinx.coroutines.delay
             else {
                 item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile(if (hasCurrentConsultation) "In consultation" else "Last token", queue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Remaining", sessionAppointments.count { it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
                 item {
-                    ElevatedSection(selectedSession + " queue controls", "Independent status: ${queue.state.name.lowercase().replaceFirstChar(Char::uppercase)}") {
+                    ElevatedSection(selectedSession + " queue controls", if (weeklyClosed) "Recurring weekly day off" else "Independent status: ${queue.state.name.lowercase().replaceFirstChar(Char::uppercase)}") {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Button({ onToggleQueue(selectedSession) }, Modifier.weight(1f), enabled = canUpdate && queue.state != QueueState.CLOSED, elevation = ButtonDefaults.buttonElevation(7.dp)) {
-                                Text(when (queue.state) { QueueState.ACTIVE -> "Pause"; QueueState.NOT_STARTED -> "Start queue"; QueueState.PAUSED -> "Resume"; QueueState.CLOSED -> "Session closed" })
+                            Button({ onToggleQueue(selectedSession) }, Modifier.weight(1f), enabled = canUpdate && queue.state != QueueState.CLOSED && (!weeklyClosed || queue.state == QueueState.ACTIVE), elevation = ButtonDefaults.buttonElevation(7.dp)) {
+                                Text(if (weeklyClosed && queue.state != QueueState.ACTIVE) "Weekly day off" else when (queue.state) { QueueState.ACTIVE -> "Pause"; QueueState.NOT_STARTED -> "Start queue"; QueueState.PAUSED -> "Resume"; QueueState.CLOSED -> "Session closed" })
                             }
                             Button({ onCallNext(selectedSession) }, Modifier.weight(1f), enabled = queue.state == QueueState.ACTIVE && canCallNext && (hasNextPatient || hasCurrentConsultation), elevation = ButtonDefaults.buttonElevation(7.dp)) {
                                 Text(if (hasNextPatient) "Call next" else "Complete consultation")
@@ -679,6 +682,30 @@ import kotlinx.coroutines.delay
         }
     }
 }
+private fun weeklyClosureLabel(day: DayOfWeek, scope: WeeklyClosureScope): String =
+    day.name.lowercase().replaceFirstChar(Char::uppercase) + ": " + when (scope) {
+        WeeklyClosureScope.MORNING -> "Morning off"
+        WeeklyClosureScope.EVENING -> "Evening off"
+        WeeklyClosureScope.BOTH -> "Full day off"
+    }
+
+private fun updateWeeklyClosure(
+    closures: Map<DayOfWeek, WeeklyClosureScope>,
+    day: DayOfWeek,
+    morningOff: Boolean,
+    eveningOff: Boolean
+): Map<DayOfWeek, WeeklyClosureScope> {
+    val scope = when {
+        morningOff && eveningOff -> WeeklyClosureScope.BOTH
+        morningOff -> WeeklyClosureScope.MORNING
+        eveningOff -> WeeklyClosureScope.EVENING
+        else -> null
+    }
+    return closures.toMutableMap().apply {
+        if (scope == null) remove(day) else put(day, scope)
+    }
+}
+
 @Composable fun ClinicScreen(state: DoctorUiState, canEdit: Boolean, onBack: () -> Unit, onSaveClinic: (Clinic) -> String?) {
     var editingClinic by remember { mutableStateOf<Clinic?>(null) }
     LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
@@ -700,6 +727,13 @@ import kotlinx.coroutines.delay
                     }
                 )
                 DetailLine(Icons.Outlined.Storefront, "Clinic walk-ins: Current day only")
+                if (clinic.weeklyClosures.isEmpty()) {
+                    DetailLine(Icons.Outlined.EventAvailable, "Weekly schedule: Open both sessions every day")
+                } else {
+                    clinic.weeklyClosures.entries.sortedBy { it.key.value }.forEach { (day, scope) ->
+                        DetailLine(Icons.Outlined.EventBusy, weeklyClosureLabel(day, scope))
+                    }
+                }
                 if (canEdit) PrimaryAction("Edit clinic & schedule", { editingClinic = clinic }, icon = Icons.Outlined.CalendarMonth)
             }
         }
@@ -723,6 +757,7 @@ import kotlinx.coroutines.delay
     var averageMinutes by remember(clinic.id) { mutableStateOf(clinic.averageConsultationMinutes.toString()) }
     var futureBookingEnabled by remember(clinic.id) { mutableStateOf(clinic.futureBookingEnabled) }
     var advanceBookingDays by remember(clinic.id) { mutableStateOf(clinic.advanceBookingDays.toString()) }
+    var weeklyClosures by remember(clinic.id) { mutableStateOf(clinic.weeklyClosures) }
     var error by remember(clinic.id) { mutableStateOf<String?>(null) }
 
     AlertDialog(
@@ -737,6 +772,41 @@ import kotlinx.coroutines.delay
                 OutlinedTextField(evening, { evening = it }, label = { Text("Evening session") }, supportingText = { Text("Example: 05:00 PM - 09:00 PM") }, singleLine = true)
                 OutlinedTextField(maxTokens, { maxTokens = it.filter(Char::isDigit) }, label = { Text("Maximum tokens per session") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 OutlinedTextField(averageMinutes, { averageMinutes = it.filter(Char::isDigit) }, label = { Text("Average consultation minutes") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                HorizontalDivider()
+                Text("Recurring weekly days off", fontWeight = FontWeight.Bold)
+                Text(
+                    "Switch off Morning, Evening or both sessions for any weekday. Date-specific holidays remain under Availability.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp
+                )
+                DayOfWeek.values().forEach { day ->
+                    val scope = weeklyClosures[day]
+                    val morningOff = scope == WeeklyClosureScope.MORNING || scope == WeeklyClosureScope.BOTH
+                    val eveningOff = scope == WeeklyClosureScope.EVENING || scope == WeeklyClosureScope.BOTH
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(day.name.lowercase().replaceFirstChar(Char::uppercase), fontWeight = FontWeight.SemiBold)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = morningOff,
+                                    onCheckedChange = { checked ->
+                                        weeklyClosures = updateWeeklyClosure(weeklyClosures, day, checked, eveningOff)
+                                    }
+                                )
+                                Text("Morning off", fontSize = 12.sp)
+                            }
+                            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = eveningOff,
+                                    onCheckedChange = { checked ->
+                                        weeklyClosures = updateWeeklyClosure(weeklyClosures, day, morningOff, checked)
+                                    }
+                                )
+                                Text("Evening off", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
                 HorizontalDivider()
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -777,7 +847,8 @@ import kotlinx.coroutines.delay
                         maxTokensPerSession = maxTokens.toIntOrNull() ?: -1,
                         averageConsultationMinutes = averageMinutes.toIntOrNull() ?: -1,
                         futureBookingEnabled = futureBookingEnabled,
-                        advanceBookingDays = advanceBookingDays.toIntOrNull() ?: -1
+                        advanceBookingDays = advanceBookingDays.toIntOrNull() ?: -1,
+                        weeklyClosures = weeklyClosures
                     )
                 )
                 error = result

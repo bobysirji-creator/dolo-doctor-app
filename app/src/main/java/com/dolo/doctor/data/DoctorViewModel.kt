@@ -93,6 +93,9 @@ class DoctorViewModel(
 
     private fun sessionHasCapacity(session: String): Boolean =
         sessionRemainingCapacity(session) > 0
+
+    fun recurringSessionClosed(session: String): Boolean =
+        uiState.clinics.firstOrNull()?.isSessionClosed(currentDate(), session) == true
     private fun availabilityBlockFor(
         session: String,
         date: LocalDate = currentDate(),
@@ -255,6 +258,7 @@ class DoctorViewModel(
         rollOverIfNeeded()
         if (!hasPermission(Permission.UPDATE_QUEUE)) return
         val queue = queueFor(session)
+        if (recurringSessionClosed(session) && queue.state != QueueState.ACTIVE) return
         val next = when (queue.state) {
             QueueState.ACTIVE -> QueueState.PAUSED
             QueueState.PAUSED, QueueState.NOT_STARTED -> QueueState.ACTIVE
@@ -383,6 +387,7 @@ class DoctorViewModel(
         val activeBlock = if (session in setOf("Morning", "Evening")) availabilityBlockFor(session) else null
         val error = when {
             session !in setOf("Morning", "Evening") -> "Select Morning or Evening session."
+            recurringSessionClosed(session) -> session + " clinic session is closed every " + currentDate().dayOfWeek.name.lowercase().replaceFirstChar(Char::uppercase) + "."
             queueFor(session).state == QueueState.CLOSED -> session + " queue is closed."
             !sessionHasCapacity(session) -> "The selected session has reached its limit of " + clinic.maxTokensPerSession + " tokens."
             activeBlock != null -> session + " booking is disabled: " + activeBlock.reason
@@ -417,6 +422,7 @@ class DoctorViewModel(
         val appointment = uiState.appointments.firstOrNull { it.id == appointmentId } ?: return FeeConfirmationResult(error = "Appointment was not found.")
         if (appointment.paymentStatus != PaymentStatus.PENDING) return FeeConfirmationResult(receipt = receiptFor(appointmentId))
         if (appointment.status != AppointmentStatus.BOOKED) return FeeConfirmationResult(error = "Only a booked appointment can be admitted after fee confirmation.")
+        if (recurringSessionClosed(appointment.session)) return FeeConfirmationResult(error = appointment.session + " clinic session is closed by the weekly schedule.")
         if (queueFor(appointment.session).state == QueueState.CLOSED) return FeeConfirmationResult(error = appointment.session + " queue is closed.")
         val activeBlock = availabilityBlockFor(appointment.session)
         if (activeBlock != null) return FeeConfirmationResult(error = appointment.session + " booking is disabled: " + activeBlock.reason)
@@ -448,6 +454,7 @@ class DoctorViewModel(
     fun sessionBookingOpen(session: String): Boolean {
         if (session !in setOf("Morning", "Evening")) return false
         if (queueFor(session).state == QueueState.CLOSED) return false
+        if (recurringSessionClosed(session)) return false
         if (availabilityBlockFor(session) != null) return false
         val clinic = uiState.clinics.firstOrNull() ?: return false
         val schedule = if (session == "Morning") clinic.morningSession else clinic.eveningSession
@@ -597,6 +604,21 @@ class DoctorViewModel(
                 updatedState,
                 AuditAction.FUTURE_BOOKING_POLICY_CHANGED,
                 policy + "; clinic walk-ins remain current-day only"
+            )
+        }
+        if (current.weeklyClosures != cleaned.weeklyClosures) {
+            val summary = if (cleaned.weeklyClosures.isEmpty()) {
+                "Clinic open for both sessions every weekday"
+            } else {
+                cleaned.weeklyClosures.entries.sortedBy { it.key.value }.joinToString("; ") {
+                    it.key.name.lowercase().replaceFirstChar(Char::uppercase) + ": " +
+                        it.value.name.lowercase().replace("_", " ") + " off"
+                }
+            }
+            updatedState = withAudit(
+                updatedState,
+                AuditAction.WEEKLY_SCHEDULE_CHANGED,
+                "Updated recurring weekly clinic schedule: " + summary
             )
         }
         persist(updatedState)

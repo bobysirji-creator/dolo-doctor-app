@@ -33,5 +33,9 @@
   - [x] clinic walk-ins permanently restricted to current day
   - [x] TalkBack semantics, large-font layout fixes and least-privilege manifest
   - [x] unsigned release compile gate and production security checklist
+- [x] Stage 11.1 - recurring weekly clinic schedule
+  - [x] independent Morning/Evening or full-day weekday closures
+  - [x] shared booking, walk-in, fee-admission and queue-start enforcement
+  - [x] backward-compatible persistence and physical-device checklist
 
 Admin App remains a separate future repository. Real providers remain disabled until the shared backend and policies are approved.

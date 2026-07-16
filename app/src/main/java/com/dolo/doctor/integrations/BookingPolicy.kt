@@ -2,7 +2,9 @@ package com.dolo.doctor.integrations
 
 import com.dolo.doctor.data.model.BookingSource
 import com.dolo.doctor.data.model.Clinic
+import com.dolo.doctor.data.model.isSessionClosed
 import java.time.LocalDate
+
 
 data class BookingPolicyDecision(
     val allowed: Boolean,
@@ -15,7 +17,8 @@ object BookingPolicyEvaluator {
         clinic: Clinic,
         clinicDate: String,
         requestedDate: String,
-        source: BookingSource
+        source: BookingSource,
+        session: String? = null
     ): BookingPolicyDecision {
         val today = runCatching { LocalDate.parse(clinicDate) }.getOrNull()
             ?: return BookingPolicyDecision(false, "Clinic date is invalid.", clinicDate)
@@ -24,40 +27,55 @@ object BookingPolicyEvaluator {
         if (requested.isBefore(today)) {
             return BookingPolicyDecision(false, "Past appointments cannot be booked.", today.toString())
         }
-        if (source == BookingSource.CLINIC_WALK_IN) {
-            return if (requested == today) {
-                BookingPolicyDecision(true, "Clinic walk-in booking is available for today.", today.toString())
-            } else {
-                BookingPolicyDecision(
+
+        val latest = when {
+            source == BookingSource.CLINIC_WALK_IN && requested != today -> {
+                return BookingPolicyDecision(
                     false,
                     "Clinic walk-in booking is available only for the current day.",
                     today.toString()
                 )
             }
+            source == BookingSource.PATIENT_APP && requested != today && !clinic.futureBookingEnabled -> {
+                return BookingPolicyDecision(
+                    false,
+                    "This doctor accepts Patient App appointments only for the current day.",
+                    today.toString()
+                )
+            }
+            source == BookingSource.PATIENT_APP && requested != today -> {
+                val limit = today.plusDays(clinic.advanceBookingDays.toLong())
+                if (requested.isAfter(limit)) {
+                    return BookingPolicyDecision(
+                        false,
+                        "Future appointments are available up to " + clinic.advanceBookingDays + " days ahead.",
+                        limit.toString()
+                    )
+                }
+                limit
+            }
+            else -> today
         }
-        if (requested == today) {
-            return BookingPolicyDecision(true, "Current-day Patient App booking is available.", today.toString())
+
+        if (session != null) {
+            if (session !in setOf("Morning", "Evening")) {
+                return BookingPolicyDecision(false, "Select Morning or Evening.", latest.toString())
+            }
+            if (clinic.isSessionClosed(requested, session)) {
+                return BookingPolicyDecision(
+                    false,
+                    session + " appointments are closed every " + requested.dayOfWeek.name.lowercase()
+                        .replaceFirstChar(Char::uppercase) + ".",
+                    latest.toString()
+                )
+            }
         }
-        if (!clinic.futureBookingEnabled) {
-            return BookingPolicyDecision(
-                false,
-                "This doctor accepts Patient App appointments only for the current day.",
-                today.toString()
-            )
+
+        val message = when {
+            source == BookingSource.CLINIC_WALK_IN -> "Clinic walk-in booking is available for today."
+            requested == today -> "Current-day Patient App booking is available."
+            else -> "Future Patient App appointment is within the allowed window."
         }
-        val latest = today.plusDays(clinic.advanceBookingDays.toLong())
-        return if (requested.isAfter(latest)) {
-            BookingPolicyDecision(
-                false,
-                "Future appointments are available up to " + clinic.advanceBookingDays + " days ahead.",
-                latest.toString()
-            )
-        } else {
-            BookingPolicyDecision(
-                true,
-                "Future Patient App appointment is within the allowed window.",
-                latest.toString()
-            )
-        }
+        return BookingPolicyDecision(true, message, latest.toString())
     }
 }

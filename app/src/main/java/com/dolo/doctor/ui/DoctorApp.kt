@@ -120,6 +120,7 @@ private object Routes {
                 ::appointments,
                 ::profile,
                 doctorViewModel::selectSession,
+                doctorViewModel::recurringSessionClosed,
                 doctorViewModel::toggleQueue,
                 doctorViewModel::callNext,
                 doctorViewModel::updateAppointment,

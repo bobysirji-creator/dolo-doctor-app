@@ -1,3 +1,8 @@
+## Recurring weekly clinic schedule
+
+A Doctor can configure each weekday as open, Morning off, Evening off or full day off. This repeating schedule is clinic-level and separate from exceptional date/date-range Availability blocks.
+
+The rule must prevent new Patient App and clinic walk-in bookings for the affected session/date, prevent fee admission into that session and prevent starting its queue. The other session remains independent. On the next weekday whose session is open, normal booking eligibility resumes automatically without a manual enable action.
 ## Doctor updates and Patient App profile feed
 
 Doctors can create availability notices, health camps, offers and general updates with a title, patient-facing message, start date, end date and draft/published choice. Invalid content and reversed or malformed date ranges must be rejected.

@@ -1,3 +1,8 @@
+## Recurring weekly schedule
+
+The clinic projection includes `weeklyClosures`, keyed by ISO weekday with `MORNING`, `EVENING` or `BOTH`. Missing or empty data means both sessions are open every weekday.
+
+The server evaluates the requested appointment date in the clinic timezone. A matching closure rejects that session before capacity or token allocation. A partial closure does not affect the other session. Date-range Availability blocks are evaluated separately and may add exceptional closures.
 # DO-LO Shared Backend Contract - Stage 10
 
 ## Scope

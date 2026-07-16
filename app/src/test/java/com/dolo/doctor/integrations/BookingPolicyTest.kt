@@ -2,6 +2,8 @@ package com.dolo.doctor.integrations
 
 import com.dolo.doctor.data.DummyData
 import com.dolo.doctor.data.model.BookingSource
+import com.dolo.doctor.data.model.WeeklyClosureScope
+import java.time.DayOfWeek
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -65,5 +67,29 @@ class BookingPolicyTest {
                 clinic, "2026-07-16", "not-a-date", BookingSource.PATIENT_APP
             ).allowed
         )
+    }
+    @Test fun weeklyFullOrPartialClosureIsAppliedToRequestedAppointmentDate() {
+        val scheduled = clinic.copy(
+            futureBookingEnabled = true,
+            advanceBookingDays = 10,
+            weeklyClosures = mapOf(
+                DayOfWeek.SUNDAY to WeeklyClosureScope.BOTH,
+                DayOfWeek.MONDAY to WeeklyClosureScope.MORNING
+            )
+        )
+
+        val sundayMorning = BookingPolicyEvaluator.evaluate(
+            scheduled, "2026-07-16", "2026-07-19", BookingSource.PATIENT_APP, "Morning"
+        )
+        val mondayMorning = BookingPolicyEvaluator.evaluate(
+            scheduled, "2026-07-16", "2026-07-20", BookingSource.PATIENT_APP, "Morning"
+        )
+        val mondayEvening = BookingPolicyEvaluator.evaluate(
+            scheduled, "2026-07-16", "2026-07-20", BookingSource.PATIENT_APP, "Evening"
+        )
+
+        assertFalse(sundayMorning.allowed)
+        assertFalse(mondayMorning.allowed)
+        assertTrue(mondayEvening.allowed)
     }
 }

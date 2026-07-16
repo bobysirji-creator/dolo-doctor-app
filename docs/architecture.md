@@ -1,3 +1,9 @@
+## Stage 11.1 recurring weekly clinic schedule
+
+- Clinic stores a typed weekday-to-closure map. Each weekday may be open, Morning off, Evening off or both sessions off.
+- Legacy eight-field and Stage 11 ten-field clinic records migrate to an open weekly schedule; schema version 9 persists the new field.
+- The same clinic rule is evaluated for Patient App requested dates, current-day walk-ins, fee admission and queue startup. One-time holidays and leave remain Availability blocks.
+- A recurring day off does not become a permanently CLOSED queue: the session remains NOT_STARTED for that weekday and is automatically eligible again on the next open clinic date.
 ## Stage 11 booking policy and release hardening
 
 - Clinic stores futureBookingEnabled and advanceBookingDays. Legacy eight-field clinic records migrate to current-day-only with a seven-day inactive default.

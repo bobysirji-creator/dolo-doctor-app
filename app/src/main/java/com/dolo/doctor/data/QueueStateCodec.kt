@@ -21,6 +21,8 @@ import com.dolo.doctor.data.model.Assistant
 import com.dolo.doctor.data.model.Permission
 import com.dolo.doctor.data.model.PatientFeedback
 import com.dolo.doctor.data.model.QueueDelayNotice
+import com.dolo.doctor.data.model.WeeklyClosureScope
+import java.time.DayOfWeek
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
@@ -114,19 +116,31 @@ internal object QueueStateCodec {
         clinic.maxTokensPerSession.toString(),
         clinic.averageConsultationMinutes.toString(),
         clinic.futureBookingEnabled.toString(),
-        clinic.advanceBookingDays.toString()
+        clinic.advanceBookingDays.toString(),
+        if (clinic.weeklyClosures.isEmpty()) "NONE" else clinic.weeklyClosures.entries
+            .sortedBy { it.key.value }
+            .joinToString(",") { it.key.name + ":" + it.value.name }
     ).joinToString("|") { encode(it) }
 
     fun decodeClinic(value: String): Clinic? {
         val fields = value.split("|").mapNotNull(::decode)
-        if (fields.size !in setOf(8, 10)) return null
+        if (fields.size !in setOf(8, 10, 11)) return null
         val maxTokens = fields[6].toIntOrNull() ?: return null
         val averageMinutes = fields[7].toIntOrNull() ?: return null
-        val futureBookingEnabled = if (fields.size == 10) fields[8].toBooleanStrictOrNull() ?: return null else false
-        val advanceBookingDays = if (fields.size == 10) fields[9].toIntOrNull() ?: return null else 7
+        val futureBookingEnabled = if (fields.size >= 10) fields[8].toBooleanStrictOrNull() ?: return null else false
+        val advanceBookingDays = if (fields.size >= 10) fields[9].toIntOrNull() ?: return null else 7
+        val weeklyClosures = if (fields.size == 11 && fields[10] != "NONE") {
+            fields[10].split(",").associate { entry ->
+                val parts = entry.split(":", limit = 2)
+                if (parts.size != 2) return null
+                val day = runCatching { DayOfWeek.valueOf(parts[0]) }.getOrNull() ?: return null
+                val scope = runCatching { WeeklyClosureScope.valueOf(parts[1]) }.getOrNull() ?: return null
+                day to scope
+            }
+        } else emptyMap()
         return Clinic(
             fields[0], fields[1], fields[2], fields[3], fields[4], fields[5],
-            maxTokens, averageMinutes, futureBookingEnabled, advanceBookingDays
+            maxTokens, averageMinutes, futureBookingEnabled, advanceBookingDays, weeklyClosures
         )
     }
     fun encodeAvailabilityBlock(block: AvailabilityBlock): String = listOf(
