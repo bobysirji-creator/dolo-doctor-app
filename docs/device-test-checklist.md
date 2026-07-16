@@ -1,3 +1,17 @@
+## Stage 8 assistant accounts and generated credentials
+
+1. Login as Doctor, open Assistants and choose **Add assistant**.
+2. Enter a valid new name and unused 10-digit mobile number, select a small permission set and create the account.
+3. Record the generated temporary PIN before pressing **I saved it**; confirm the PIN cannot be reopened from the screen.
+4. Logout and login as the new Assistant using the generated mobile/PIN. Confirm only the selected dashboard tools and actions are available.
+5. Logout, return as Doctor and grant one additional permission. Login as the Assistant again and confirm the new capability appears while Doctor-only profile, staff and ownership routes remain unavailable.
+6. Disable the assistant account. Confirm its credentials are rejected and a previously saved session does not restore after relaunch.
+7. Re-enable the account and confirm the same PIN works again.
+8. Use **Reset PIN**, save the new PIN, then confirm the old PIN fails and the new PIN succeeds.
+9. Remove the app from Recents and relaunch. Confirm assistant profile, enabled state and permissions persist.
+10. Delete the new assistant after confirming the warning. Confirm its mobile/PIN can no longer login after relaunch.
+11. Test invalid short names, invalid mobile numbers and a duplicate assistant mobile; each must remain in the form with a clear validation message.
+12. Open Activity log and Notifications as Doctor. Confirm create, status, permission, PIN-reset and delete events are present and affect the unread badge.
 ## Stage 7 doctor updates and Patient profile feed
 
 1. Login as Doctor, open Updates, and verify the Live and Scheduled counters are visible.

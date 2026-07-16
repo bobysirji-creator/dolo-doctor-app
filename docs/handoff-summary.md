@@ -1,3 +1,16 @@
+## Stage 8 assistant accounts and credentials
+
+Version 0.8.0-stage8 (version code 16) replaces the fixed-assistant-only prototype with a complete local Doctor-managed staff lifecycle. A Doctor can create an assistant with a validated name, unique 10-digit mobile number and selected initial permissions. The app generates a four-digit temporary PIN, displays it once and stores only a salted SHA-256 hash in the local credential registry.
+
+Doctors can immediately disable or re-enable login, reset an assistant PIN, change each modular permission and permanently delete the profile and credentials. Assistant records, active status and permissions persist in local schema version 5. Disabled or deleted accounts cannot establish or restore a session. Existing Stage 2 demo assistants remain available as migration fixtures and can be managed through the same screen.
+
+Creation, status, permission, PIN-reset and deletion changes are appended to the durable audit/notification stream. DoctorViewModel remains the local authorization boundary, while AssistantAdminGateway reserves shared-backend operations. Production credential recovery, forced first-login PIN change, multi-device revocation and server authorization remain Stage 10 responsibilities.
+
+GitHub Actions remains the authoritative compile, lint, unit-test and APK gate. Stage 8 physical-device acceptance is listed in docs/device-test-checklist.md.
+
+## Next recommended stage
+
+Stage 9: operational reports, patient feedback summaries, multi-clinic readiness and queue-delay notices.
 ## Stage 7 doctor updates and Patient App profile feed
 
 Version 0.7.0-stage7 (version code 15) replaces the announcement demonstration toggles with complete doctor-update records. Doctors can create, edit, publish, move to draft and delete AVAILABILITY, CAMP, OFFER and GENERAL updates using validated ISO start/end dates, an 80-character title and a 300-character patient message.

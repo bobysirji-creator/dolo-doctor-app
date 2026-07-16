@@ -1,3 +1,11 @@
+## Stage 8 assistant identity and authorization boundary
+
+- Complete Assistant records are persisted in local schema version 5; older fixed assistants and saved permission sets migrate without losing access.
+- DoctorViewModel validates Doctor ownership for account creation, status changes, PIN reset, permission changes and deletion. Compose visibility alone is never treated as authorization.
+- LocalAuthRepository keeps generated credentials in a separate registry. Four-digit PINs are salted and SHA-256 hashed; readable PINs are shown only in the creation/reset result.
+- Disabled and deleted assistants are rejected during login and restored-session validation. Deletion removes the local credential record and retains a revocation marker for legacy demo identities.
+- Assistant lifecycle changes join the existing audit/notification stream.
+- AssistantAdminGateway defines provider-neutral create, status, permission, PIN-reset and delete calls. The shared backend must later own authoritative credentials, forced PIN change, revocation, rate limiting and cross-device authorization.
 ## Stage 7 scheduled doctor updates
 
 - Announcement records are validated as ISO date ranges and persisted in full under local schema version 4.

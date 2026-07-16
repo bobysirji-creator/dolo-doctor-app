@@ -40,6 +40,14 @@ interface AvailabilityManager {
     suspend fun updateAffectedPatient(appointmentId: String, status: AvailabilityImpactStatus): ApiResult<Appointment>
 }
 
+interface AssistantAdminGateway {
+    suspend fun create(name: String, phone: String, permissions: Set<Permission>): ApiResult<Assistant>
+    suspend fun setActive(assistantId: String, active: Boolean): ApiResult<Assistant>
+    suspend fun setPermissions(assistantId: String, permissions: Set<Permission>): ApiResult<Assistant>
+    suspend fun resetTemporaryPin(assistantId: String): ApiResult<Unit>
+    suspend fun delete(assistantId: String): ApiResult<Unit>
+}
+
 interface DoctorNotificationService {
     suspend fun broadcastQueueDelay(clinicId: String, delayMinutes: Int): ApiResult<Unit>
     suspend fun notifyAffectedAppointments(blockId: String): ApiResult<Unit>

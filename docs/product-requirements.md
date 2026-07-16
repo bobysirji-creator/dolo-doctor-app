@@ -82,3 +82,11 @@ A Doctor can disable new appointments for one clinic, an ISO date or date range,
 An availability change never silently removes an existing appointment. Covered non-terminal appointments require an explicit follow-up state: contact pending, patient notified, reschedule required or resolved. Until resolved, the clinic queue must not call or progress that appointment. All block and follow-up mutations require audit records and future backend notification delivery.
 
 The shared backend remains responsible for authoritative clinic-timezone evaluation, preventing race-condition bookings, informing the Patient App and offering eligible reschedule dates. Stage 6 implements the complete local Doctor workflow and provider-neutral contracts without sending real messages.
+
+## Assistant account lifecycle
+
+Only a Doctor can create, disable, re-enable, reset or delete an assistant account. Each assistant has an individual mobile login, active status and modular permission set. New local accounts receive a generated four-digit temporary PIN that is shown once; readable PINs must not be persisted.
+
+Disabling an account immediately blocks login while retaining its profile and permissions for later reactivation. Resetting a PIN invalidates the previous PIN. Deletion removes the profile and credential and keeps legacy identities revoked. Every lifecycle and permission change requires an audit event.
+
+The local hash registry exists only for workflow testing. The shared backend must issue authoritative credentials, require first-login PIN replacement, rate-limit authentication, revoke sessions across devices and enforce every assistant permission server-side.

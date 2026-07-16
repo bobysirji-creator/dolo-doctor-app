@@ -14,6 +14,7 @@ import com.dolo.doctor.data.DoctorStateStore
 import com.dolo.doctor.data.DoctorViewModel
 import com.dolo.doctor.data.DoctorViewModelFactory
 import com.dolo.doctor.data.model.UserRole
+import com.dolo.doctor.data.model.AssistantCreationResult
 import com.dolo.doctor.ui.screens.*
 
 private object Routes {
@@ -120,7 +121,34 @@ private object Routes {
         composable(Routes.CLINIC) { ClinicScreen(state, nav::popBackStack, doctorViewModel::updateClinic) }
         composable(Routes.AVAILABILITY) { AvailabilityManagementScreen(state, nav::popBackStack, doctorViewModel::saveAvailabilityBlock, doctorViewModel::setAvailabilityAppointmentsEnabled, doctorViewModel::deleteAvailabilityBlock, doctorViewModel::updateAffectedPatientStatus) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementManagementScreen(state, nav::popBackStack, doctorViewModel::saveAnnouncement, doctorViewModel::setAnnouncementActive, doctorViewModel::deleteAnnouncement) }
-        composable(Routes.ASSISTANTS) { AssistantsScreen(state, nav::popBackStack, doctorViewModel::togglePermission) { assistantId -> if (doctorViewModel.deleteAssistant(assistantId)) authRepository.removeAssistant(assistantId) } }
+        composable(Routes.ASSISTANTS) {
+            AssistantsScreen(
+                state = state,
+                onBack = nav::popBackStack,
+                onTogglePermission = doctorViewModel::togglePermission,
+                onCreateAssistant = { name, phone, assistantPermissions ->
+                    val result = doctorViewModel.createAssistant(name, phone, assistantPermissions)
+                    val credential = result.credential
+                    if (credential != null && !authRepository.provisionAssistant(credential.assistant, credential.temporaryPin)) {
+                        doctorViewModel.deleteAssistant(credential.assistant.id)
+                        AssistantCreationResult(error = "Unable to save assistant credentials. Please try again.")
+                    } else result
+                },
+                onSetActive = { assistantId, active ->
+                    val changed = doctorViewModel.setAssistantActive(assistantId, active)
+                    val assistant = doctorViewModel.uiState.assistants.firstOrNull { it.id == assistantId }
+                    changed && assistant != null && authRepository.setAssistantActive(assistant)
+                },
+                onResetPin = { assistantId ->
+                    doctorViewModel.resetAssistantPin(assistantId)?.takeIf { credential ->
+                        authRepository.resetAssistantPin(credential.assistant, credential.temporaryPin)
+                    }
+                },
+                onDeleteAssistant = { assistantId ->
+                    if (doctorViewModel.deleteAssistant(assistantId)) authRepository.removeAssistant(assistantId)
+                }
+            )
+        }
         composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::queue, ::appointments, doctorViewModel::updateProfile) }
         composable(Routes.NOTIFICATIONS) { NotificationsScreen(state, nav::popBackStack, doctorViewModel::markNotificationRead, doctorViewModel::markAllNotificationsRead) }
     }

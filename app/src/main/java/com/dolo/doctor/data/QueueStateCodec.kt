@@ -17,6 +17,8 @@ import com.dolo.doctor.data.model.AvailabilityBlock
 import com.dolo.doctor.data.model.Announcement
 import com.dolo.doctor.data.model.AnnouncementType
 import com.dolo.doctor.data.model.AvailabilityImpactStatus
+import com.dolo.doctor.data.model.Assistant
+import com.dolo.doctor.data.model.Permission
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
@@ -24,6 +26,23 @@ internal object QueueStateCodec {
     private val encoder = Base64.getUrlEncoder().withoutPadding()
     private val decoder = Base64.getUrlDecoder()
 
+    fun encodeAssistant(assistant: Assistant): String = listOf(
+        assistant.id,
+        assistant.name,
+        assistant.phone,
+        assistant.active.toString(),
+        assistant.permissions.sortedBy { it.name }.joinToString(",") { it.name }
+    ).joinToString("|") { encode(it) }
+
+    fun decodeAssistant(value: String): Assistant? {
+        val fields = value.split("|").mapNotNull(::decode)
+        if (fields.size != 5) return null
+        val active = fields[3].toBooleanStrictOrNull() ?: return null
+        val permissions = if (fields[4].isBlank()) emptySet() else fields[4].split(",")
+            .mapNotNull { runCatching { Permission.valueOf(it) }.getOrNull() }
+            .toSet()
+        return Assistant(fields[0], fields[1], fields[2], active, permissions)
+    }
 
     fun encodeProfile(profile: DoctorProfile): String = listOf(
         profile.name,

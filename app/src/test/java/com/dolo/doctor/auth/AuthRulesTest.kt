@@ -22,6 +22,24 @@ class AuthRulesTest {
         assertNull(SessionCodec.decode("invalid-session"))
     }
 
+    @Test fun assistantCredentialCodecAndSaltedHashRoundTrip() {
+        val salt = PinHasher.newSalt()
+        val record = AssistantCredentialRecord(
+            "staff-new", "Anita Singh", "9876509999", true, salt, PinHasher.hash("4826", salt)
+        )
+
+        val restored = AssistantCredentialCodec.decode(AssistantCredentialCodec.encode(record))
+
+        assertEquals(record, restored)
+        assertTrue(PinHasher.matches("4826", salt, record.pinHash))
+        assertFalse(PinHasher.matches("1234", salt, record.pinHash))
+        assertFalse(record.pinHash.contains("4826"))
+    }
+
+    @Test fun malformedAssistantCredentialIsRejected() {
+        assertNull(AssistantCredentialCodec.decode("not-a-credential"))
+    }
+
     @Test fun demoCredentialsRespectSelectedRole() {
         assertEquals("doctor-1", DemoCredentials.authenticate(UserRole.DOCTOR, "9999999999", "1234")?.userId)
         assertEquals("staff-1", DemoCredentials.authenticate(UserRole.ASSISTANT, "9876543210", "1234")?.userId)

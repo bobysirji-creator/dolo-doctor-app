@@ -16,7 +16,10 @@
   - [x] validated create, edit, publish, draft and delete workflow
   - [x] persisted scheduling with live/expired Patient profile visibility
   - [x] audit notifications and provider-neutral cross-app feed contracts
-- [ ] Stage 8 - assistant creation, credentials and backend-enforced permissions
+- [x] Stage 8 - assistant creation, credentials and backend-ready permission administration
+  - [x] persisted Doctor-only assistant creation, enable/disable and deletion
+  - [x] generated temporary PINs stored only as salted hashes with reset support
+  - [x] modular permission administration, audit events and backend service contracts
 - [ ] Stage 9 - reports, feedback, multi-clinic readiness and queue-delay notices
 - [ ] Stage 10 - shared backend integration with Patient App
 - [ ] Stage 11 - accessibility, security, tests and release hardening

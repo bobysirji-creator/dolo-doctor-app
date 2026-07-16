@@ -2,7 +2,7 @@
 
 DO-LO Doctor is the dedicated lightweight Android app for doctors and permission-limited assistants in the DO-LO walk-in appointment ecosystem.
 
-Current prototype: **0.7.0-stage7** (version code 15).
+Current prototype: **0.8.0-stage8** (version code 16).
 
 ## Current prototype includes
 
@@ -22,7 +22,8 @@ Current prototype: **0.7.0-stage7** (version code 15).
 - editable, validated and persisted clinic contact details, session schedules, token limits and average consultation time;
 - persisted appointment availability blocks for date ranges and Morning, Evening or both sessions, with affected-patient follow-up and queue safeguards;
 - validated and persisted doctor announcements, availability notices, health camps and offers with draft, scheduled, live and expired states plus a Patient App feed contract;
-- assistant accounts with modular permissions, persistent Doctor-only deletion, and enforcement in both UI controls and ViewModel actions;
+- Doctor-managed assistant creation with individual mobile/PIN credentials, salted PIN hashes, instant enable/disable, PIN reset and persistent deletion;
+- modular assistant permissions enforced in both UI controls and ViewModel actions, with provider-neutral server-authorization contracts;
 - editable-profile placeholders and Admin-review rules;
 - backend-ready service interfaces;
 - unit tests, Android lint and GitHub Actions APK builds.

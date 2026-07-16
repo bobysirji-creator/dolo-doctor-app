@@ -10,11 +10,13 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.security.SecureRandom
 
 class DoctorViewModel(
     private val stateStore: DoctorStateStore = NoOpDoctorStateStore,
     private val currentDate: () -> LocalDate = LocalDate::now,
-    private val currentTime: () -> LocalTime = LocalTime::now
+    private val currentTime: () -> LocalTime = LocalTime::now,
+    private val pinGenerator: () -> String = { (SecureRandom().nextInt(9000) + 1000).toString() }
 ) : ViewModel() {
     var uiState by mutableStateOf(stateStore.restore(DummyData.initialState(currentDate().toString())))
         private set
@@ -216,7 +218,7 @@ class DoctorViewModel(
 
     fun permissions(): Set<Permission> = when (uiState.role) {
         UserRole.DOCTOR -> Permission.entries.toSet()
-        UserRole.ASSISTANT -> uiState.assistants.firstOrNull { it.id == uiState.activeAssistantId }?.permissions.orEmpty()
+        UserRole.ASSISTANT -> uiState.assistants.firstOrNull { it.id == uiState.activeAssistantId && it.active }?.permissions.orEmpty()
         null -> emptySet()
     }
 
@@ -770,21 +772,74 @@ class DoctorViewModel(
         return true
     }
 
+    fun createAssistant(name: String, phone: String, permissions: Set<Permission>): AssistantCreationResult {
+        if (uiState.role != UserRole.DOCTOR) return AssistantCreationResult(error = "Only the doctor can create assistant accounts.")
+        val cleanName = name.trim().replace(Regex("\\s+"), " ")
+        val cleanPhone = phone.filter(Char::isDigit).takeLast(10)
+        if (cleanName.length !in 2..60) return AssistantCreationResult(error = "Enter an assistant name between 2 and 60 characters.")
+        if (cleanPhone.length != 10) return AssistantCreationResult(error = "Enter a valid 10-digit mobile number.")
+        if (uiState.assistants.any { it.phone == cleanPhone }) return AssistantCreationResult(error = "This mobile number already belongs to an assistant.")
+        val pin = pinGenerator()
+        if (pin.length != 4 || pin.any { !it.isDigit() }) return AssistantCreationResult(error = "Unable to generate a secure temporary PIN.")
+        val uniqueId = "staff-" + currentDate().toString().replace("-", "") + "-" + currentTime().toNanoOfDay()
+        val assistant = Assistant(uniqueId, cleanName, cleanPhone, true, permissions)
+        val updated = withAudit(
+            uiState.copy(assistants = (uiState.assistants + assistant).sortedBy { it.name.lowercase() }),
+            AuditAction.ASSISTANT_CREATED,
+            "Created assistant account for ${assistant.name}"
+        )
+        persist(updated)
+        return AssistantCreationResult(AssistantCredentialIssue(assistant, pin))
+    }
+
+    fun setAssistantActive(assistantId: String, active: Boolean): Boolean {
+        if (uiState.role != UserRole.DOCTOR) return false
+        val assistant = uiState.assistants.firstOrNull { it.id == assistantId } ?: return false
+        if (assistant.active == active) return true
+        val changed = assistant.copy(active = active)
+        val updated = withAudit(
+            uiState.copy(assistants = uiState.assistants.map { if (it.id == assistantId) changed else it }),
+            AuditAction.ASSISTANT_STATUS_CHANGED,
+            "${if (active) "Enabled" else "Disabled"} assistant account for ${assistant.name}"
+        )
+        persist(updated)
+        return true
+    }
+
+    fun resetAssistantPin(assistantId: String): AssistantCredentialIssue? {
+        if (uiState.role != UserRole.DOCTOR) return null
+        val assistant = uiState.assistants.firstOrNull { it.id == assistantId } ?: return null
+        val pin = pinGenerator()
+        if (pin.length != 4 || pin.any { !it.isDigit() }) return null
+        persist(withAudit(uiState, AuditAction.ASSISTANT_PIN_RESET, "Generated a new temporary PIN for ${assistant.name}"))
+        return AssistantCredentialIssue(assistant, pin)
+    }
+
     fun deleteAssistant(assistantId: String): Boolean {
-        if (uiState.role != UserRole.DOCTOR || uiState.assistants.none { it.id == assistantId }) return false
-        persist(uiState.copy(assistants = uiState.assistants.filterNot { it.id == assistantId }))
+        if (uiState.role != UserRole.DOCTOR) return false
+        val assistant = uiState.assistants.firstOrNull { it.id == assistantId } ?: return false
+        val updated = withAudit(
+            uiState.copy(assistants = uiState.assistants.filterNot { it.id == assistantId }),
+            AuditAction.ASSISTANT_DELETED,
+            "Deleted assistant account for ${assistant.name}"
+        )
+        persist(updated)
         return true
     }
 
     fun togglePermission(assistantId: String, permission: Permission) {
         if (uiState.role != UserRole.DOCTOR) return
-        persist(uiState.copy(assistants = uiState.assistants.map { assistant ->
-            if (assistant.id != assistantId) assistant else {
-                val permissions = assistant.permissions.toMutableSet()
-                if (!permissions.add(permission)) permissions.remove(permission)
-                assistant.copy(permissions = permissions)
-            }
-        }))
+        val assistant = uiState.assistants.firstOrNull { it.id == assistantId } ?: return
+        val permissions = assistant.permissions.toMutableSet()
+        val enabled = permissions.add(permission)
+        if (!enabled) permissions.remove(permission)
+        val updatedAssistant = assistant.copy(permissions = permissions)
+        val updated = withAudit(
+            uiState.copy(assistants = uiState.assistants.map { if (it.id == assistantId) updatedAssistant else it }),
+            AuditAction.ASSISTANT_PERMISSIONS_CHANGED,
+            "${if (enabled) "Granted" else "Removed"} ${permission.name.replace("_", " ").lowercase()} for ${assistant.name}"
+        )
+        persist(updated)
     }
 }
 

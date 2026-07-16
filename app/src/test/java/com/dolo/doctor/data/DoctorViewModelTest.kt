@@ -904,6 +904,59 @@ class DoctorViewModelTest {
         assertEquals(AnnouncementPublicationStatus.DRAFT, restored.announcementPublicationStatus(saved))
     }
 
+    @Test fun doctorCreatesPersistedAssistantWithGeneratedCredentials() {
+        val store = MemoryDoctorStateStore()
+        val first = DoctorViewModel(
+            store,
+            currentDate = { LocalDate.parse("2026-07-16") },
+            currentTime = { LocalTime.of(12, 0) },
+            pinGenerator = { "4826" }
+        )
+        first.login(UserRole.DOCTOR)
+
+        val result = first.createAssistant(
+            "  Anita   Singh  ",
+            "98765 09999",
+            setOf(Permission.VIEW_QUEUE, Permission.VIEW_TODAY_APPOINTMENTS)
+        )
+        val credential = result.credential ?: throw AssertionError(result.error)
+        assertEquals("Anita Singh", credential.assistant.name)
+        assertEquals("9876509999", credential.assistant.phone)
+        assertEquals("4826", credential.temporaryPin)
+        assertTrue(first.uiState.auditEvents.any { it.action == AuditAction.ASSISTANT_CREATED })
+
+        val restored = DoctorViewModel(store)
+        assertEquals(credential.assistant, restored.uiState.assistants.single { it.id == credential.assistant.id })
+    }
+
+    @Test fun assistantCreationValidationAndDoctorAuthorizationAreEnforced() {
+        val model = DoctorViewModel(pinGenerator = { "4826" })
+        model.login(UserRole.ASSISTANT, "staff-1")
+        assertTrue(model.createAssistant("Anita Singh", "9876509999", emptySet()).error != null)
+
+        model.login(UserRole.DOCTOR)
+        assertTrue(model.createAssistant("A", "123", emptySet()).error != null)
+        val duplicate = model.createAssistant("Another Assistant", model.uiState.assistants.first().phone, emptySet())
+        assertTrue(duplicate.error != null)
+    }
+
+    @Test fun doctorCanDisableResetAndAuditAssistantAccess() {
+        val model = DoctorViewModel(pinGenerator = { "7391" })
+        model.login(UserRole.DOCTOR)
+        val assistant = model.uiState.assistants.first()
+
+        assertTrue(model.setAssistantActive(assistant.id, false))
+        assertFalse(model.uiState.assistants.first { it.id == assistant.id }.active)
+        val credential = model.resetAssistantPin(assistant.id) ?: throw AssertionError("PIN was not generated")
+        assertEquals("7391", credential.temporaryPin)
+        assertTrue(model.uiState.auditEvents.any { it.action == AuditAction.ASSISTANT_STATUS_CHANGED })
+        assertTrue(model.uiState.auditEvents.any { it.action == AuditAction.ASSISTANT_PIN_RESET })
+
+        model.login(UserRole.ASSISTANT, assistant.id)
+        assertFalse(model.setAssistantActive(assistant.id, true))
+        assertEquals(null, model.resetAssistantPin(assistant.id))
+    }
+
     private class MemoryDoctorStateStore(initial: DoctorUiState? = null) : DoctorStateStore {
         private var saved: DoctorUiState? = initial
         override fun restore(defaultState: DoctorUiState): DoctorUiState = saved ?: defaultState

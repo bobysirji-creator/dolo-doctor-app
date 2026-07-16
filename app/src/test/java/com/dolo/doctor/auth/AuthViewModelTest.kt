@@ -1,6 +1,7 @@
 package com.dolo.doctor.auth
 
 import com.dolo.doctor.data.model.UserRole
+import com.dolo.doctor.data.model.Assistant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -22,6 +23,9 @@ class AuthViewModelTest {
         override fun login(role: UserRole, phone: String, pin: String): AuthResult = AuthResult.Failure("Not used")
         override fun logout() { session = null }
         override fun removedAssistantIds(): Set<String> = emptySet()
+        override fun provisionAssistant(assistant: Assistant, temporaryPin: String): Boolean = false
+        override fun setAssistantActive(assistant: Assistant): Boolean = false
+        override fun resetAssistantPin(assistant: Assistant, temporaryPin: String): Boolean = false
         override fun removeAssistant(assistantId: String): Boolean = false
     }
 }

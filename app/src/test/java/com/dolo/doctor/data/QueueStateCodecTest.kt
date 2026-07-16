@@ -11,6 +11,8 @@ import com.dolo.doctor.data.model.AvailabilityImpactStatus
 import com.dolo.doctor.data.model.Announcement
 import com.dolo.doctor.data.model.AnnouncementType
 import com.dolo.doctor.data.model.PaymentStatus
+import com.dolo.doctor.data.model.Assistant
+import com.dolo.doctor.data.model.Permission
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -130,6 +132,15 @@ class QueueStateCodecTest {
 
         assertEquals(event, QueueStateCodec.decodeAuditEvent(QueueStateCodec.encodeAuditEvent(event)))
     }
+    @Test fun assistantRoundTripKeepsIdentityStatusAndPermissions() {
+        val assistant = Assistant(
+            "staff-new", "Anita Singh", "9876509999", false,
+            setOf(Permission.VIEW_QUEUE, Permission.VIEW_TODAY_APPOINTMENTS)
+        )
+
+        assertEquals(assistant, QueueStateCodec.decodeAssistant(QueueStateCodec.encodeAssistant(assistant)))
+    }
+
     @Test fun malformedValuesAreIgnored() {
         assertEquals(null, QueueStateCodec.decodeAppointment("invalid"))
         assertEquals(null, QueueStateCodec.decodeHistory("invalid"))
