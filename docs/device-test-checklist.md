@@ -1,3 +1,20 @@
+## Stage 10 shared sync contract and Patient booking simulation
+
+1. Login as Doctor and confirm **Shared Patient App integration** appears on Home with LOCAL ONLY or the last persisted sync status.
+2. Open **Shared sync center** and confirm the red production-boundary warning clearly says the transport does not connect another device.
+3. Press **Publish local snapshot**. Confirm success, revision increases, status becomes SYNCED and a last-synchronized time appears.
+4. Return Home and reopen Sync Center. Confirm revision, status, time and message remain visible.
+5. Choose **Simulate Patient App booking**, select Evening, enter valid test details and create it. Confirm the revision increases again.
+6. Open Today's Appointments and select Evening. Confirm the new patient has the next Evening token, source Online, fee pending and no receipt.
+7. Open Queue and confirm the fee-pending Patient booking is not admitted.
+8. Return to Appointments, confirm the consultation fee and generate the compulsory receipt. Confirm the patient changes to Arrived and enters the Evening queue with the same token.
+9. Return to Sync Center. Confirm the operational change is marked PENDING, then publish and verify SYNCED at a newer revision.
+10. Test an invalid mobile number and short patient name; the simulation dialog must remain open with a validation message.
+11. Close one session and attempt a simulated booking for it after publishing. Confirm booking is rejected without changing appointments or revision.
+12. Remove the app from Recents and relaunch. Confirm the appointment, applied revision and sync message persist. The mock server itself is process-local; publish once to bootstrap it before another simulation.
+13. Login as either Assistant. Confirm no Shared Sync card/route is available and direct ViewModel tests reject publish, pull and simulation.
+14. Open Activity log and Notifications. Confirm publish, pull and received Patient booking events have clear titles and preserve unread behavior.
+15. Confirm duplicate/idempotency, stale-revision and independent-session-token unit tests pass in GitHub Actions.
 ## Stage 9 Clinic permission, reports, feedback and delay notices
 
 1. Login as Doctor, open Assistants and grant **View clinic** to a test Assistant. The older **Manage clinic availability** permission must also provide migrated Clinic viewing access.

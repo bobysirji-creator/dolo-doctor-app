@@ -94,6 +94,7 @@ import kotlinx.coroutines.delay
     onClinic: () -> Unit,
     onActivity: () -> Unit,
     onReports: () -> Unit,
+    onSync: () -> Unit,
     onAvailability: () -> Unit,
     onAnnouncements: () -> Unit,
     onAssistants: () -> Unit,
@@ -133,6 +134,16 @@ import kotlinx.coroutines.delay
             item { ToolRow(onAppointments, if (doctorMode) onHistory else onClinic, canViewAppointments, if (doctorMode) true else canViewClinic, secondLabel = if (doctorMode) "Queue history" else "Clinic", secondIcon = if (doctorMode) Icons.Outlined.History else Icons.Outlined.Business) }
             if (doctorMode) {
                 item { ToolRow(onClinic, onReports, true, true, "Clinic", "Reports", Icons.Outlined.Business, Icons.Outlined.Insights) }
+                item {
+                    ElevatedSection("Shared Patient App integration", state.syncMessage) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            StatusPill(state.syncStatus.name.replace("_", " "), state.syncStatus == SyncStatus.SYNCED)
+                            Spacer(Modifier.weight(1f))
+                            Text("Revision " + state.syncRevision, fontWeight = FontWeight.Bold)
+                        }
+                        PrimaryAction("Open sync center", onSync, icon = Icons.Outlined.CloudSync)
+                    }
+                }
                 item { ToolRow(onActivity, onAvailability, true, true, "Activity log", "Availability", Icons.Outlined.FactCheck, Icons.Outlined.EventBusy) }
                 item { ToolRow(onAnnouncements, onAssistants, true, true, "Updates", "Assistants", Icons.Outlined.Campaign, Icons.Outlined.Groups) }
             } else {

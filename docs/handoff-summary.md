@@ -1,3 +1,14 @@
+## Stage 10 shared backend contract and local mock transport
+
+Version 0.10.0-stage10 (version code 18) adds a Doctor-only Shared Sync Center backed by a deterministic in-process transport. The Doctor can publish the current clinic-day snapshot, simulate a Patient App booking, and pull the latest shared revision. Revision matching rejects stale writes, and idempotency keys prevent duplicate publishes or appointments.
+
+A simulated Patient App booking receives the next independent Morning or Evening token, remains BOOKED with fee PENDING, and has no queue order or receipt. Existing clinic fee confirmation and compulsory receipt generation then admit it to the operational queue. Shared revision, status, time and message persist locally; subsequent operational changes are marked PENDING.
+
+This stage does not synchronize separate phones. The local transport resets with the app process and safely bootstraps again from the persisted revision. docs/shared-backend-contract.md defines the future HTTPS resources, transaction rules, conflict behavior and security gate. GitHub Actions remains the authoritative lint, unit-test and APK build environment.
+
+## Next recommended stage
+
+Stage 11: accessibility, security, automated UI coverage and release hardening. A real hosted backend should be planned as a separately deployable service before replacing the Stage 10 mock.
 ## Stage 9 reports, feedback and queue-delay readiness
 
 Version 0.9.0-stage9 (version code 17) corrects Clinic access for Assistants. The Home Clinic card and navigation now accept VIEW_CLINIC or the previously granted MANAGE_CLINIC_AVAILABILITY permission. Authorized Assistants receive the complete clinic/schedule view without edit controls, while DoctorViewModel continues to reject Assistant clinic mutations. Local schema version 6 migrates the older availability permission to View clinic so installed Stage 8 choices keep working.

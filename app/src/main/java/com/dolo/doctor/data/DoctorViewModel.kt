@@ -6,17 +6,25 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.dolo.doctor.data.model.*
+import com.dolo.doctor.integrations.LocalMockSharedBackendGateway
+import com.dolo.doctor.integrations.PatientBookingCommand
+import com.dolo.doctor.integrations.PublishClinicCommand
+import com.dolo.doctor.integrations.SharedBackendGateway
+import com.dolo.doctor.integrations.SharedBackendResult
+import com.dolo.doctor.integrations.SharedClinicSnapshot
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.UUID
 import java.security.SecureRandom
 
 class DoctorViewModel(
     private val stateStore: DoctorStateStore = NoOpDoctorStateStore,
     private val currentDate: () -> LocalDate = LocalDate::now,
     private val currentTime: () -> LocalTime = LocalTime::now,
-    private val pinGenerator: () -> String = { (SecureRandom().nextInt(9000) + 1000).toString() }
+    private val pinGenerator: () -> String = { (SecureRandom().nextInt(9000) + 1000).toString() },
+    private val sharedBackend: SharedBackendGateway = LocalMockSharedBackendGateway()
 ) : ViewModel() {
     var uiState by mutableStateOf(stateStore.restore(DummyData.initialState(currentDate().toString())))
         private set
@@ -30,11 +38,30 @@ class DoctorViewModel(
     private fun currentStateWithout(removedAssistantIds: Set<String>): DoctorUiState =
         uiState.copy(assistants = uiState.assistants.filterNot { it.id in removedAssistantIds })
 
-    private fun persist(state: DoctorUiState) {
-        uiState = state
-        stateStore.save(state)
+    private fun persist(state: DoctorUiState, fromSharedBackend: Boolean = false) {
+        val savedState = if (
+            !fromSharedBackend &&
+            uiState.syncRevision > 0 &&
+            state.syncRevision == uiState.syncRevision &&
+            sharedStateChanged(uiState, state)
+        ) {
+            state.copy(
+                syncStatus = SyncStatus.PENDING,
+                syncMessage = "Local changes are waiting to be published."
+            )
+        } else state
+        uiState = savedState
+        stateStore.save(savedState)
     }
 
+    private fun sharedStateChanged(before: DoctorUiState, after: DoctorUiState): Boolean =
+        before.clinics != after.clinics ||
+            before.queueDate != after.queueDate ||
+            before.appointments != after.appointments ||
+            before.sessionQueues != after.sessionQueues ||
+            before.announcements != after.announcements ||
+            before.availabilityBlocks != after.availabilityBlocks ||
+            before.queueDelayNotices != after.queueDelayNotices
     fun queueFor(session: String): ConsultationQueue = uiState.sessionQueues.firstOrNull { it.session == session }
         ?: if (session == "Morning") ConsultationQueue("Morning", uiState.queueState, uiState.currentToken)
         else ConsultationQueue(session, QueueState.NOT_STARTED, 0)
@@ -831,6 +858,185 @@ class DoctorViewModel(
         val updated = uiState.copy(queueDelayNotices = (uiState.queueDelayNotices + notice).takeLast(100))
         persist(withAudit(updated, AuditAction.QUEUE_DELAY_NOTICE_SENT, "Sent $session queue delay notice: $delayMinutes minutes"))
         return null
+    }
+    private fun sharedSnapshot(): SharedClinicSnapshot? {
+        val clinic = uiState.clinics.firstOrNull() ?: return null
+        return SharedClinicSnapshot(
+            revision = uiState.syncRevision,
+            generatedAt = syncTimestamp(),
+            clinic = clinic,
+            queueDate = uiState.queueDate,
+            queues = uiState.sessionQueues,
+            appointments = uiState.appointments,
+            announcements = uiState.announcements,
+            availabilityBlocks = uiState.availabilityBlocks,
+            delayNotices = uiState.queueDelayNotices
+        )
+    }
+
+    private fun syncTimestamp(): String =
+        currentDate().toString() + " " + currentTime().format(timeFormatter)
+
+    private fun applySharedSnapshot(
+        snapshot: SharedClinicSnapshot,
+        action: AuditAction,
+        detail: String
+    ) {
+        val morning = snapshot.queues.firstOrNull { it.session == "Morning" }
+            ?: ConsultationQueue("Morning", QueueState.NOT_STARTED, 0)
+        val updated = uiState.copy(
+            clinics = uiState.clinics.map { if (it.id == snapshot.clinic.id) snapshot.clinic else it },
+            queueDate = snapshot.queueDate,
+            appointments = snapshot.appointments,
+            sessionQueues = snapshot.queues,
+            queueState = morning.state,
+            currentToken = morning.currentToken,
+            announcements = snapshot.announcements,
+            availabilityBlocks = snapshot.availabilityBlocks,
+            queueDelayNotices = snapshot.delayNotices,
+            syncRevision = snapshot.revision,
+            syncStatus = SyncStatus.SYNCED,
+            lastSyncedAt = syncTimestamp(),
+            syncMessage = "Mock shared snapshot revision " + snapshot.revision + " applied."
+        )
+        persist(withAudit(updated, action, detail), fromSharedBackend = true)
+    }
+
+    fun publishLocalSnapshot(): String? {
+        if (uiState.role != UserRole.DOCTOR) return "Only the Doctor can publish clinic state."
+        val snapshot = sharedSnapshot() ?: return "Clinic details are unavailable."
+        val command = PublishClinicCommand(
+            idempotencyKey = "publish-" + UUID.randomUUID().toString(),
+            baseRevision = uiState.syncRevision,
+            snapshot = snapshot
+        )
+        return when (val result = sharedBackend.publish(command)) {
+            is SharedBackendResult.Success -> {
+                val synced = uiState.copy(
+                    syncRevision = result.value.revision,
+                    syncStatus = SyncStatus.SYNCED,
+                    lastSyncedAt = syncTimestamp(),
+                    syncMessage = if (result.replayed) {
+                        "The previous publish was safely replayed."
+                    } else {
+                        "Local clinic state published to mock revision " + result.value.revision + "."
+                    }
+                )
+                persist(
+                    withAudit(
+                        synced,
+                        AuditAction.SHARED_SYNC_PUBLISHED,
+                        "Published clinic state at shared revision " + result.value.revision
+                    ),
+                    fromSharedBackend = true
+                )
+                null
+            }
+            is SharedBackendResult.Conflict -> {
+                persist(
+                    uiState.copy(
+                        syncStatus = SyncStatus.CONFLICT,
+                        syncMessage = result.message
+                    ),
+                    fromSharedBackend = true
+                )
+                result.message
+            }
+            is SharedBackendResult.Failure -> {
+                persist(
+                    uiState.copy(syncStatus = SyncStatus.ERROR, syncMessage = result.message),
+                    fromSharedBackend = true
+                )
+                result.message
+            }
+        }
+    }
+
+    fun pullSharedSnapshot(): String? {
+        if (uiState.role != UserRole.DOCTOR) return "Only the Doctor can pull shared clinic state."
+        val clinicId = uiState.clinics.firstOrNull()?.id ?: return "Clinic details are unavailable."
+        return when (val result = sharedBackend.pull(clinicId)) {
+            is SharedBackendResult.Success -> {
+                applySharedSnapshot(
+                    result.value,
+                    AuditAction.SHARED_SYNC_PULLED,
+                    "Pulled shared clinic revision " + result.value.revision
+                )
+                null
+            }
+            is SharedBackendResult.Conflict -> {
+                persist(
+                    uiState.copy(syncStatus = SyncStatus.CONFLICT, syncMessage = result.message),
+                    fromSharedBackend = true
+                )
+                result.message
+            }
+            is SharedBackendResult.Failure -> {
+                persist(
+                    uiState.copy(syncStatus = SyncStatus.ERROR, syncMessage = result.message),
+                    fromSharedBackend = true
+                )
+                result.message
+            }
+        }
+    }
+
+    fun simulatePatientAppBooking(
+        patientName: String,
+        patientPhone: String,
+        patientType: String,
+        session: String
+    ): String? {
+        if (uiState.role != UserRole.DOCTOR) return "Only the Doctor can run the mock Patient App simulation."
+        val cleanName = patientName.trim().replace(Regex("\\s+"), " ")
+        val cleanPhone = patientPhone.filter(Char::isDigit).takeLast(10)
+        if (cleanName.length !in 2..60) return "Enter a patient name between 2 and 60 characters."
+        if (cleanPhone.length != 10) return "Enter a valid 10-digit mobile number."
+        if (patientType !in setOf("Self", "Family member")) return "Select Self or Family member."
+        val clinicId = uiState.clinics.firstOrNull()?.id ?: return "Clinic details are unavailable."
+        val previousIds = uiState.appointments.mapTo(mutableSetOf()) { it.id }
+        val idempotencyKey = "patient-booking-" + UUID.randomUUID().toString()
+        val command = PatientBookingCommand(
+            idempotencyKey = idempotencyKey,
+            baseRevision = uiState.syncRevision,
+            clinicId = clinicId,
+            appointmentDate = uiState.queueDate,
+            session = session,
+            patientName = cleanName,
+            patientPhone = cleanPhone,
+            patientType = patientType,
+            bookedAt = currentTime().format(timeFormatter)
+        )
+        return when (val result = sharedBackend.bookFromPatientApp(command)) {
+            is SharedBackendResult.Success -> {
+                val received = result.value.appointments.firstOrNull { it.id !in previousIds }
+                applySharedSnapshot(
+                    result.value,
+                    AuditAction.PATIENT_APP_BOOKING_RECEIVED,
+                    if (received == null) {
+                        "Replayed Patient App booking safely without creating a duplicate."
+                    } else {
+                        "Received Patient App booking for " + received.patientName +
+                            ", " + received.session + " token " + received.token
+                    }
+                )
+                null
+            }
+            is SharedBackendResult.Conflict -> {
+                persist(
+                    uiState.copy(syncStatus = SyncStatus.CONFLICT, syncMessage = result.message),
+                    fromSharedBackend = true
+                )
+                result.message
+            }
+            is SharedBackendResult.Failure -> {
+                persist(
+                    uiState.copy(syncStatus = SyncStatus.ERROR, syncMessage = result.message),
+                    fromSharedBackend = true
+                )
+                result.message
+            }
+        }
     }
     fun createAssistant(name: String, phone: String, permissions: Set<Permission>): AssistantCreationResult {
         if (uiState.role != UserRole.DOCTOR) return AssistantCreationResult(error = "Only the doctor can create assistant accounts.")

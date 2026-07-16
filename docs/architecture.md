@@ -1,3 +1,12 @@
+## Stage 10 shared contract and mock transport
+
+- SharedBackendGateway separates Android workflow code from the future HTTPS provider. LocalMockSharedBackendGateway is deterministic, process-local and intentionally incapable of cross-device delivery.
+- SharedClinicSnapshot is clinic/date scoped and carries revisioned queues, appointments, announcements, availability and delay notices.
+- Publish and Patient-booking commands carry idempotency keys. Stale base revisions produce explicit conflicts; successful replays return the original snapshot.
+- Patient App bookings receive independent session tokens as BOOKED/fee-PENDING records. They receive no queue order and remain ineligible for consultation until clinic payment/waiver and receipt confirmation.
+- DoctorUiState persists applied revision, sync status, time and message. Shared operational mutations after a successful publish move status to PENDING.
+- Only Doctors can open or mutate the Sync Center. This is still local workflow testing; production authorization belongs to the backend.
+- The provider-neutral HTTP resource, conflict and security requirements are defined in docs/shared-backend-contract.md.
 ## Stage 9 reports, feedback and clinic-scoped contracts
 
 - VIEW_CLINIC provides explicit read-only Assistant Clinic access. Installed schema-5 assistants with MANAGE_CLINIC_AVAILABILITY migrate to that permission; DoctorViewModel still owns all clinic mutations.

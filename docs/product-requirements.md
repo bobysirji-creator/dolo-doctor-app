@@ -100,3 +100,11 @@ Patient feedback contains clinic identity, patient display name, rating, comment
 A Doctor or Assistant with SEND_QUEUE_DELAY_NOTICE can create a Morning or Evening notice with a 5-to-240-minute delay and patient-facing message. Stage 9 persists the delivery candidate; Stage 10 must select affected Patient App appointments, prevent duplicate delivery, expire stale notices and send push/SMS only through approved backend providers.
 
 Clinic access for Assistants is read-only and permission controlled. Clinic-ID-scoped models and service contracts prepare for multiple clinics, but independent token allocation, queue state and clinic switching must remain backend-authoritative rather than being simulated with conflicting local queues.
+
+## Stage 10 shared backend readiness
+
+The Doctor and Patient apps must exchange clinic-day state only through an authenticated shared backend. Every operational snapshot has a monotonically increasing revision, every mutation has an idempotency key, and stale writes must return a conflict instead of overwriting a newer queue.
+
+Patient App booking must allocate the next token atomically within its clinic/date/session sequence. Online booking starts fee-pending and remains outside the consultation queue until authorized clinic staff confirms payment or waiver and generates the compulsory token receipt.
+
+The Stage 10 local mock exists only to test these rules. It must be visibly identified as non-networked and must not claim cross-device synchronization.

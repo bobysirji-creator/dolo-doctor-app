@@ -43,7 +43,7 @@ fun NotificationsScreen(
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = onMarkAllRead, enabled = unreadCount > 0) { Text("Mark all read") }
                 }
-                Text("Remote Patient App events and Android push alerts will connect through the shared backend later.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                Text("Mock shared events appear locally in Stage 10; real remote Patient App events and Android push alerts still require the hosted backend.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             }
         }
         if (notifications.isEmpty()) {
@@ -109,4 +109,7 @@ private fun notificationTitle(action: AuditAction): String = when (action) {
     AuditAction.ASSISTANT_DELETED -> "Assistant account deleted"
     AuditAction.FEEDBACK_ACKNOWLEDGED -> "Patient feedback acknowledged"
     AuditAction.QUEUE_DELAY_NOTICE_SENT -> "Queue-delay notice created"
+    AuditAction.SHARED_SYNC_PUBLISHED -> "Clinic snapshot published"
+    AuditAction.SHARED_SYNC_PULLED -> "Shared snapshot applied"
+    AuditAction.PATIENT_APP_BOOKING_RECEIVED -> "Patient App booking received"
 }

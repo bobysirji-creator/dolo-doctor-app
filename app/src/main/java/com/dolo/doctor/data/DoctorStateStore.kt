@@ -138,13 +138,19 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
             availabilityBlocks = availabilityBlocks,
             assistants = assistants,
             feedback = feedback,
-            queueDelayNotices = queueDelayNotices
+            queueDelayNotices = queueDelayNotices,
+            syncRevision = preferences.getLong(KEY_SYNC_REVISION, 0L),
+            syncStatus = preferences.getString(KEY_SYNC_STATUS, null)
+                ?.let { runCatching { SyncStatus.valueOf(it) }.getOrNull() }
+                ?: SyncStatus.LOCAL_ONLY,
+            lastSyncedAt = preferences.getString(KEY_LAST_SYNCED_AT, "") ?: "",
+            syncMessage = preferences.getString(KEY_SYNC_MESSAGE, "Local offline data only") ?: "Local offline data only"
         )
     }
 
     override fun save(state: DoctorUiState): Boolean = preferences.edit()
         .putBoolean(KEY_INITIALIZED, true)
-        .putInt(KEY_SCHEMA_VERSION, 6)
+        .putInt(KEY_SCHEMA_VERSION, 7)
         .putString(KEY_DOCTOR_PROFILE, QueueStateCodec.encodeProfile(state.profile))
         .putStringSet(KEY_CLINICS, state.clinics.mapTo(mutableSetOf(), QueueStateCodec::encodeClinic))
         .putString(KEY_QUEUE_DATE, state.queueDate)
@@ -165,6 +171,10 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
         .putStringSet(KEY_ASSISTANTS, state.assistants.mapTo(mutableSetOf(), QueueStateCodec::encodeAssistant))
         .putStringSet(KEY_FEEDBACK, state.feedback.mapTo(mutableSetOf(), QueueStateCodec::encodeFeedback))
         .putStringSet(KEY_QUEUE_DELAY_NOTICES, state.queueDelayNotices.takeLast(100).mapTo(mutableSetOf(), QueueStateCodec::encodeQueueDelayNotice))
+        .putLong(KEY_SYNC_REVISION, state.syncRevision)
+        .putString(KEY_SYNC_STATUS, state.syncStatus.name)
+        .putString(KEY_LAST_SYNCED_AT, state.lastSyncedAt)
+        .putString(KEY_SYNC_MESSAGE, state.syncMessage)
         .commit()
 
     private fun migrateIndependentSessionTokens(appointments: List<Appointment>, queueDate: String): List<Appointment> =
@@ -223,5 +233,9 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
         const val KEY_ASSISTANTS = "doctor_assistants"
         const val KEY_FEEDBACK = "doctor_patient_feedback"
         const val KEY_QUEUE_DELAY_NOTICES = "doctor_queue_delay_notices"
+        const val KEY_SYNC_REVISION = "doctor_shared_sync_revision"
+        const val KEY_SYNC_STATUS = "doctor_shared_sync_status"
+        const val KEY_LAST_SYNCED_AT = "doctor_last_synced_at"
+        const val KEY_SYNC_MESSAGE = "doctor_sync_message"
     }
 }

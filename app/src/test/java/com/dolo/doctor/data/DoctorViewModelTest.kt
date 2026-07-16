@@ -1035,4 +1035,72 @@ class DoctorViewModelTest {
             return true
         }
     }
+
+    @Test fun doctorPublishesAndReceivesFeePendingPatientAppBooking() {
+        val store = MemoryDoctorStateStore()
+        val gateway = com.dolo.doctor.integrations.LocalMockSharedBackendGateway {
+            "2026-07-16T12:00:00Z"
+        }
+        val model = DoctorViewModel(
+            stateStore = store,
+            currentDate = { LocalDate.parse("2026-07-16") },
+            currentTime = { LocalTime.of(18, 0) },
+            sharedBackend = gateway
+        )
+        model.login(UserRole.DOCTOR)
+
+        assertEquals(null, model.publishLocalSnapshot())
+        assertEquals(1L, model.uiState.syncRevision)
+        assertEquals(SyncStatus.SYNCED, model.uiState.syncStatus)
+
+        assertEquals(
+            null,
+            model.simulatePatientAppBooking(
+                "Online Patient",
+                "9876502222",
+                "Family member",
+                "Evening"
+            )
+        )
+        val received = model.uiState.appointments.single { it.patientName == "Online Patient" }
+        assertEquals(1, received.token)
+        assertEquals(0, received.queueOrder)
+        assertEquals(BookingSource.PATIENT_APP, received.bookingSource)
+        assertEquals(PaymentStatus.PENDING, received.paymentStatus)
+        assertEquals(AppointmentStatus.BOOKED, received.status)
+        assertEquals(2L, model.uiState.syncRevision)
+        assertEquals(SyncStatus.SYNCED, model.uiState.syncStatus)
+        assertEquals(AuditAction.PATIENT_APP_BOOKING_RECEIVED, model.uiState.auditEvents.last().action)
+
+        val restored = DoctorViewModel(
+            store,
+            currentDate = { LocalDate.parse("2026-07-16") }
+        )
+        assertEquals(2L, restored.uiState.syncRevision)
+        assertEquals(received, restored.uiState.appointments.single { it.id == received.id })
+    }
+
+    @Test fun localClinicMutationAfterPublishIsMarkedPending() {
+        val gateway = com.dolo.doctor.integrations.LocalMockSharedBackendGateway()
+        val model = DoctorViewModel(sharedBackend = gateway)
+        model.login(UserRole.DOCTOR)
+
+        assertEquals(null, model.publishLocalSnapshot())
+        model.toggleQueue("Morning")
+
+        assertEquals(SyncStatus.PENDING, model.uiState.syncStatus)
+        assertTrue(model.uiState.syncMessage.contains("waiting"))
+    }
+
+    @Test fun assistantCannotUseDoctorSharedSyncControls() {
+        val model = DoctorViewModel()
+        model.login(UserRole.ASSISTANT, "staff-1")
+
+        assertTrue(model.publishLocalSnapshot() != null)
+        assertTrue(model.pullSharedSnapshot() != null)
+        assertTrue(
+            model.simulatePatientAppBooking("Online Patient", "9876502222", "Self", "Evening") != null
+        )
+        assertEquals(0L, model.uiState.syncRevision)
+     }
 }

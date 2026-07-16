@@ -24,7 +24,10 @@
   - [x] Assistant Clinic-access correction with read-only permission enforcement
   - [x] persisted operational metrics, feedback acknowledgement and delay notices
   - [x] clinic-ID-scoped reporting and backend integration contracts
-- [ ] Stage 10 - shared backend integration with Patient App
+- [x] Stage 10 - shared backend integration contract and local mock transport
+  - [x] revision and idempotency-safe clinic snapshots
+  - [x] Doctor-only Sync Center with publish/pull state
+  - [x] simulated fee-pending Patient App booking with independent session token
 - [ ] Stage 11 - accessibility, security, tests and release hardening
 
 Admin App remains a separate future repository. Real providers remain disabled until the shared backend and policies are approved.
