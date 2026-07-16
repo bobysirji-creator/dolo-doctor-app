@@ -102,4 +102,9 @@ private fun notificationTitle(action: AuditAction): String = when (action) {
     AuditAction.ANNOUNCEMENT_SAVED -> "Doctor update saved"
     AuditAction.ANNOUNCEMENT_VISIBILITY_CHANGED -> "Doctor update visibility changed"
     AuditAction.ANNOUNCEMENT_DELETED -> "Doctor update deleted"
+    AuditAction.ASSISTANT_CREATED -> "Assistant account created"
+    AuditAction.ASSISTANT_STATUS_CHANGED -> "Assistant login status changed"
+    AuditAction.ASSISTANT_PERMISSIONS_CHANGED -> "Assistant permissions changed"
+    AuditAction.ASSISTANT_PIN_RESET -> "Assistant PIN reset"
+    AuditAction.ASSISTANT_DELETED -> "Assistant account deleted"
 }
