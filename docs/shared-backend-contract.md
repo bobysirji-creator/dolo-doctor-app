@@ -74,3 +74,14 @@ The response uses an ETag/revision. Clients may request changes after a known re
 ## Security and privacy gate
 
 Before replacing the mock transport, add HTTPS certificate validation, short-lived access tokens with refresh rotation, device/session revocation, server rate limits, structured audit retention, encrypted secrets, minimum necessary patient fields, consent/privacy documentation and environment-separated backend URLs. SMS, maps, payment and push credentials remain server-side only.
+## Future-booking policy
+
+The clinic projection includes futureBookingEnabled and advanceBookingDays. The server evaluates requested dates using the clinic timezone:
+
+- Patient App current-day requests remain allowed when the session is open.
+- Future Patient App requests require futureBookingEnabled and cannot exceed advanceBookingDays.
+- Clinic walk-in requests require the server clinic date regardless of the Patient App policy.
+- Date policy passes before availability, session capacity, payment and token allocation checks.
+- Policy changes increment the clinic revision and create an immutable audit event.
+
+The Stage 11 local transport evaluates this rule but stores only the active clinic-day snapshot. The hosted backend must own scheduled future appointments.

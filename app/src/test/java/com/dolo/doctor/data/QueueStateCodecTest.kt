@@ -86,13 +86,30 @@ class QueueStateCodecTest {
         val clinic = DummyData.clinics.first().copy(
             morningSession = "08:30 AM - 12:30 PM",
             maxTokensPerSession = 40,
-            averageConsultationMinutes = 15
+            averageConsultationMinutes = 15,
+            futureBookingEnabled = true,
+            advanceBookingDays = 21
         )
 
         assertEquals(profile, QueueStateCodec.decodeProfile(QueueStateCodec.encodeProfile(profile)))
         assertEquals(clinic, QueueStateCodec.decodeClinic(QueueStateCodec.encodeClinic(clinic)))
     }
 
+    @Test fun legacyClinicDefaultsToCurrentDayOnly() {
+        val fields = listOf(
+            "clinic-old", "Old Clinic", "22 Green Park, New Delhi", "01140002200",
+            "09:00 AM - 01:00 PM", "05:00 PM - 09:00 PM", "30", "12"
+        )
+        val legacy = fields.joinToString("|") {
+            java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray())
+        }
+
+        val decoded = QueueStateCodec.decodeClinic(legacy)
+            ?: throw AssertionError("Legacy clinic was not decoded")
+
+        assertEquals(false, decoded.futureBookingEnabled)
+        assertEquals(7, decoded.advanceBookingDays)
+    }
     @Test fun announcementRoundTripKeepsCompletePublishedRecord() {
         val announcement = Announcement(
             "announcement-1", "Free heart health camp", "Screening is available at the clinic.",

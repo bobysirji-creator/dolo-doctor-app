@@ -150,7 +150,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
 
     override fun save(state: DoctorUiState): Boolean = preferences.edit()
         .putBoolean(KEY_INITIALIZED, true)
-        .putInt(KEY_SCHEMA_VERSION, 7)
+        .putInt(KEY_SCHEMA_VERSION, 8)
         .putString(KEY_DOCTOR_PROFILE, QueueStateCodec.encodeProfile(state.profile))
         .putStringSet(KEY_CLINICS, state.clinics.mapTo(mutableSetOf(), QueueStateCodec::encodeClinic))
         .putString(KEY_QUEUE_DATE, state.queueDate)

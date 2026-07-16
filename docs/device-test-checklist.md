@@ -1,3 +1,21 @@
+## Stage 11 future-booking control and hardening
+
+1. Upgrade over the accepted Stage 10 APK without clearing data. Confirm existing clinic, queue, assistants, appointments and sync revision remain present.
+2. Login as Doctor, open Clinic and confirm the default migrated Patient App policy is **Current day only**.
+3. Edit the clinic, enable **Allow Patient App future booking**, enter 10 days and save. Confirm Clinic displays **Up to 10 days**.
+4. Remove the app from Recents and relaunch. Confirm the enabled policy and 10-day value persist.
+5. Disable future booking and confirm Clinic returns to current-day-only.
+6. Enable it again and try 0 and 91 days. Confirm each is rejected; verify 1 and 90 are accepted boundaries.
+7. Confirm **Book walk-in patient** remains a current-day workflow and contains no future-date option under either policy.
+8. Login as an Assistant with View clinic. Confirm the policy is visible but no edit control appears.
+9. Open Activity log and Notifications. Confirm every policy change has the correct current-day or advance-window detail.
+10. Publish a shared snapshot and verify changing the policy afterward marks sync status PENDING.
+11. With TalkBack, verify page headings, metrics, status badges, primary actions and bottom navigation are announced meaningfully.
+12. Set a large Android font/display size. Confirm Home action icons no longer overlap the Doctor name and key dialogs remain scrollable.
+13. Test light and dark themes; confirm booking state always has readable text and is not communicated by color alone.
+14. Verify the APK requests no Internet permission while the shared transport remains local mock-only.
+15. Confirm GitHub Actions passes lint, all unit tests, debug APK assembly and unsigned release assembly.
+16. Complete docs/release-checklist.md on Vivo and Samsung before marking the Stage 11 candidate accepted.
 ## Stage 10 shared sync contract and Patient booking simulation
 
 1. Login as Doctor and confirm **Shared Patient App integration** appears on Home with LOCAL ONLY or the last persisted sync status.

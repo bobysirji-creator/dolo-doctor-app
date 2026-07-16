@@ -28,6 +28,10 @@
   - [x] revision and idempotency-safe clinic snapshots
   - [x] Doctor-only Sync Center with publish/pull state
   - [x] simulated fee-pending Patient App booking with independent session token
-- [ ] Stage 11 - accessibility, security, tests and release hardening
+- [x] Stage 11 - future-booking control, accessibility, security, tests and release hardening
+  - [x] Patient App current-day/advance booking policy with 1-90 day limit
+  - [x] clinic walk-ins permanently restricted to current day
+  - [x] TalkBack semantics, large-font layout fixes and least-privilege manifest
+  - [x] unsigned release compile gate and production security checklist
 
 Admin App remains a separate future repository. Real providers remain disabled until the shared backend and policies are approved.

@@ -74,3 +74,12 @@ interface DoctorNotificationService {
 interface TokenReceiptGateway {
     suspend fun print(receipt: TokenReceipt): ApiResult<Unit>
 }
+
+interface PatientBookingPolicyGateway {
+    suspend fun policy(clinicId: String): ApiResult<Clinic>
+    suspend fun updateFutureBookingPolicy(
+        clinicId: String,
+        enabled: Boolean,
+        advanceBookingDays: Int
+    ): ApiResult<Clinic>
+}

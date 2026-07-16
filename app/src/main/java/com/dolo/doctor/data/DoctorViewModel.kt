@@ -559,7 +559,12 @@ class DoctorViewModel(
             address = updated.address.trim(),
             phone = updated.phone.trim(),
             morningSession = updated.morningSession.trim(),
-            eveningSession = updated.eveningSession.trim()
+            eveningSession = updated.eveningSession.trim(),
+            advanceBookingDays = if (updated.futureBookingEnabled) {
+                updated.advanceBookingDays
+            } else {
+                updated.advanceBookingDays.takeIf { it in 1..90 } ?: 7
+            }
         )
         val phoneDigits = cleaned.phone.filter(Char::isDigit)
         val error = when {
@@ -570,11 +575,31 @@ class DoctorViewModel(
             parseSessionRange(cleaned.eveningSession) == null -> "Use Evening format HH:MM AM - HH:MM PM with end time after start."
             cleaned.maxTokensPerSession !in 1..200 -> "Maximum tokens must be between 1 and 200."
             cleaned.averageConsultationMinutes !in 5..120 -> "Average consultation time must be between 5 and 120 minutes."
+            cleaned.futureBookingEnabled && cleaned.advanceBookingDays !in 1..90 -> "Advance booking must be between 1 and 90 days."
             else -> null
         }
         if (error != null) return error
 
-        persist(uiState.copy(clinics = uiState.clinics.map { if (it.id == cleaned.id) cleaned else it }))
+        val current = uiState.clinics.first { it.id == cleaned.id }
+        var updatedState = uiState.copy(
+            clinics = uiState.clinics.map { if (it.id == cleaned.id) cleaned else it }
+        )
+        if (
+            current.futureBookingEnabled != cleaned.futureBookingEnabled ||
+            current.advanceBookingDays != cleaned.advanceBookingDays
+        ) {
+            val policy = if (cleaned.futureBookingEnabled) {
+                "Enabled Patient App future booking up to " + cleaned.advanceBookingDays + " days"
+            } else {
+                "Restricted Patient App booking to the current day"
+            }
+            updatedState = withAudit(
+                updatedState,
+                AuditAction.FUTURE_BOOKING_POLICY_CHANGED,
+                policy + "; clinic walk-ins remain current-day only"
+            )
+        }
+        persist(updatedState)
         return null
     }
     fun announcementPublicationStatus(

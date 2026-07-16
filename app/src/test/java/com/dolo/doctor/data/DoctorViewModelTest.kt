@@ -291,10 +291,13 @@ class DoctorViewModelTest {
             phone = "+91 11 4444 5555",
             morningSession = "08:30 AM - 12:30 PM",
             maxTokensPerSession = 40,
-            averageConsultationMinutes = 15
+            averageConsultationMinutes = 15,
+            futureBookingEnabled = true,
+            advanceBookingDays = 21
         )
 
         assertEquals(null, model.updateClinic(updated))
+        assertEquals(AuditAction.FUTURE_BOOKING_POLICY_CHANGED, model.uiState.auditEvents.last().action)
         val restored = DoctorViewModel(store)
         assertEquals(updated, restored.uiState.clinics.first())
     }
@@ -307,6 +310,8 @@ class DoctorViewModelTest {
         assertTrue(model.updateClinic(original.copy(maxTokensPerSession = 0, averageConsultationMinutes = 2)) != null)
         assertTrue(model.updateClinic(original.copy(morningSession = "bad schedule")) != null)
         assertTrue(model.updateClinic(original.copy(eveningSession = "09:00 PM - 04:00 PM")) != null)
+        assertTrue(model.updateClinic(original.copy(futureBookingEnabled = true, advanceBookingDays = 0)) != null)
+        assertTrue(model.updateClinic(original.copy(futureBookingEnabled = true, advanceBookingDays = 91)) != null)
         assertEquals(original, model.uiState.clinics.first())
 
         model.login(UserRole.ASSISTANT, "staff-1")

@@ -1,3 +1,13 @@
+## Stage 11 booking policy and release hardening
+
+- Clinic stores futureBookingEnabled and advanceBookingDays. Legacy eight-field clinic records migrate to current-day-only with a seven-day inactive default.
+- BookingPolicyEvaluator is channel-aware: Patient App requests may use an enabled 1-90 day window, while CLINIC_WALK_IN requests are always restricted to the clinic date.
+- The Stage 11 mock evaluates future eligibility but deliberately refuses to store future-day appointments inside the current-day queue snapshot. Scheduled storage belongs to the hosted backend.
+- Clinic UI exposes the policy only to Doctors and shows it read-only to authorized Assistants.
+- Screen-reader semantics identify headings, metric values and status badges; the Home action row now grows for large fonts.
+- The mock-only manifest removes Internet permission, continues to block backup and cleartext, and enables modern back handling.
+- GitHub Actions now compiles the unsigned release variant in addition to lint, tests and debug APK.
+- SECURITY.md and docs/release-checklist.md define the remaining production gates.
 ## Stage 10 shared contract and mock transport
 
 - SharedBackendGateway separates Android workflow code from the future HTTPS provider. LocalMockSharedBackendGateway is deterministic, process-local and intentionally incapable of cross-device delivery.

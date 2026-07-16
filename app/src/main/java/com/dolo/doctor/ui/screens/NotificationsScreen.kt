@@ -112,4 +112,5 @@ private fun notificationTitle(action: AuditAction): String = when (action) {
     AuditAction.SHARED_SYNC_PUBLISHED -> "Clinic snapshot published"
     AuditAction.SHARED_SYNC_PULLED -> "Shared snapshot applied"
     AuditAction.PATIENT_APP_BOOKING_RECEIVED -> "Patient App booking received"
+    AuditAction.FUTURE_BOOKING_POLICY_CHANGED -> "Future-booking policy changed"
 }

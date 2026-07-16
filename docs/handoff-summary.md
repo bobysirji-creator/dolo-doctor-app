@@ -1,3 +1,14 @@
+## Stage 11 future-booking policy and hardening
+
+Version 0.11.0-stage11 (version code 19) adds Doctor-controlled Patient App future-booking policy to each clinic. The Doctor may keep current-day-only booking or allow 1 to 90 advance days. Existing installed clinic records migrate safely to current-day-only. Authorized Assistants can see the policy but cannot edit Clinic settings.
+
+BookingPolicyEvaluator keeps booking channels separate. Patient App future dates follow the configured window; clinic walk-ins remain current-day-only under every setting. The local shared transport can validate a future date but does not mix it into the active day queue; scheduled appointments require the hosted backend.
+
+Stage 11 also adds heading, metric and status semantics for TalkBack, removes a fixed Home header height for large fonts, removes unused Internet permission from the mock-only APK, keeps backup/cleartext blocked, and adds unsigned release assembly to CI. SECURITY.md and docs/release-checklist.md define the remaining production gates.
+
+## Next recommended stage
+
+Perform the Stage 11 physical-device and accessibility checklist. After acceptance, plan the hosted backend as a separate service before modifying either Android app for real cross-device data.
 ## Stage 10 shared backend contract and local mock transport
 
 Version 0.10.0-stage10 (version code 18) adds a Doctor-only Shared Sync Center backed by a deterministic in-process transport. The Doctor can publish the current clinic-day snapshot, simulate a Patient App booking, and pull the latest shared revision. Revision matching rejects stale writes, and idempotency keys prevent duplicate publishes or appointments.

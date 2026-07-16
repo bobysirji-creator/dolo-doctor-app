@@ -28,7 +28,7 @@ jobs:
         with:
           gradle-version: "8.9"
       - name: Lint, test and build debug APK
-        run: gradle --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
+        run: gradle --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease
       - name: Create APK checksum
         run: sha256sum app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/app-debug.apk.sha256
       - name: Upload installable APK

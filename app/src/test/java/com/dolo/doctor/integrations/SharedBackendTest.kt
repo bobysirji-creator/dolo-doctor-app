@@ -95,4 +95,55 @@ class SharedBackendTest {
 
         assertTrue(result is SharedBackendResult.Failure)
     }
+
+    @Test fun mockEnforcesFutureBookingPolicyWithoutMixingClinicDays() {
+        val disabledGateway = LocalMockSharedBackendGateway()
+        val disabledPublished = disabledGateway.publish(
+            PublishClinicCommand("publish-disabled", 0, snapshot())
+        ) as SharedBackendResult.Success<SharedClinicSnapshot>
+        val disabledResult = disabledGateway.bookFromPatientApp(
+            PatientBookingCommand(
+                "future-disabled",
+                disabledPublished.value.revision,
+                "clinic-1",
+                "2026-07-17",
+                "Morning",
+                "Future Patient",
+                "9876503333",
+                "Self",
+                "09:00 AM"
+            )
+        )
+        assertTrue(disabledResult is SharedBackendResult.Failure)
+        assertTrue((disabledResult as SharedBackendResult.Failure).message.contains("current day"))
+
+        val enabledGateway = LocalMockSharedBackendGateway()
+        val enabledSnapshot = snapshot().copy(
+            clinic = snapshot().clinic.copy(
+                futureBookingEnabled = true,
+                advanceBookingDays = 10
+            )
+        )
+        val enabledPublished = enabledGateway.publish(
+            PublishClinicCommand("publish-enabled", 0, enabledSnapshot)
+        ) as SharedBackendResult.Success<SharedClinicSnapshot>
+        val enabledResult = enabledGateway.bookFromPatientApp(
+            PatientBookingCommand(
+                "future-enabled",
+                enabledPublished.value.revision,
+                "clinic-1",
+                "2026-07-20",
+                "Morning",
+                "Future Patient",
+                "9876503333",
+                "Self",
+                "09:00 AM"
+            )
+        )
+        assertTrue(enabledResult is SharedBackendResult.Failure)
+        assertTrue((enabledResult as SharedBackendResult.Failure).message.contains("hosted backend"))
+        val unchanged = enabledGateway.pull("clinic-1")
+            as SharedBackendResult.Success<SharedClinicSnapshot>
+        assertEquals(enabledPublished.value.appointments, unchanged.value.appointments)
+    }
 }

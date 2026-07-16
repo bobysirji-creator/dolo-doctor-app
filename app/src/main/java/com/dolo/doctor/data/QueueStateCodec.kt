@@ -112,15 +112,22 @@ internal object QueueStateCodec {
         clinic.morningSession,
         clinic.eveningSession,
         clinic.maxTokensPerSession.toString(),
-        clinic.averageConsultationMinutes.toString()
+        clinic.averageConsultationMinutes.toString(),
+        clinic.futureBookingEnabled.toString(),
+        clinic.advanceBookingDays.toString()
     ).joinToString("|") { encode(it) }
 
     fun decodeClinic(value: String): Clinic? {
         val fields = value.split("|").mapNotNull(::decode)
-        if (fields.size != 8) return null
+        if (fields.size !in setOf(8, 10)) return null
         val maxTokens = fields[6].toIntOrNull() ?: return null
         val averageMinutes = fields[7].toIntOrNull() ?: return null
-        return Clinic(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], maxTokens, averageMinutes)
+        val futureBookingEnabled = if (fields.size == 10) fields[8].toBooleanStrictOrNull() ?: return null else false
+        val advanceBookingDays = if (fields.size == 10) fields[9].toIntOrNull() ?: return null else 7
+        return Clinic(
+            fields[0], fields[1], fields[2], fields[3], fields[4], fields[5],
+            maxTokens, averageMinutes, futureBookingEnabled, advanceBookingDays
+        )
     }
     fun encodeAvailabilityBlock(block: AvailabilityBlock): String = listOf(
         block.id,

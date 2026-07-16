@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,7 +67,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable fun MetricTile(label: String, value: String, modifier: Modifier = Modifier, accent: Color? = null) {
     val colors = MaterialTheme.colorScheme
-    Card(modifier.shadow(8.dp, RoundedCornerShape(22.dp)), colors = CardDefaults.cardColors(containerColor = colors.surface), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
+    Card(modifier.semantics(mergeDescendants = true) { contentDescription = label + ": " + value }.shadow(8.dp, RoundedCornerShape(22.dp)), colors = CardDefaults.cardColors(containerColor = colors.surface), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
         Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(value, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = accent ?: colors.primary)
             Text(label, fontSize = 12.sp, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
@@ -77,7 +79,7 @@ import androidx.compose.ui.unit.sp
     val colors = MaterialTheme.colorScheme
     Card(Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(22.dp)), colors = CardDefaults.cardColors(containerColor = colors.surface), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
         Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(title, Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             if (subtitle != null) Text(subtitle, color = colors.onSurfaceVariant, fontSize = 13.sp)
             content()
         }
@@ -86,7 +88,14 @@ import androidx.compose.ui.unit.sp
 
 @Composable fun StatusPill(text: String, active: Boolean = true) {
     val colors = MaterialTheme.colorScheme
-    Surface(color = if (active) colors.surfaceVariant else colors.errorContainer, shape = RoundedCornerShape(50)) {
+    Surface(
+        modifier = Modifier.semantics(mergeDescendants = true) {
+            contentDescription = text
+            stateDescription = text
+        },
+        color = if (active) colors.surfaceVariant else colors.errorContainer,
+        shape = RoundedCornerShape(50)
+    ) {
         Text(text, Modifier.padding(horizontal = 11.dp, vertical = 6.dp), color = if (active) colors.primary else colors.error, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }

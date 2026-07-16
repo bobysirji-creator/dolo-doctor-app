@@ -108,3 +108,15 @@ The Doctor and Patient apps must exchange clinic-day state only through an authe
 Patient App booking must allocate the next token atomically within its clinic/date/session sequence. Online booking starts fee-pending and remains outside the consultation queue until authorized clinic staff confirms payment or waiver and generates the compulsory token receipt.
 
 The Stage 10 local mock exists only to test these rules. It must be visibly identified as non-networked and must not claim cross-device synchronization.
+## Future appointment booking policy
+
+Each Doctor controls Patient App booking at clinic level:
+
+- current-day-only; or
+- future booking enabled with a maximum window from 1 to 90 days.
+
+Existing clinics default to current-day-only. The backend must publish this policy to the Patient App, use the clinic timezone, reject dates outside the window and apply availability blocks/session capacity after the date policy passes.
+
+Clinic walk-in/offline booking is always for the current clinic day. Enabling Patient App advance booking must never add a future-date option to the Doctor/Assistant walk-in form.
+
+Every policy change is Doctor-only, persisted, auditable and included in shared synchronization.

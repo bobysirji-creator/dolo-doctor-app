@@ -116,7 +116,7 @@ import kotlinx.coroutines.delay
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 Column(Modifier.fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.Top) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.Top) {
                         IconButton(onToggleTheme) { Icon(if (darkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (darkTheme) "Use light theme" else "Use dark theme") }
                         BadgedBox(badge = { if (unreadNotifications > 0) Badge { Text(unreadNotifications.coerceAtMost(99).toString()) } }) {
                             IconButton(onNotifications) { Icon(Icons.Outlined.Notifications, "Notifications") }
@@ -691,6 +691,15 @@ import kotlinx.coroutines.delay
                 DetailLine(Icons.Outlined.DarkMode, "Evening: " + clinic.eveningSession)
                 DetailLine(Icons.Outlined.ConfirmationNumber, clinic.maxTokensPerSession.toString() + " tokens per session")
                 DetailLine(Icons.Outlined.Schedule, "Average consultation: " + clinic.averageConsultationMinutes + " minutes")
+                DetailLine(
+                    Icons.Outlined.DateRange,
+                    if (clinic.futureBookingEnabled) {
+                        "Patient App future booking: Up to " + clinic.advanceBookingDays + " days"
+                    } else {
+                        "Patient App booking: Current day only"
+                    }
+                )
+                DetailLine(Icons.Outlined.Storefront, "Clinic walk-ins: Current day only")
                 if (canEdit) PrimaryAction("Edit clinic & schedule", { editingClinic = clinic }, icon = Icons.Outlined.CalendarMonth)
             }
         }
@@ -712,6 +721,8 @@ import kotlinx.coroutines.delay
     var evening by remember(clinic.id) { mutableStateOf(clinic.eveningSession) }
     var maxTokens by remember(clinic.id) { mutableStateOf(clinic.maxTokensPerSession.toString()) }
     var averageMinutes by remember(clinic.id) { mutableStateOf(clinic.averageConsultationMinutes.toString()) }
+    var futureBookingEnabled by remember(clinic.id) { mutableStateOf(clinic.futureBookingEnabled) }
+    var advanceBookingDays by remember(clinic.id) { mutableStateOf(clinic.advanceBookingDays.toString()) }
     var error by remember(clinic.id) { mutableStateOf<String?>(null) }
 
     AlertDialog(
@@ -726,6 +737,31 @@ import kotlinx.coroutines.delay
                 OutlinedTextField(evening, { evening = it }, label = { Text("Evening session") }, supportingText = { Text("Example: 05:00 PM - 09:00 PM") }, singleLine = true)
                 OutlinedTextField(maxTokens, { maxTokens = it.filter(Char::isDigit) }, label = { Text("Maximum tokens per session") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 OutlinedTextField(averageMinutes, { averageMinutes = it.filter(Char::isDigit) }, label = { Text("Average consultation minutes") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                HorizontalDivider()
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Allow Patient App future booking", fontWeight = FontWeight.Bold)
+                        Text(
+                            "Clinic walk-in booking always remains current-day only.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+                    }
+                    Switch(
+                        checked = futureBookingEnabled,
+                        onCheckedChange = { futureBookingEnabled = it; error = null }
+                    )
+                }
+                if (futureBookingEnabled) {
+                    OutlinedTextField(
+                        advanceBookingDays,
+                        { advanceBookingDays = it.filter(Char::isDigit).take(2); error = null },
+                        label = { Text("Maximum advance booking days") },
+                        supportingText = { Text("Choose 1 to 90 days") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
             }
         },
@@ -739,7 +775,9 @@ import kotlinx.coroutines.delay
                         morningSession = morning,
                         eveningSession = evening,
                         maxTokensPerSession = maxTokens.toIntOrNull() ?: -1,
-                        averageConsultationMinutes = averageMinutes.toIntOrNull() ?: -1
+                        averageConsultationMinutes = averageMinutes.toIntOrNull() ?: -1,
+                        futureBookingEnabled = futureBookingEnabled,
+                        advanceBookingDays = advanceBookingDays.toIntOrNull() ?: -1
                     )
                 )
                 error = result
