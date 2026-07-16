@@ -772,6 +772,66 @@ class DoctorViewModel(
         return true
     }
 
+    fun canAccessClinic(): Boolean =
+        uiState.role == UserRole.DOCTOR ||
+            hasPermission(Permission.VIEW_CLINIC) ||
+            hasPermission(Permission.MANAGE_CLINIC_AVAILABILITY)
+
+    fun canAccessReports(): Boolean =
+        uiState.role == UserRole.DOCTOR ||
+            hasPermission(Permission.VIEW_REPORTS) ||
+            hasPermission(Permission.VIEW_PATIENT_FEEDBACK) ||
+            hasPermission(Permission.SEND_QUEUE_DELAY_NOTICE)
+
+    fun operationalReport(): OperationalReport {
+        val appointments = uiState.queueHistory.flatMap { it.appointments } + uiState.appointments
+        val ratings = uiState.feedback.map { it.rating }
+        return OperationalReport(
+            appointments = appointments.size,
+            completed = appointments.count { it.status == AppointmentStatus.COMPLETED },
+            absent = appointments.count { it.status == AppointmentStatus.ABSENT },
+            pending = appointments.count { it.paymentStatus == PaymentStatus.PENDING },
+            collectedFees = appointments.filter { it.paymentStatus == PaymentStatus.PAID }.sumOf { it.consultationFee },
+            averageRating = if (ratings.isEmpty()) 0.0 else ratings.average(),
+            feedbackCount = ratings.size,
+            clinicCount = uiState.clinics.size
+        )
+    }
+
+    fun acknowledgeFeedback(feedbackId: String): Boolean {
+        if (uiState.role != UserRole.DOCTOR && !hasPermission(Permission.VIEW_PATIENT_FEEDBACK)) return false
+        val feedback = uiState.feedback.firstOrNull { it.id == feedbackId } ?: return false
+        if (feedback.acknowledged) return true
+        val updated = uiState.copy(feedback = uiState.feedback.map {
+            if (it.id == feedbackId) it.copy(acknowledged = true) else it
+        })
+        persist(withAudit(updated, AuditAction.FEEDBACK_ACKNOWLEDGED, "Acknowledged ${feedback.rating}-star feedback from ${feedback.patientName}"))
+        return true
+    }
+
+    fun sendQueueDelayNotice(session: String, delayMinutes: Int, message: String): String? {
+        if (uiState.role != UserRole.DOCTOR && !hasPermission(Permission.SEND_QUEUE_DELAY_NOTICE)) {
+            return "You do not have permission to send queue-delay notices."
+        }
+        if (session !in setOf("Morning", "Evening")) return "Select Morning or Evening."
+        if (delayMinutes !in 5..240) return "Delay must be between 5 and 240 minutes."
+        val cleanMessage = message.trim()
+        if (cleanMessage.length !in 5..160) return "Message must contain 5 to 160 characters."
+        val clinicId = uiState.clinics.firstOrNull()?.id ?: return "Clinic details are unavailable."
+        val notice = QueueDelayNotice(
+            id = "delay-" + currentDate() + "-" + currentTime().toNanoOfDay(),
+            clinicId = clinicId,
+            session = session,
+            delayMinutes = delayMinutes,
+            message = cleanMessage,
+            createdOn = currentDate().toString(),
+            createdAt = currentTime().format(timeFormatter),
+            createdBy = actorName()
+        )
+        val updated = uiState.copy(queueDelayNotices = (uiState.queueDelayNotices + notice).takeLast(100))
+        persist(withAudit(updated, AuditAction.QUEUE_DELAY_NOTICE_SENT, "Sent $session queue delay notice: $delayMinutes minutes"))
+        return null
+    }
     fun createAssistant(name: String, phone: String, permissions: Set<Permission>): AssistantCreationResult {
         if (uiState.role != UserRole.DOCTOR) return AssistantCreationResult(error = "Only the doctor can create assistant accounts.")
         val cleanName = name.trim().replace(Regex("\\s+"), " ")

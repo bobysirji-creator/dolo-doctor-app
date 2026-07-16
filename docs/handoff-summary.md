@@ -1,3 +1,16 @@
+## Stage 9 reports, feedback and queue-delay readiness
+
+Version 0.9.0-stage9 (version code 17) corrects Clinic access for Assistants. The Home Clinic card and navigation now accept VIEW_CLINIC or the previously granted MANAGE_CLINIC_AVAILABILITY permission. Authorized Assistants receive the complete clinic/schedule view without edit controls, while DoctorViewModel continues to reject Assistant clinic mutations. Local schema version 6 migrates the older availability permission to View clinic so installed Stage 8 choices keep working.
+
+The new Reports workspace derives operational totals from current and archived appointments, including completed, absent, fee-pending and confirmed-fee metrics. It summarizes local patient ratings, allows authorized users to acknowledge individual feedback and persists that state with audit/notification events.
+
+Doctors and Assistants with SEND_QUEUE_DELAY_NOTICE can create validated Morning or Evening delay notices from 5 to 240 minutes with a patient-facing message. Notices persist locally and appear in Reports; no real Patient App delivery occurs yet. OperationalReportGateway, PatientFeedbackGateway, QueueDelayNoticeGateway and ClinicPortfolioGateway reserve clinic-ID-scoped Stage 10 backend operations. Independent multi-clinic queue selection remains server-authoritative work because local queue state must not be duplicated unsafely.
+
+GitHub Actions remains the authoritative compile, lint, unit-test and APK gate. Stage 9 physical-device acceptance is listed in docs/device-test-checklist.md.
+
+## Next recommended stage
+
+Stage 10: shared backend integration with the Patient App, beginning with a provider-neutral API contract and local mock transport before any live SMS, payment, maps or push provider.
 ## Stage 8 assistant accounts and credentials
 
 Version 0.8.0-stage8 (version code 16) replaces the fixed-assistant-only prototype with a complete local Doctor-managed staff lifecycle. A Doctor can create an assistant with a validated name, unique 10-digit mobile number and selected initial permissions. The app generates a four-digit temporary PIN, displays it once and stores only a salted SHA-256 hash in the local credential registry.

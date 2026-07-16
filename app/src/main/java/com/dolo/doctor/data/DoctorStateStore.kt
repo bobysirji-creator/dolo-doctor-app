@@ -77,14 +77,28 @@ class SharedPreferencesDoctorStateStore(private val preferences: SharedPreferenc
         val assistants = if (preferences.contains(KEY_ASSISTANTS)) {
             preferences.getStringSet(KEY_ASSISTANTS, emptySet()).orEmpty()
                 .mapNotNull(QueueStateCodec::decodeAssistant)
+                .map { assistant ->
+                    if (schemaVersion < 6 && Permission.MANAGE_CLINIC_AVAILABILITY in assistant.permissions) {
+                        assistant.copy(permissions = assistant.permissions + Permission.VIEW_CLINIC)
+                    } else assistant
+                }
                 .sortedBy { it.name.lowercase() }
         } else {
             defaultState.assistants.map { assistant ->
                 val saved = permissionsByAssistant[assistant.id]?.toSet() ?: assistant.permissions
-                val migrated = if (schemaVersion < 2 && Permission.GENERATE_TOKEN_RECEIPT in saved) saved + Permission.CONFIRM_CONSULTATION_FEE else saved
+                var migrated = if (schemaVersion < 2 && Permission.GENERATE_TOKEN_RECEIPT in saved) saved + Permission.CONFIRM_CONSULTATION_FEE else saved
+                if (schemaVersion < 6 && Permission.MANAGE_CLINIC_AVAILABILITY in migrated) migrated = migrated + Permission.VIEW_CLINIC
                 assistant.copy(permissions = migrated)
             }
         }
+        val feedback = if (preferences.contains(KEY_FEEDBACK)) {
+            preferences.getStringSet(KEY_FEEDBACK, emptySet()).orEmpty()
+                .mapNotNull(QueueStateCodec::decodeFeedback)
+                .sortedByDescending { it.submittedOn }
+        } else defaultState.feedback
+        val queueDelayNotices = preferences.getStringSet(KEY_QUEUE_DELAY_NOTICES, emptySet()).orEmpty()
+            .mapNotNull(QueueStateCodec::decodeQueueDelayNotice)
+            .sortedWith(compareByDescending<QueueDelayNotice> { it.createdOn }.thenByDescending { it.createdAt })
 
         val queueState = preferences.getString(KEY_QUEUE_STATE, null)
             ?.let { runCatching { QueueState.valueOf(it) }.getOrNull() }
@@ -122,13 +136,15 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
             notificationReadThrough = preferences.getInt(KEY_NOTIFICATION_READ_THROUGH, 0),
             announcements = announcements,
             availabilityBlocks = availabilityBlocks,
-            assistants = assistants
+            assistants = assistants,
+            feedback = feedback,
+            queueDelayNotices = queueDelayNotices
         )
     }
 
     override fun save(state: DoctorUiState): Boolean = preferences.edit()
         .putBoolean(KEY_INITIALIZED, true)
-        .putInt(KEY_SCHEMA_VERSION, 5)
+        .putInt(KEY_SCHEMA_VERSION, 6)
         .putString(KEY_DOCTOR_PROFILE, QueueStateCodec.encodeProfile(state.profile))
         .putStringSet(KEY_CLINICS, state.clinics.mapTo(mutableSetOf(), QueueStateCodec::encodeClinic))
         .putString(KEY_QUEUE_DATE, state.queueDate)
@@ -147,6 +163,8 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
         .putStringSet(KEY_AVAILABILITY_BLOCKS, state.availabilityBlocks.mapTo(mutableSetOf(), QueueStateCodec::encodeAvailabilityBlock))
         .putStringSet(KEY_ASSISTANT_PERMISSIONS, state.assistants.flatMapTo(mutableSetOf()) { assistant -> assistant.permissions.map { "${assistant.id}|${it.name}" } })
         .putStringSet(KEY_ASSISTANTS, state.assistants.mapTo(mutableSetOf(), QueueStateCodec::encodeAssistant))
+        .putStringSet(KEY_FEEDBACK, state.feedback.mapTo(mutableSetOf(), QueueStateCodec::encodeFeedback))
+        .putStringSet(KEY_QUEUE_DELAY_NOTICES, state.queueDelayNotices.takeLast(100).mapTo(mutableSetOf(), QueueStateCodec::encodeQueueDelayNotice))
         .commit()
 
     private fun migrateIndependentSessionTokens(appointments: List<Appointment>, queueDate: String): List<Appointment> =
@@ -203,5 +221,7 @@ val sessionQueues = if (schemaVersion < 2) restoredSessionQueues.map { queue ->
         const val KEY_AVAILABILITY_BLOCKS = "doctor_availability_blocks"
         const val KEY_ASSISTANT_PERMISSIONS = "doctor_assistant_permissions"
         const val KEY_ASSISTANTS = "doctor_assistants"
+        const val KEY_FEEDBACK = "doctor_patient_feedback"
+        const val KEY_QUEUE_DELAY_NOTICES = "doctor_queue_delay_notices"
     }
 }

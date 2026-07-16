@@ -957,6 +957,76 @@ class DoctorViewModelTest {
         assertEquals(null, model.resetAssistantPin(assistant.id))
     }
 
+    @Test fun assistantClinicAccessFollowsGrantedPermissionButEditingRemainsDoctorOnly() {
+        val model = DoctorViewModel()
+        model.login(UserRole.DOCTOR)
+        val assistant = model.uiState.assistants.first()
+        model.togglePermission(assistant.id, Permission.MANAGE_CLINIC_AVAILABILITY)
+        model.login(UserRole.ASSISTANT, assistant.id)
+
+        assertTrue(model.canAccessClinic())
+        val original = model.uiState.clinics.first()
+        assertTrue(model.updateClinic(original.copy(name = "Unauthorized edit")) != null)
+        assertEquals(original, model.uiState.clinics.first())
+    }
+
+    @Test fun reportAccessAndOperationalMetricsRespectPermissions() {
+        val model = DoctorViewModel()
+        model.login(UserRole.DOCTOR)
+        val report = model.operationalReport()
+
+        assertEquals(6, report.appointments)
+        assertEquals(3, report.pending)
+        assertEquals(1500, report.collectedFees)
+        assertEquals(3, report.feedbackCount)
+
+        val assistant = model.uiState.assistants.first()
+        model.login(UserRole.ASSISTANT, assistant.id)
+        assertFalse(model.canAccessReports())
+        model.login(UserRole.DOCTOR)
+        model.togglePermission(assistant.id, Permission.VIEW_REPORTS)
+        model.login(UserRole.ASSISTANT, assistant.id)
+        assertTrue(model.canAccessReports())
+    }
+
+    @Test fun feedbackAcknowledgementIsAuthorizedAuditedAndPersisted() {
+        val store = MemoryDoctorStateStore()
+        val model = DoctorViewModel(store)
+        model.login(UserRole.DOCTOR)
+        val feedback = model.uiState.feedback.first()
+
+        assertTrue(model.acknowledgeFeedback(feedback.id))
+        assertTrue(model.uiState.feedback.first { it.id == feedback.id }.acknowledged)
+        assertEquals(AuditAction.FEEDBACK_ACKNOWLEDGED, model.uiState.auditEvents.last().action)
+
+        val restored = DoctorViewModel(store)
+        assertTrue(restored.uiState.feedback.first { it.id == feedback.id }.acknowledged)
+
+        restored.login(UserRole.ASSISTANT, "staff-2")
+        assertFalse(restored.acknowledgeFeedback(restored.uiState.feedback.last().id))
+    }
+
+    @Test fun queueDelayNoticeValidationPermissionAndPersistenceAreEnforced() {
+        val store = MemoryDoctorStateStore()
+        val model = DoctorViewModel(
+            store,
+            currentDate = { LocalDate.parse("2026-07-16") },
+            currentTime = { LocalTime.of(18, 20) }
+        )
+        model.login(UserRole.ASSISTANT, "staff-2")
+        assertTrue(model.sendQueueDelayNotice("Evening", 25, "Queue running late.") != null)
+
+        model.login(UserRole.DOCTOR)
+        assertTrue(model.sendQueueDelayNotice("Evening", 2, "Late") != null)
+        assertEquals(null, model.sendQueueDelayNotice("Evening", 25, "Queue running later than expected."))
+        val notice = model.uiState.queueDelayNotices.single()
+        assertEquals(25, notice.delayMinutes)
+        assertEquals("Evening", notice.session)
+        assertEquals(AuditAction.QUEUE_DELAY_NOTICE_SENT, model.uiState.auditEvents.last().action)
+
+        val restored = DoctorViewModel(store)
+        assertEquals(notice, restored.uiState.queueDelayNotices.single())
+    }
     private class MemoryDoctorStateStore(initial: DoctorUiState? = null) : DoctorStateStore {
         private var saved: DoctorUiState? = initial
         override fun restore(defaultState: DoctorUiState): DoctorUiState = saved ?: defaultState

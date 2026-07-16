@@ -107,4 +107,6 @@ private fun notificationTitle(action: AuditAction): String = when (action) {
     AuditAction.ASSISTANT_PERMISSIONS_CHANGED -> "Assistant permissions changed"
     AuditAction.ASSISTANT_PIN_RESET -> "Assistant PIN reset"
     AuditAction.ASSISTANT_DELETED -> "Assistant account deleted"
+    AuditAction.FEEDBACK_ACKNOWLEDGED -> "Patient feedback acknowledged"
+    AuditAction.QUEUE_DELAY_NOTICE_SENT -> "Queue-delay notice created"
 }

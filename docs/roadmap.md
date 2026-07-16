@@ -20,7 +20,10 @@
   - [x] persisted Doctor-only assistant creation, enable/disable and deletion
   - [x] generated temporary PINs stored only as salted hashes with reset support
   - [x] modular permission administration, audit events and backend service contracts
-- [ ] Stage 9 - reports, feedback, multi-clinic readiness and queue-delay notices
+- [x] Stage 9 - reports, feedback, multi-clinic readiness and queue-delay notices
+  - [x] Assistant Clinic-access correction with read-only permission enforcement
+  - [x] persisted operational metrics, feedback acknowledgement and delay notices
+  - [x] clinic-ID-scoped reporting and backend integration contracts
 - [ ] Stage 10 - shared backend integration with Patient App
 - [ ] Stage 11 - accessibility, security, tests and release hardening
 

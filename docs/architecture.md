@@ -1,3 +1,11 @@
+## Stage 9 reports, feedback and clinic-scoped contracts
+
+- VIEW_CLINIC provides explicit read-only Assistant Clinic access. Installed schema-5 assistants with MANAGE_CLINIC_AVAILABILITY migrate to that permission; DoctorViewModel still owns all clinic mutations.
+- OperationalReport is derived from current appointments plus immutable daily history rather than maintaining a competing total.
+- PatientFeedback and QueueDelayNotice records persist in local schema version 6. Acknowledgement and delay creation are permission checked and enter the audit/notification stream.
+- Reports separate summary visibility, detailed feedback visibility and queue-delay creation into VIEW_REPORTS, VIEW_PATIENT_FEEDBACK and SEND_QUEUE_DELAY_NOTICE permissions.
+- Clinic records and Stage 9 gateway methods carry clinic IDs. The current local prototype deliberately keeps one operational queue context; independent multi-clinic queues, clinic switching and cross-device consistency require Stage 10 server transactions.
+- Queue-delay notices are local delivery candidates only. The shared backend must calculate audience, clinic timezone, expiry, idempotency and Patient App/push delivery.
 ## Stage 8 assistant identity and authorization boundary
 
 - Complete Assistant records are persisted in local schema version 5; older fixed assistants and saved permission sets migrate without losing access.

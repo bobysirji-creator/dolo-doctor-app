@@ -93,6 +93,7 @@ import kotlinx.coroutines.delay
     onHistory: () -> Unit,
     onClinic: () -> Unit,
     onActivity: () -> Unit,
+    onReports: () -> Unit,
     onAvailability: () -> Unit,
     onAnnouncements: () -> Unit,
     onAssistants: () -> Unit,
@@ -104,6 +105,8 @@ import kotlinx.coroutines.delay
     val assistantName = state.assistants.firstOrNull { it.id == state.activeAssistantId }?.name ?: "Assistant"
     val canViewQueue = doctorMode || Permission.VIEW_QUEUE in permissions
     val canViewAppointments = doctorMode || Permission.VIEW_TODAY_APPOINTMENTS in permissions
+    val canViewClinic = doctorMode || Permission.VIEW_CLINIC in permissions || Permission.MANAGE_CLINIC_AVAILABILITY in permissions
+    val canViewReports = doctorMode || Permission.VIEW_REPORTS in permissions || Permission.VIEW_PATIENT_FEEDBACK in permissions || Permission.SEND_QUEUE_DELAY_NOTICE in permissions
     val morningQueue = state.sessionQueues.firstOrNull { it.session == "Morning" } ?: ConsultationQueue("Morning", state.queueState, state.currentToken)
     val eveningQueue = state.sessionQueues.firstOrNull { it.session == "Evening" } ?: ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
     var confirmLogout by remember { mutableStateOf(false) }
@@ -127,12 +130,15 @@ import kotlinx.coroutines.delay
             item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("Morning token", morningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Evening token", eveningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
             item { ElevatedSection("Today's queue", state.clinics.first().name + " • " + state.queueDate) { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { Row { Text("Morning", Modifier.weight(1f)); StatusPill(morningQueue.state.name.replace("_", " "), morningQueue.state == QueueState.ACTIVE) }; Row { Text("Evening", Modifier.weight(1f)); StatusPill(eveningQueue.state.name.replace("_", " "), eveningQueue.state == QueueState.ACTIVE) } }; PrimaryAction("Open live queue", onQueue, enabled = canViewQueue, icon = Icons.Outlined.FormatListNumbered) } }
             item { Text("Clinic tools", style = MaterialTheme.typography.titleLarge) }
-            item { ToolRow(onAppointments, if (doctorMode) onHistory else onClinic, canViewAppointments, doctorMode, secondLabel = if (doctorMode) "Queue history" else "Clinic", secondIcon = if (doctorMode) Icons.Outlined.History else Icons.Outlined.Business) }
+            item { ToolRow(onAppointments, if (doctorMode) onHistory else onClinic, canViewAppointments, if (doctorMode) true else canViewClinic, secondLabel = if (doctorMode) "Queue history" else "Clinic", secondIcon = if (doctorMode) Icons.Outlined.History else Icons.Outlined.Business) }
             if (doctorMode) {
-                item { ToolRow(onClinic, onActivity, true, true, "Clinic", "Activity log", Icons.Outlined.Business, Icons.Outlined.FactCheck) }
-                item { ToolRow(onAvailability, onAnnouncements, true, true, "Availability", "Updates", Icons.Outlined.EventBusy, Icons.Outlined.Campaign) }
-                item { ToolRow(onAssistants, onProfile, true, true, "Assistants", "Profile", Icons.Outlined.Groups, Icons.Outlined.Person) }
+                item { ToolRow(onClinic, onReports, true, true, "Clinic", "Reports", Icons.Outlined.Business, Icons.Outlined.Insights) }
+                item { ToolRow(onActivity, onAvailability, true, true, "Activity log", "Availability", Icons.Outlined.FactCheck, Icons.Outlined.EventBusy) }
+                item { ToolRow(onAnnouncements, onAssistants, true, true, "Updates", "Assistants", Icons.Outlined.Campaign, Icons.Outlined.Groups) }
             } else {
+                if (canViewReports || Permission.MANAGE_ANNOUNCEMENTS in permissions) {
+                    item { ToolRow(onReports, onAnnouncements, canViewReports, Permission.MANAGE_ANNOUNCEMENTS in permissions, "Reports", "Updates", Icons.Outlined.Insights, Icons.Outlined.Campaign) }
+                }
                 item { ElevatedSection("Assistant access") { permissions.sortedBy { it.name }.forEach { Text("• ${it.name.replace("_", " ").lowercase().replaceFirstChar(Char::uppercase)}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) } } }
             }
             if (doctorMode || Permission.MANAGE_ANNOUNCEMENTS in permissions) {
@@ -662,11 +668,11 @@ import kotlinx.coroutines.delay
         }
     }
 }
-@Composable fun ClinicScreen(state: DoctorUiState, onBack: () -> Unit, onSaveClinic: (Clinic) -> String?) {
+@Composable fun ClinicScreen(state: DoctorUiState, canEdit: Boolean, onBack: () -> Unit, onSaveClinic: (Clinic) -> String?) {
     var editingClinic by remember { mutableStateOf<Clinic?>(null) }
     LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
         item { PageHeader("Clinic & schedule", onBack) }
-        item { ElevatedSection("Consultation setup", "Update clinic contact details, morning/evening sessions, token capacity and average consultation time.") { Text("Changes are stored locally in this stage and will later sync through the shared backend.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+        item { ElevatedSection("Consultation setup", if (canEdit) "Update clinic contact details, sessions, capacity and consultation time." else "View the clinic schedule and consultation settings allowed by your Doctor.") { Text(if (canEdit) "Changes are stored locally and will later sync through the shared backend." else "Assistant access is read-only. Only the Doctor can edit clinic settings.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         items(state.clinics, key = { it.id }) { clinic ->
             ElevatedSection(clinic.name, clinic.address) {
                 DetailLine(Icons.Outlined.Phone, clinic.phone)
@@ -674,7 +680,7 @@ import kotlinx.coroutines.delay
                 DetailLine(Icons.Outlined.DarkMode, "Evening: " + clinic.eveningSession)
                 DetailLine(Icons.Outlined.ConfirmationNumber, clinic.maxTokensPerSession.toString() + " tokens per session")
                 DetailLine(Icons.Outlined.Schedule, "Average consultation: " + clinic.averageConsultationMinutes + " minutes")
-                PrimaryAction("Edit clinic & schedule", { editingClinic = clinic }, icon = Icons.Outlined.CalendarMonth)
+                if (canEdit) PrimaryAction("Edit clinic & schedule", { editingClinic = clinic }, icon = Icons.Outlined.CalendarMonth)
             }
         }
     }

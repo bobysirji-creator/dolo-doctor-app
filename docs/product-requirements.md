@@ -90,3 +90,13 @@ Only a Doctor can create, disable, re-enable, reset or delete an assistant accou
 Disabling an account immediately blocks login while retaining its profile and permissions for later reactivation. Resetting a PIN invalidates the previous PIN. Deletion removes the profile and credential and keeps legacy identities revoked. Every lifecycle and permission change requires an audit event.
 
 The local hash registry exists only for workflow testing. The shared backend must issue authoritative credentials, require first-login PIN replacement, rate-limit authentication, revoke sessions across devices and enforce every assistant permission server-side.
+
+## Operational reports, feedback and queue-delay notices
+
+Doctors can view an operational summary derived from current appointments and archived queue days: total appointments, completed, absent, fee pending and confirmed consultation-fee collections. Authorized Assistants require an explicit report permission.
+
+Patient feedback contains clinic identity, patient display name, rating, comment, submission date and acknowledgement state. Viewing and acknowledging detailed feedback requires Doctor ownership or VIEW_PATIENT_FEEDBACK. Acknowledgement creates an audit event but never edits the patient's rating or comment.
+
+A Doctor or Assistant with SEND_QUEUE_DELAY_NOTICE can create a Morning or Evening notice with a 5-to-240-minute delay and patient-facing message. Stage 9 persists the delivery candidate; Stage 10 must select affected Patient App appointments, prevent duplicate delivery, expire stale notices and send push/SMS only through approved backend providers.
+
+Clinic access for Assistants is read-only and permission controlled. Clinic-ID-scoped models and service contracts prepare for multiple clinics, but independent token allocation, queue state and clinic switching must remain backend-authoritative rather than being simulated with conflicting local queues.

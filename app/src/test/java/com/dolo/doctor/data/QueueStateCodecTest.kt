@@ -13,6 +13,8 @@ import com.dolo.doctor.data.model.AnnouncementType
 import com.dolo.doctor.data.model.PaymentStatus
 import com.dolo.doctor.data.model.Assistant
 import com.dolo.doctor.data.model.Permission
+import com.dolo.doctor.data.model.PatientFeedback
+import com.dolo.doctor.data.model.QueueDelayNotice
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -141,6 +143,13 @@ class QueueStateCodecTest {
         assertEquals(assistant, QueueStateCodec.decodeAssistant(QueueStateCodec.encodeAssistant(assistant)))
     }
 
+    @Test fun feedbackAndDelayNoticeRoundTripsKeepStageNineFields() {
+        val feedback = PatientFeedback("f1", "clinic-1", "Patient", 5, "Very helpful consultation.", "2026-07-16", true)
+        val notice = QueueDelayNotice("d1", "clinic-1", "Evening", 25, "Queue running late.", "2026-07-16", "06:20 PM", "Dr. Aisha Mehta")
+
+        assertEquals(feedback, QueueStateCodec.decodeFeedback(QueueStateCodec.encodeFeedback(feedback)))
+        assertEquals(notice, QueueStateCodec.decodeQueueDelayNotice(QueueStateCodec.encodeQueueDelayNotice(notice)))
+    }
     @Test fun malformedValuesAreIgnored() {
         assertEquals(null, QueueStateCodec.decodeAppointment("invalid"))
         assertEquals(null, QueueStateCodec.decodeHistory("invalid"))

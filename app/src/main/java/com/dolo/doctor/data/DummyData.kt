@@ -33,6 +33,12 @@ object DummyData {
         Assistant("staff-2", "Ravi Kumar", "9876501234", true, setOf(Permission.VIEW_QUEUE, Permission.VIEW_TODAY_APPOINTMENTS))
     )
 
+    val feedback = listOf(
+        PatientFeedback("feedback-1", "clinic-1", "Riya Sharma", 5, "Clear explanation and a smooth queue experience.", "2026-07-14"),
+        PatientFeedback("feedback-2", "clinic-1", "Rahul Sharma", 4, "Consultation was helpful; the queue was slightly delayed.", "2026-07-15"),
+        PatientFeedback("feedback-3", "clinic-1", "Maya Sharma", 5, "Staff support and token updates were excellent.", "2026-07-16")
+    )
+
     val announcements = listOf(
         Announcement("n1", "Sunday health camp", "Free blood-pressure and diabetes screening this Sunday.", AnnouncementType.CAMP, "2026-07-20", "2026-07-20", true),
         Announcement("n2", "Evening session unavailable", "The evening session will remain closed on 22 July.", AnnouncementType.AVAILABILITY, "2026-07-22", "2026-07-22", true),
@@ -50,6 +56,7 @@ object DummyData {
         assistants = assistants,
         announcements = announcements,
         availabilityBlocks = availabilityBlocks,
+        feedback = feedback,
         queueDate = queueDate,
         sessionQueues = listOf(
             ConsultationQueue("Morning", QueueState.ACTIVE, 1),

@@ -19,12 +19,50 @@ import com.dolo.doctor.data.model.AnnouncementType
 import com.dolo.doctor.data.model.AvailabilityImpactStatus
 import com.dolo.doctor.data.model.Assistant
 import com.dolo.doctor.data.model.Permission
+import com.dolo.doctor.data.model.PatientFeedback
+import com.dolo.doctor.data.model.QueueDelayNotice
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 internal object QueueStateCodec {
     private val encoder = Base64.getUrlEncoder().withoutPadding()
     private val decoder = Base64.getUrlDecoder()
+
+    fun encodeFeedback(feedback: PatientFeedback): String = listOf(
+        feedback.id,
+        feedback.clinicId,
+        feedback.patientName,
+        feedback.rating.toString(),
+        feedback.comment,
+        feedback.submittedOn,
+        feedback.acknowledged.toString()
+    ).joinToString("|") { encode(it) }
+
+    fun decodeFeedback(value: String): PatientFeedback? {
+        val fields = value.split("|").mapNotNull(::decode)
+        if (fields.size != 7) return null
+        val rating = fields[3].toIntOrNull()?.takeIf { it in 1..5 } ?: return null
+        val acknowledged = fields[6].toBooleanStrictOrNull() ?: return null
+        return PatientFeedback(fields[0], fields[1], fields[2], rating, fields[4], fields[5], acknowledged)
+    }
+
+    fun encodeQueueDelayNotice(notice: QueueDelayNotice): String = listOf(
+        notice.id,
+        notice.clinicId,
+        notice.session,
+        notice.delayMinutes.toString(),
+        notice.message,
+        notice.createdOn,
+        notice.createdAt,
+        notice.createdBy
+    ).joinToString("|") { encode(it) }
+
+    fun decodeQueueDelayNotice(value: String): QueueDelayNotice? {
+        val fields = value.split("|").mapNotNull(::decode)
+        if (fields.size != 8) return null
+        val delay = fields[3].toIntOrNull() ?: return null
+        return QueueDelayNotice(fields[0], fields[1], fields[2], delay, fields[4], fields[5], fields[6], fields[7])
+    }
 
     fun encodeAssistant(assistant: Assistant): String = listOf(
         assistant.id,

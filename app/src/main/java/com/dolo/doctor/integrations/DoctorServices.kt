@@ -48,6 +48,25 @@ interface AssistantAdminGateway {
     suspend fun delete(assistantId: String): ApiResult<Unit>
 }
 
+interface OperationalReportGateway {
+    suspend fun report(clinicId: String?, fromDate: String, toDate: String): ApiResult<OperationalReport>
+}
+
+interface PatientFeedbackGateway {
+    suspend fun feedback(clinicId: String?): ApiResult<List<PatientFeedback>>
+    suspend fun acknowledge(feedbackId: String): ApiResult<PatientFeedback>
+}
+
+interface QueueDelayNoticeGateway {
+    suspend fun create(notice: QueueDelayNotice): ApiResult<QueueDelayNotice>
+    suspend fun activeNotices(clinicId: String, onDate: String): ApiResult<List<QueueDelayNotice>>
+}
+
+interface ClinicPortfolioGateway {
+    suspend fun clinics(): ApiResult<List<Clinic>>
+    suspend fun switchOperationalClinic(clinicId: String): ApiResult<Clinic>
+}
+
 interface DoctorNotificationService {
     suspend fun broadcastQueueDelay(clinicId: String, delayMinutes: Int): ApiResult<Unit>
     suspend fun notifyAffectedAppointments(blockId: String): ApiResult<Unit>

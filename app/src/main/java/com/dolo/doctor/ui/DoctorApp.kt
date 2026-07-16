@@ -25,6 +25,7 @@ private object Routes {
     const val APPOINTMENTS = "appointments"
     const val HISTORY = "history"
     const val ACTIVITY = "activity"
+    const val REPORTS = "reports"
     const val CLINIC = "clinic"
     const val AVAILABILITY = "availability"
     const val ANNOUNCEMENTS = "announcements"
@@ -62,6 +63,12 @@ private object Routes {
     fun protectedDoctorRoute(route: String) {
         if (state.role == UserRole.DOCTOR) nav.navigate(route)
     }
+    fun clinic() {
+        if (doctorViewModel.canAccessClinic()) nav.navigate(Routes.CLINIC) { launchSingleTop = true }
+    }
+    fun reports() {
+        if (doctorViewModel.canAccessReports()) nav.navigate(Routes.REPORTS) { launchSingleTop = true }
+    }
 
     NavHost(navController = nav, startDestination = startDestination) {
         composable(Routes.SPLASH) {
@@ -84,8 +91,9 @@ private object Routes {
                 ::queue,
                 ::appointments,
                 { protectedDoctorRoute(Routes.HISTORY) },
-                { protectedDoctorRoute(Routes.CLINIC) },
+                ::clinic,
                 { protectedDoctorRoute(Routes.ACTIVITY) },
+                ::reports,
                 { protectedDoctorRoute(Routes.AVAILABILITY) },
                 { protectedDoctorRoute(Routes.ANNOUNCEMENTS) },
                 { protectedDoctorRoute(Routes.ASSISTANTS) },
@@ -118,7 +126,8 @@ private object Routes {
         composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::queue, ::profile, doctorViewModel::bookWalkIn, doctorViewModel::receiptFor, doctorViewModel::confirmConsultationFee, doctorViewModel::sessionBookingOpen, doctorViewModel::selectSession, doctorViewModel::refreshDate) }
         composable(Routes.HISTORY) { QueueHistoryScreen(state, nav::popBackStack) }
         composable(Routes.ACTIVITY) { QueueActivityScreen(state, nav::popBackStack) }
-        composable(Routes.CLINIC) { ClinicScreen(state, nav::popBackStack, doctorViewModel::updateClinic) }
+        composable(Routes.REPORTS) { ReportsScreen(state, permissions, doctorViewModel.operationalReport(), nav::popBackStack, doctorViewModel::acknowledgeFeedback, doctorViewModel::sendQueueDelayNotice) }
+        composable(Routes.CLINIC) { ClinicScreen(state, state.role == UserRole.DOCTOR, nav::popBackStack, doctorViewModel::updateClinic) }
         composable(Routes.AVAILABILITY) { AvailabilityManagementScreen(state, nav::popBackStack, doctorViewModel::saveAvailabilityBlock, doctorViewModel::setAvailabilityAppointmentsEnabled, doctorViewModel::deleteAvailabilityBlock, doctorViewModel::updateAffectedPatientStatus) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementManagementScreen(state, nav::popBackStack, doctorViewModel::saveAnnouncement, doctorViewModel::setAnnouncementActive, doctorViewModel::deleteAnnouncement) }
         composable(Routes.ASSISTANTS) {

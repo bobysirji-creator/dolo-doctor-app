@@ -1,3 +1,18 @@
+## Stage 9 Clinic permission, reports, feedback and delay notices
+
+1. Login as Doctor, open Assistants and grant **View clinic** to a test Assistant. The older **Manage clinic availability** permission must also provide migrated Clinic viewing access.
+2. Login as that Assistant. Confirm the Clinic card is active, opens Clinic & schedule and displays contact details, both sessions, token capacity and average consultation time.
+3. Confirm no **Edit clinic & schedule** control appears for the Assistant. Direct workflow tests must continue rejecting Assistant clinic mutations.
+4. Remove both Clinic-related permissions and login again. Confirm the Clinic card is disabled and navigation cannot open the page.
+5. As Doctor, open Reports. Confirm appointment, completed, absent, fee-pending and confirmed-collection metrics match current plus archived local data.
+6. Confirm the feedback summary shows average rating and count. Acknowledge one feedback item and verify its badge changes to Acknowledged.
+7. Remove the app from Recents and relaunch. Confirm the acknowledgement persists and appears in Activity log and Notifications.
+8. Grant only **View reports** to an Assistant. Confirm summary reports are visible but detailed feedback and delay creation remain unavailable.
+9. Grant **View patient feedback** and verify detailed feedback plus acknowledgement become available without granting Doctor-only routes.
+10. Grant **Send queue delay notice**, create a 25-minute Evening notice and verify session, delay, message, creator and time appear in Reports.
+11. Test delays below 5 or above 240 minutes and a message shorter than 5 characters; each must stay in the dialog with validation feedback.
+12. Relaunch and verify delay notices persist. Confirm Activity log and Notifications contain the queue-delay event.
+13. Review Multi-clinic readiness in Reports and confirm every configured clinic record is listed. No independent clinic switch is expected until Stage 10 backend synchronization.
 ## Stage 8 assistant accounts and generated credentials
 
 1. Login as Doctor, open Assistants and choose **Add assistant**.

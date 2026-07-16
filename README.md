@@ -2,7 +2,7 @@
 
 DO-LO Doctor is the dedicated lightweight Android app for doctors and permission-limited assistants in the DO-LO walk-in appointment ecosystem.
 
-Current prototype: **0.8.0-stage8** (version code 16).
+Current prototype: **0.9.0-stage9** (version code 17).
 
 ## Current prototype includes
 
@@ -25,7 +25,9 @@ Current prototype: **0.8.0-stage8** (version code 16).
 - Doctor-managed assistant creation with individual mobile/PIN credentials, salted PIN hashes, instant enable/disable, PIN reset and persistent deletion;
 - modular assistant permissions enforced in both UI controls and ViewModel actions, with provider-neutral server-authorization contracts;
 - editable-profile placeholders and Admin-review rules;
-- backend-ready service interfaces;
+- permission-aware read-only Clinic access for authorized Assistants while edits remain Doctor-only;
+- operational reports, patient-feedback summaries and acknowledgement, plus persisted queue-delay notices;
+- ID-scoped multi-clinic data and provider-neutral service interfaces ready for shared-backend synchronization;
 - unit tests, Android lint and GitHub Actions APK builds.
 
 All data is dummy local prototype data. There is no production authentication, healthcare backend, patient record, real message, payment or provider credential.

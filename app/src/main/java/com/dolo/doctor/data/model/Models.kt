@@ -10,7 +10,7 @@ enum class BookingSource { PATIENT_APP, CLINIC_WALK_IN }
 enum class PaymentStatus { PENDING, PAID, WAIVED }
 enum class PaymentMethod { CASH, UPI, CARD, ONLINE, WAIVED }
 enum class AvailabilityImpactStatus { NONE, CONTACT_PENDING, PATIENT_NOTIFIED, RESCHEDULE_REQUIRED, RESOLVED }
-enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, PATIENT_REJOINED, WALK_IN_BOOKED, FEE_CONFIRMED, RECEIPT_GENERATED, CONSULTATION_COMPLETED, SESSION_CLOSED, DAY_CLOSED, DAY_ROLLED_OVER, AVAILABILITY_SAVED, AVAILABILITY_CHANGED, AVAILABILITY_DELETED, AFFECTED_PATIENT_UPDATED, ANNOUNCEMENT_SAVED, ANNOUNCEMENT_VISIBILITY_CHANGED, ANNOUNCEMENT_DELETED, ASSISTANT_CREATED, ASSISTANT_STATUS_CHANGED, ASSISTANT_PERMISSIONS_CHANGED, ASSISTANT_PIN_RESET, ASSISTANT_DELETED }
+enum class AuditAction { QUEUE_STARTED, QUEUE_PAUSED, QUEUE_RESUMED, PATIENT_CALLED, STATUS_CHANGED, PATIENT_REJOINED, WALK_IN_BOOKED, FEE_CONFIRMED, RECEIPT_GENERATED, CONSULTATION_COMPLETED, SESSION_CLOSED, DAY_CLOSED, DAY_ROLLED_OVER, AVAILABILITY_SAVED, AVAILABILITY_CHANGED, AVAILABILITY_DELETED, AFFECTED_PATIENT_UPDATED, ANNOUNCEMENT_SAVED, ANNOUNCEMENT_VISIBILITY_CHANGED, ANNOUNCEMENT_DELETED, ASSISTANT_CREATED, ASSISTANT_STATUS_CHANGED, ASSISTANT_PERMISSIONS_CHANGED, ASSISTANT_PIN_RESET, ASSISTANT_DELETED, FEEDBACK_ACKNOWLEDGED, QUEUE_DELAY_NOTICE_SENT }
 enum class Permission {
     VIEW_QUEUE,
     UPDATE_QUEUE,
@@ -19,6 +19,10 @@ enum class Permission {
     MARK_PATIENT_ABSENT,
     MARK_PATIENT_COMPLETED,
     VIEW_TODAY_APPOINTMENTS,
+    VIEW_CLINIC,
+    VIEW_REPORTS,
+    VIEW_PATIENT_FEEDBACK,
+    SEND_QUEUE_DELAY_NOTICE,
     MANAGE_CLINIC_AVAILABILITY,
     MANAGE_ANNOUNCEMENTS,
     BOOK_WALK_IN_APPOINTMENT,
@@ -146,6 +150,38 @@ data class AssistantCreationResult(
     val error: String? = null
 )
 
+data class PatientFeedback(
+    val id: String,
+    val clinicId: String,
+    val patientName: String,
+    val rating: Int,
+    val comment: String,
+    val submittedOn: String,
+    val acknowledged: Boolean = false
+)
+
+data class QueueDelayNotice(
+    val id: String,
+    val clinicId: String,
+    val session: String,
+    val delayMinutes: Int,
+    val message: String,
+    val createdOn: String,
+    val createdAt: String,
+    val createdBy: String
+)
+
+data class OperationalReport(
+    val appointments: Int,
+    val completed: Int,
+    val absent: Int,
+    val pending: Int,
+    val collectedFees: Int,
+    val averageRating: Double,
+    val feedbackCount: Int,
+    val clinicCount: Int
+)
+
 data class Announcement(
     val id: String,
     val title: String,
@@ -193,5 +229,7 @@ data class DoctorUiState(
     val queueState: QueueState = QueueState.NOT_STARTED,
     val currentToken: Int = 0,
     val selectedSession: String = "Morning",
-    val notificationReadThrough: Int = 0
+    val notificationReadThrough: Int = 0,
+    val feedback: List<PatientFeedback> = emptyList(),
+    val queueDelayNotices: List<QueueDelayNotice> = emptyList()
 )
