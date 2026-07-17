@@ -243,3 +243,11 @@ RemoteDisabledSharedBackendGateway is deliberately fail-closed: publish, pull an
 Shared Sync Center now displays transport readiness, cross-device state, external-provider OFF status and the production blockers. The manifest still has no INTERNET permission. Unit coverage is 101 tests, including default-mode, configuration-safety and locked-remote behavior. GitHub Actions remains the authoritative JDK 17/Android SDK compile, lint, test and APK gate.
 
 Next recommended work is outside this Android repository: design and deploy the shared hosted API using docs/shared-backend-contract.md, then complete its authentication/authorization, transaction, audit, privacy and threat-model review. Do not add real provider keys or enable Android Internet access before that gate passes.
+
+## Stage 12.1 stable prototype signing
+
+Version 0.12.1-stage12 (version code 24) fixes Android's App not installed result for future updates. The cause was GitHub's fresh hosted runner creating a different default debug certificate for each build. Main-branch and manual CI builds now require four protected repository secrets, reconstruct a private PKCS#12 only in the runner temporary directory, sign both APK variants and verify that the APK certificate digest matches the keystore.
+
+The artifact is now dolo-doctor-stable-debug-apk and includes APK, APK checksum and signing-certificate SHA-256 files. Pull requests receive no signing material and publish no installable artifact. No key, password or base64 value exists in this repository.
+
+The initial stable APK still cannot update an APK signed by an old ephemeral key. After the repository secrets are saved and CI passes, the user must uninstall once, losing existing local prototype data, then install the stable APK. Every later APK using the protected key can update in place. The private setup bundle and individual secret-value files are stored outside the repository under C:\Users\Poly\Documents\codex\private\dolo-doctor-prototype-signing and must be securely backed up.

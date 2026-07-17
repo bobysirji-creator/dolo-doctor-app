@@ -47,7 +47,8 @@ Test at default font size and the largest practical Android font/display size:
 - No production secret, API key, signing key or real patient data is present.
 - Demo credentials are clearly labeled and must be removed before production.
 - Logs, receipts and screenshots are checked for unnecessary personal data.
-- Production signing and Play integrity remain pending.
+- Stable prototype signing is supplied only through protected GitHub Actions secrets and verified by certificate digest.
+- Production signing, Play App Signing and Play integrity remain pending.
 - A hosted backend security review is required before cross-device synchronization.
 
 ## Physical device matrix
@@ -74,3 +75,14 @@ Record APK version, Android version, device model, result and any screenshots in
 6. Inspect Android app permissions and confirm no network/Internet permission is requested.
 7. Confirm there is no control that can select remote mode, enter an endpoint, or enable an external provider.
 8. Re-run core Morning/Evening queue, fee/receipt, late cohort, archive and relaunch checks on Vivo and Samsung.
+
+## Stage 12.1 stable-signing acceptance
+
+1. Confirm all four DOLO_SIGNING repository secrets exist before pushing the workflow commit.
+2. Confirm CI fails safely when a required secret is absent and never prints a secret value.
+3. Confirm the successful artifact is named dolo-doctor-stable-debug-apk and contains signing-certificate.sha256.
+4. Finish any old-installation checks, then uninstall the old ephemeral-key APK once and accept that its local data is erased.
+5. Install the first stable APK and exercise login, queue and appointment workflows.
+6. Build the next version with the same protected secrets and install it over the stable APK without uninstalling.
+7. Confirm Android accepts the update and existing local application state remains present.
+8. Compare signing-certificate.sha256 across stable builds and confirm it never changes.

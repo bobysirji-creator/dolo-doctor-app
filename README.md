@@ -2,7 +2,7 @@
 
 DO-LO Doctor is the dedicated lightweight Android app for doctors and permission-limited assistants in the DO-LO walk-in appointment ecosystem.
 
-Current prototype: **0.12.0-stage12** (version code 23).
+Current prototype: **0.12.1-stage12** (version code 24).
 
 ## Current prototype includes
 
@@ -34,15 +34,16 @@ Current prototype: **0.12.0-stage12** (version code 23).
 - recurring weekday schedule with independent Morning/Evening closures or a full clinic day off, enforced for online and walk-in bookings;
 - permanent current-day-only clinic walk-ins, independent of the Patient App policy;
 - explicit local-mock/locked-remote backend modes, HTTPS configuration validation and an in-app readiness checklist that cannot activate network or external providers;
-- TalkBack semantics, large-font and system-navigation-inset layout protection, least-privilege mock manifest and unsigned release CI compilation;
+- TalkBack semantics, large-font and system-navigation-inset layout protection, least-privilege mock manifest and CI compilation;
 - an explicit financial boundary reserving Patient App booking service charges and doctor weekly/monthly platform billing for the shared backend and Admin App;
+- stable secret-backed prototype APK signing with certificate verification for reliable future in-place updates;
 - unit tests, Android lint and GitHub Actions APK builds.
 
 All data is dummy local prototype data. There is no production authentication, healthcare backend, patient record, real message, service-charge transaction or provider credential. Consultation-fee values are clinic-recorded workflow data only. The mock-only APK intentionally has no Internet permission.
 
 ## Build without Android Studio
 
-GitHub Actions builds the debug APK after every push to `main`. Open the latest successful Actions run and download `dolo-doctor-debug-apk`.
+GitHub Actions builds the debug APK after every push to `main`. Open the latest successful Actions run and download `dolo-doctor-stable-debug-apk`. See `docs/prototype-signing.md` for the one-time protected-secret setup and first-install warning.
 
 ## Local build requirements
 

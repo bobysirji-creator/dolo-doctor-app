@@ -59,3 +59,9 @@ Admin App remains a separate future repository. Real providers remain disabled u
   - [x] fail-closed remote gateway with no network implementation or Android Internet permission
 
 Next dependency: build and security-review the hosted API as a separate service. Only after its authentication, authorization, atomic token allocation, audit and environment policies pass should a later Doctor App release add real HTTPS transport.
+
+- [x] Stage 12.1 - stable prototype update signing
+  - [x] encrypted GitHub Actions repository-secret contract
+  - [x] PKCS#12 signing for debug and release artifacts on main
+  - [x] APK/keystore certificate-digest verification
+  - [x] private local backup bundle and one-time migration documentation
