@@ -51,3 +51,11 @@
   - [x] Admin-owned patient and doctor service-charge architecture
 
 Admin App remains a separate future repository. Real providers remain disabled until the shared backend and policies are approved.
+
+- [x] Stage 12 - hosted-backend readiness boundary
+  - [x] explicit local-mock and locked-remote transport modes
+  - [x] HTTPS-only configuration and external-provider safety validation
+  - [x] in-app backend readiness/blocker display
+  - [x] fail-closed remote gateway with no network implementation or Android Internet permission
+
+Next dependency: build and security-review the hosted API as a separate service. Only after its authentication, authorization, atomic token allocation, audit and environment policies pass should a later Doctor App release add real HTTPS transport.

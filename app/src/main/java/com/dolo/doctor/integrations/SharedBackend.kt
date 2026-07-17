@@ -12,6 +12,40 @@ import com.dolo.doctor.data.model.QueueDelayNotice
 import com.dolo.doctor.data.model.QueueState
 import java.time.Instant
 
+enum class SharedBackendMode { LOCAL_MOCK, REMOTE_DISABLED }
+
+data class FutureProviderFlags(
+    val sms: Boolean = false,
+    val serviceChargePayments: Boolean = false,
+    val maps: Boolean = false,
+    val pushNotifications: Boolean = false
+) {
+    val anyEnabled: Boolean get() = sms || serviceChargePayments || maps || pushNotifications
+}
+
+data class SharedBackendConfiguration(
+    val mode: SharedBackendMode = SharedBackendMode.LOCAL_MOCK,
+    val baseUrl: String = "",
+    val providerFlags: FutureProviderFlags = FutureProviderFlags()
+) {
+    fun validationError(): String? = when {
+        providerFlags.anyEnabled -> "External providers must remain disabled until the hosted backend and Admin policies are approved."
+        mode == SharedBackendMode.REMOTE_DISABLED && baseUrl.isBlank() -> "A remote backend requires an HTTPS base URL."
+        baseUrl.isNotBlank() && !baseUrl.startsWith("https://") -> "Only HTTPS backend URLs are allowed."
+        else -> null
+    }
+}
+
+data class SharedBackendReadiness(
+    val mode: SharedBackendMode,
+    val title: String,
+    val detail: String,
+    val crossDeviceEnabled: Boolean,
+    val productionReady: Boolean,
+    val blockers: List<String>,
+    val providerFlags: FutureProviderFlags
+)
+
 data class SharedClinicSnapshot(
     val revision: Long,
     val generatedAt: String,
@@ -49,6 +83,7 @@ sealed interface SharedBackendResult<out T> {
 }
 
 interface SharedBackendGateway {
+    val readiness: SharedBackendReadiness
     fun publish(command: PublishClinicCommand): SharedBackendResult<SharedClinicSnapshot>
     fun pull(clinicId: String): SharedBackendResult<SharedClinicSnapshot>
     fun bookFromPatientApp(command: PatientBookingCommand): SharedBackendResult<SharedClinicSnapshot>
@@ -63,6 +98,19 @@ interface SharedBackendGateway {
 class LocalMockSharedBackendGateway(
     private val serverClock: () -> String = { Instant.now().toString() }
 ) : SharedBackendGateway {
+    override val readiness = SharedBackendReadiness(
+        mode = SharedBackendMode.LOCAL_MOCK,
+        title = "Local mock transport",
+        detail = "Contract testing is available on this device only. No network requests can be made.",
+        crossDeviceEnabled = false,
+        productionReady = false,
+        blockers = listOf(
+            "Deploy and approve the hosted HTTPS API.",
+            "Add server authentication, authorization and audit retention.",
+            "Enable Android network access only with an approved backend build."
+        ),
+        providerFlags = FutureProviderFlags()
+    )
     private var snapshot: SharedClinicSnapshot? = null
     private val publishResults = mutableMapOf<String, SharedClinicSnapshot>()
     private val bookingResults = mutableMapOf<String, SharedClinicSnapshot>()
@@ -166,4 +214,42 @@ class LocalMockSharedBackendGateway(
         bookingResults[command.idempotencyKey] = accepted
         return SharedBackendResult.Success(accepted)
     }
+}
+/**
+ * Locked production boundary. It intentionally performs no network I/O and keeps every external
+ * provider off while allowing the UI and tests to describe the future remote configuration.
+ */
+class RemoteDisabledSharedBackendGateway(
+    private val configuration: SharedBackendConfiguration
+) : SharedBackendGateway {
+    private val configurationError = configuration.validationError()
+    private val unavailableMessage = configurationError
+        ?: "Remote synchronization is locked until the hosted backend is approved and enabled in a dedicated release."
+
+    override val readiness = SharedBackendReadiness(
+        mode = SharedBackendMode.REMOTE_DISABLED,
+        title = "Remote backend locked",
+        detail = if (configuration.baseUrl.isBlank()) "No production endpoint is configured." else "Configured endpoint: ${configuration.baseUrl}",
+        crossDeviceEnabled = false,
+        productionReady = false,
+        blockers = listOf(unavailableMessage),
+        providerFlags = configuration.providerFlags
+    )
+
+    override fun publish(command: PublishClinicCommand) = disabled<SharedClinicSnapshot>()
+    override fun pull(clinicId: String) = disabled<SharedClinicSnapshot>()
+    override fun bookFromPatientApp(command: PatientBookingCommand) = disabled<SharedClinicSnapshot>()
+
+    private fun <T> disabled(): SharedBackendResult<T> = SharedBackendResult.Failure(
+        unavailableMessage,
+        retryable = false
+    )
+}
+
+object SharedBackendProvider {
+    fun create(configuration: SharedBackendConfiguration = SharedBackendConfiguration()): SharedBackendGateway =
+        when (configuration.mode) {
+            SharedBackendMode.LOCAL_MOCK -> LocalMockSharedBackendGateway()
+            SharedBackendMode.REMOTE_DISABLED -> RemoteDisabledSharedBackendGateway(configuration)
+        }
 }

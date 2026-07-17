@@ -17,6 +17,7 @@ import com.dolo.doctor.data.model.BookingSource
 import com.dolo.doctor.data.model.DoctorUiState
 import com.dolo.doctor.data.model.PaymentStatus
 import com.dolo.doctor.data.model.SyncStatus
+import com.dolo.doctor.integrations.SharedBackendReadiness
 import com.dolo.doctor.ui.components.ElevatedSection
 import com.dolo.doctor.ui.components.PageHeader
 import com.dolo.doctor.ui.components.PrimaryAction
@@ -24,6 +25,7 @@ import com.dolo.doctor.ui.components.StatusPill
 
 @Composable fun SyncCenterScreen(
     state: DoctorUiState,
+    readiness: SharedBackendReadiness,
     onBack: () -> Unit,
     onPublish: () -> String?,
     onPull: () -> String?,
@@ -39,7 +41,32 @@ import com.dolo.doctor.ui.components.StatusPill
     ) {
         item { PageHeader("Shared sync center", onBack) }
         item {
-            ElevatedSection("Stage 10 local transport", "Safe contract testing without a live server") {
+            ElevatedSection("Stage 12 backend readiness", readiness.title) {
+                StatusPill(
+                    if (readiness.crossDeviceEnabled) "Cross-device enabled" else "Local-only safe mode",
+                    readiness.crossDeviceEnabled
+                )
+                Text(readiness.detail, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Hosted production sync: ${if (readiness.productionReady) "Ready" else "Not enabled"}",
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "SMS: OFF | DO-LO charges: OFF | Maps: OFF | Push: OFF",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                readiness.blockers.forEachIndexed { index, blocker ->
+                    Text("${index + 1}. $blocker", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text(
+                    "The APK still has no Android INTERNET permission. Remote mode cannot silently activate.",
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        item {
+            ElevatedSection("Local contract simulator", "Safe workflow testing without a live server") {
                 Text(
                     "This mock transport runs only inside this Doctor App process. It does not communicate with another phone or the Patient App repository.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant

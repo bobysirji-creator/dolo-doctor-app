@@ -98,3 +98,12 @@ The clinic projection includes futureBookingEnabled and advanceBookingDays. The 
 - Policy changes increment the clinic revision and create an immutable audit event.
 
 The Stage 11 local transport evaluates this rule but stores only the active clinic-day snapshot. The hosted backend must own scheduled future appointments.
+
+## Stage 12 Android transport modes
+
+The Doctor App now declares two explicit client modes:
+
+- LOCAL_MOCK is the default and retains deterministic in-process contract testing.
+- REMOTE_DISABLED is a fail-closed readiness stub. It validates an HTTPS endpoint description but makes no request and returns a non-retryable disabled result for every operation.
+
+FutureProviderFlags default to false and configuration validation rejects SMS, DO-LO service-charge payment, maps or push activation. The Stage 12 manifest intentionally omits Android Internet permission. A later network-enabled release requires a reviewed hosted API, environment-specific HTTPS endpoint, authenticated transport implementation, secret-free client configuration and approval of the security/privacy gate above.

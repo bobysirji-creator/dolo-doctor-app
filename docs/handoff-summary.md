@@ -233,3 +233,13 @@ GitHub Actions remains the authoritative compile, lint, unit-test and APK gate b
 Stage 7: make doctor announcements, camps, offers and availability notices into validated, expiring records and define the Patient App profile-feed contract. Real cross-app delivery still waits for the shared backend.
 
 Stage 6 physical-device acceptance is defined in `docs/device-test-checklist.md`.
+
+## Stage 12 hosted-backend readiness boundary
+
+Version 0.12.0-stage12 (version code 23) separates the accepted local simulator from the future production transport. SharedBackendConfiguration declares LOCAL_MOCK or REMOTE_DISABLED mode, validates HTTPS-only endpoint configuration and rejects any attempt to enable SMS, DO-LO service-charge payments, maps or push before backend/Admin approval.
+
+RemoteDisabledSharedBackendGateway is deliberately fail-closed: publish, pull and Patient booking operations return a non-retryable explanation and perform no network I/O. The default factory still creates LocalMockSharedBackendGateway, so all previously accepted single-device workflows remain available.
+
+Shared Sync Center now displays transport readiness, cross-device state, external-provider OFF status and the production blockers. The manifest still has no INTERNET permission. Unit coverage is 101 tests, including default-mode, configuration-safety and locked-remote behavior. GitHub Actions remains the authoritative JDK 17/Android SDK compile, lint, test and APK gate.
+
+Next recommended work is outside this Android repository: design and deploy the shared hosted API using docs/shared-backend-contract.md, then complete its authentication/authorization, transaction, audit, privacy and threat-model review. Do not add real provider keys or enable Android Internet access before that gate passes.

@@ -6,10 +6,12 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.dolo.doctor.data.model.*
-import com.dolo.doctor.integrations.LocalMockSharedBackendGateway
 import com.dolo.doctor.integrations.PatientBookingCommand
 import com.dolo.doctor.integrations.PublishClinicCommand
 import com.dolo.doctor.integrations.SharedBackendGateway
+import com.dolo.doctor.integrations.SharedBackendConfiguration
+import com.dolo.doctor.integrations.SharedBackendProvider
+import com.dolo.doctor.integrations.SharedBackendReadiness
 import com.dolo.doctor.integrations.SharedBackendResult
 import com.dolo.doctor.integrations.SharedClinicSnapshot
 import java.time.LocalDate
@@ -24,7 +26,7 @@ class DoctorViewModel(
     private val currentDate: () -> LocalDate = LocalDate::now,
     private val currentTime: () -> LocalTime = LocalTime::now,
     private val pinGenerator: () -> String = { (SecureRandom().nextInt(9000) + 1000).toString() },
-    private val sharedBackend: SharedBackendGateway = LocalMockSharedBackendGateway()
+    private val sharedBackend: SharedBackendGateway = SharedBackendProvider.create()
 ) : ViewModel() {
     var uiState by mutableStateOf(stateStore.restore(DummyData.initialState(currentDate().toString())))
         private set
@@ -1020,6 +1022,8 @@ class DoctorViewModel(
         persist(withAudit(updated, action, detail), fromSharedBackend = true)
     }
 
+    fun sharedBackendReadiness(): SharedBackendReadiness = sharedBackend.readiness
+
     fun publishLocalSnapshot(): String? {
         if (uiState.role != UserRole.DOCTOR) return "Only the Doctor can publish clinic state."
         val snapshot = sharedSnapshot() ?: return "Clinic details are unavailable."
@@ -1227,7 +1231,11 @@ class DoctorViewModel(
     }
 }
 
-class DoctorViewModelFactory(private val stateStore: DoctorStateStore) : ViewModelProvider.Factory {
+class DoctorViewModelFactory(
+    private val stateStore: DoctorStateStore,
+    private val backendConfiguration: SharedBackendConfiguration = SharedBackendConfiguration()
+) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T = DoctorViewModel(stateStore) as T
+    override fun <T : ViewModel> create(modelClass: Class<T>): T =
+        DoctorViewModel(stateStore = stateStore, sharedBackend = SharedBackendProvider.create(backendConfiguration)) as T
 }

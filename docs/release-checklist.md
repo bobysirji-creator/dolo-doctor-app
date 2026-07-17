@@ -1,6 +1,6 @@
 # DO-LO Doctor Release Checklist
 
-## Current Stage 11 candidate
+## Current Stage 12 candidate
 
 This checklist qualifies a local physical-device prototype. Passing it does not authorize production healthcare use.
 
@@ -63,3 +63,14 @@ Run at minimum on the previously used Vivo and Samsung devices:
 - 58 mm print preview and physical print when hardware is available.
 
 Record APK version, Android version, device model, result and any screenshots in a release test note.
+
+## Stage 12 backend-boundary acceptance
+
+1. Upgrade over 0.11.3 without clearing data. Confirm login, queue, appointments, reports, clinic settings and late-arrival order are retained.
+2. As Doctor, open Shared sync center and confirm Stage 12 shows Local mock transport and Local-only safe mode.
+3. Confirm the screen reports hosted sync as Not enabled and SMS, DO-LO charges, Maps and Push as OFF.
+4. Publish, simulate one Patient App booking and pull. Confirm the local simulator still behaves as before.
+5. Put the phone in airplane mode and repeat the local simulator flow. Confirm it remains functional.
+6. Inspect Android app permissions and confirm no network/Internet permission is requested.
+7. Confirm there is no control that can select remote mode, enter an endpoint, or enable an external provider.
+8. Re-run core Morning/Evening queue, fee/receipt, late cohort, archive and relaunch checks on Vivo and Samsung.

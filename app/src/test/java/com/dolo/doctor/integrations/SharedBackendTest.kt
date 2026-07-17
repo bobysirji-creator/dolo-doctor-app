@@ -175,4 +175,50 @@ class SharedBackendTest {
         assertTrue(result is SharedBackendResult.Failure)
         assertTrue((result as SharedBackendResult.Failure).message.contains("Thursday"))
     }
+
+    @Test fun defaultProviderIsExplicitlyLocalOnlyAndProviderFree() {
+        val gateway = SharedBackendProvider.create()
+
+        assertTrue(gateway is LocalMockSharedBackendGateway)
+        assertEquals(SharedBackendMode.LOCAL_MOCK, gateway.readiness.mode)
+        assertFalse(gateway.readiness.crossDeviceEnabled)
+        assertFalse(gateway.readiness.productionReady)
+        assertFalse(gateway.readiness.providerFlags.anyEnabled)
+    }
+
+    @Test fun remoteConfigurationRequiresHttpsAndKeepsProvidersLocked() {
+        val missingUrl = SharedBackendConfiguration(SharedBackendMode.REMOTE_DISABLED)
+        val insecureUrl = SharedBackendConfiguration(
+            SharedBackendMode.REMOTE_DISABLED,
+            baseUrl = "http://api.example.test"
+        )
+        val providerEnabled = SharedBackendConfiguration(
+            SharedBackendMode.REMOTE_DISABLED,
+            baseUrl = "https://api.example.test",
+            providerFlags = FutureProviderFlags(sms = true)
+        )
+
+        assertTrue(missingUrl.validationError()!!.contains("HTTPS"))
+        assertTrue(insecureUrl.validationError()!!.contains("Only HTTPS"))
+        assertTrue(providerEnabled.validationError()!!.contains("must remain disabled"))
+    }
+
+    @Test fun lockedRemoteGatewayNeverExecutesSharedOperations() {
+        val gateway = SharedBackendProvider.create(
+            SharedBackendConfiguration(
+                mode = SharedBackendMode.REMOTE_DISABLED,
+                baseUrl = "https://api.example.test"
+            )
+        )
+
+        val publish = gateway.publish(PublishClinicCommand("locked", 0, snapshot()))
+        val pull = gateway.pull("clinic-1")
+
+        assertTrue(gateway is RemoteDisabledSharedBackendGateway)
+        assertFalse(gateway.readiness.crossDeviceEnabled)
+        assertTrue(publish is SharedBackendResult.Failure)
+        assertFalse((publish as SharedBackendResult.Failure).retryable)
+        assertTrue(pull is SharedBackendResult.Failure)
+        assertTrue((pull as SharedBackendResult.Failure).message.contains("locked"))
+    }
 }
