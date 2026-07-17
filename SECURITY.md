@@ -2,7 +2,7 @@
 
 ## Prototype status
 
-DO-LO Doctor is a local workflow prototype and is not approved for real patient, payment or medical data. The Stage 10/11 shared transport is process-local and the APK has no Internet permission.
+DO-LO Doctor is a local workflow prototype and is not approved for real patient, platform service-charge or medical data. Clinic consultation-fee entries are local workflow records only. The Stage 10/11 shared transport is process-local and the APK has no Internet permission.
 
 ## Reporting a vulnerability
 
@@ -17,7 +17,7 @@ A production release requires:
 - server authorization for every Doctor and Assistant action;
 - OTP/PIN rate limiting, lockout and recovery controls;
 - encrypted server secrets and no provider credentials in Android resources;
-- atomic token/payment transactions and immutable server audit records;
+- atomic token/clinic-fee-record transactions, separate Admin-controlled service-charge ledgers and immutable server audit records;
 - privacy, consent, retention and deletion policies;
 - production signing keys stored outside the repository and CI logs;
 - dependency, static-analysis and penetration-test review;

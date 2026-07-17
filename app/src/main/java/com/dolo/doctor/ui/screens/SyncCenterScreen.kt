@@ -110,7 +110,7 @@ import com.dolo.doctor.ui.components.StatusPill
                             Text(appointment.patientName, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         StatusPill(
-                            if (appointment.paymentStatus == PaymentStatus.PENDING) "Fee pending" else appointment.status.name,
+                            if (appointment.paymentStatus == PaymentStatus.PENDING) "Clinic fee pending" else appointment.status.name,
                             appointment.paymentStatus != PaymentStatus.PENDING
                         )
                     }

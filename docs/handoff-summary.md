@@ -1,3 +1,17 @@
+## Stage 11.3 late-arrival cohorts and financial boundary
+
+Version 0.11.3-stage11 (version code 22) groups late arrivals by the token that was in consultation when they were admitted. The first late patient receives the established position after up to four waiting patients. Additional late patients admitted during that same consultation join the same persisted cohort and are sorted by original token number, so token 6 cannot overtake token 5. A new active consultation creates a new cohort.
+
+The Doctor App now states that consultation fees are collected directly by the clinic and merely recorded for queue admission and receipts. The misleading Online consultation-fee choice is no longer selectable; its enum value remains only for backward decoding of older local records.
+
+DO-LO platform service charges are a separate future financial domain: the Patient App will pay a DO-LO service charge online during appointment booking, while doctors will receive weekly or monthly DO-LO billing based on the approved count/rate policy. Those ledgers, gateway transactions, invoices and controls belong to the shared backend and Admin App, not this Doctor App consultation-fee workflow.
+
+Automated coverage is now 98 unit tests, including same-consultation late cohort ordering and persistence of the cohort anchor.
+
+## Next recommended stage
+
+Run the Stage 11.3 device checklist, especially consecutive late admissions while one consultation remains active. After acceptance, specify the hosted backend and Admin-controlled service-charge ledger before enabling any real payment provider.
+
 ## Stage 11.2 token-aware admission, dated reports and adaptive insets
 
 Version 0.11.2-stage11 (version code 21) corrects Live queue admission order. Fee-confirmed online patients whose token is still ahead are inserted before higher future tokens, regardless of receipt-generation order. If their token turn has already passed, they retain the printed token and are placed after up to four waiting patients. The late-placement marker and resulting queue order persist across process recreation.

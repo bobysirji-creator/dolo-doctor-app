@@ -1202,6 +1202,37 @@ class DoctorViewModelTest {
             .map { it.token }
         assertEquals(listOf(9, 10, 11, 12, 7, 13, 14), serviceOrder)
         assertTrue(model.uiState.appointments.single { it.token == 7 }.lateQueuePlacement)
+        assertEquals(8, model.uiState.appointments.single { it.token == 7 }.lateArrivalAnchorToken)
+    }
+
+    @Test fun latePatientsFromSameConsultationKeepOriginalTokenOrder() {
+        val appointments = buildList {
+            add(queuePatient(8, AppointmentStatus.IN_CONSULTATION, 8))
+            (9..14).forEach { token -> add(queuePatient(token, AppointmentStatus.WAITING, token)) }
+            add(queuePatient(5, AppointmentStatus.BOOKED, 0, paid = false))
+            add(queuePatient(6, AppointmentStatus.BOOKED, 0, paid = false))
+        }
+        val initial = DummyData.initialState("2026-07-17").copy(
+            appointments = appointments,
+            sessionQueues = listOf(
+                ConsultationQueue("Morning", QueueState.ACTIVE, 8),
+                ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+            ),
+            currentToken = 8
+        )
+        val model = DoctorViewModel(MemoryDoctorStateStore(initial), currentDate = { LocalDate.parse("2026-07-17") })
+        model.login(UserRole.DOCTOR)
+
+        assertEquals(null, model.confirmConsultationFee("test-5-BOOKED", 500, PaymentMethod.CASH).error)
+        assertEquals(null, model.confirmConsultationFee("test-6-BOOKED", 500, PaymentMethod.CASH).error)
+
+        val serviceOrder = model.uiState.appointments
+            .filter { it.status in setOf(AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }
+            .sortedBy { it.queueOrder }
+            .map { it.token }
+        assertEquals(listOf(9, 10, 11, 12, 5, 6, 13, 14), serviceOrder)
+        assertEquals(8, model.uiState.appointments.single { it.token == 5 }.lateArrivalAnchorToken)
+        assertEquals(8, model.uiState.appointments.single { it.token == 6 }.lateArrivalAnchorToken)
     }
 
     @Test fun operationalReportUsesInclusiveDateRangeWithoutDuplicatingCurrentArchive() {

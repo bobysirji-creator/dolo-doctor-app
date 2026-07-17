@@ -1,3 +1,11 @@
+## Stage 11.3 late-arrival cohort and financial separation
+
+- lateArrivalAnchorToken persists the token that was active when a late patient was admitted.
+- Late patients sharing that anchor occupy one cohort at the four-patient buffer and are ordered by immutable token number, not fee-confirmation time.
+- A changed active token creates a distinct late cohort; existing queueOrder remains stable unless an authorized admission or rejoin operation changes it.
+- Doctor consultation fees are external clinic payments. The Doctor App stores only a clinic-reported payment/waiver record needed for receipt and queue eligibility.
+- DO-LO patient booking charges and doctor weekly/monthly platform billing are separate Admin-controlled service-charge ledgers. They must never be represented as doctor consultation fees.
+
 ## Stage 11.2 deterministic queue admission and dated operations
 
 - Token is immutable and queueOrder remains the mutable service sequence.
@@ -141,7 +149,7 @@ Every assistant action must be authorized on the server, not only hidden in Comp
 
 - The notification center projects persisted QueueAuditEvent records instead of maintaining a second conflicting event collection.
 - DoctorUiState.notificationReadThrough stores the highest read audit sequence; SharedPreferences persistence keeps the unread badge stable through process recreation.
-- The shared backend must eventually make fee confirmation, token allocation and receipt identity transactional and server-authoritative; no real payment gateway is connected in this local stage.
+- The shared backend must make clinic-fee record confirmation, token allocation and receipt identity transactional and server-authoritative. Payment gateways are reserved only for separate Admin-controlled DO-LO service charges.
 
 ## Stage 6 availability enforcement
 

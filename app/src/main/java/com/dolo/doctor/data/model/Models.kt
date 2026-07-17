@@ -12,6 +12,7 @@ enum class ProfileReviewStatus { VERIFIED, PENDING_REVIEW }
 enum class BookingSource { PATIENT_APP, CLINIC_WALK_IN }
 enum class PaymentStatus { PENDING, PAID, WAIVED }
 enum class PaymentMethod { CASH, UPI, CARD, ONLINE, WAIVED }
+// ONLINE remains only for backward decoding of older local records; current clinic UI does not offer it.
 enum class AvailabilityImpactStatus { NONE, CONTACT_PENDING, PATIENT_NOTIFIED, RESCHEDULE_REQUIRED, RESOLVED }
 enum class SyncStatus { LOCAL_ONLY, PENDING, SYNCED, CONFLICT, ERROR }
 enum class WeeklyClosureScope { MORNING, EVENING, BOTH }
@@ -92,7 +93,8 @@ data class Appointment(
     val availabilityBlockId: String = "",
     val availabilityImpactStatus: AvailabilityImpactStatus = AvailabilityImpactStatus.NONE,
     val availabilityUpdatedAt: String = "",
-    val lateQueuePlacement: Boolean = false
+    val lateQueuePlacement: Boolean = false,
+    val lateArrivalAnchorToken: Int = 0
 )
 
 data class WalkInBookingRequest(

@@ -467,7 +467,12 @@ class DoctorViewModel(
             it.id != candidate.id && it.session == candidate.session && admittedToQueue(it) && it.status in progressedStatuses
         }
         val turnAlreadyPassed = progressed.any { it.token >= candidate.token }
-        val positionedCandidate = candidate.copy(lateQueuePlacement = turnAlreadyPassed)
+        val activeToken = state.sessionQueues.firstOrNull { it.session == candidate.session }?.currentToken
+            ?.takeIf { it > 0 } ?: progressed.maxByOrNull { it.queueOrder }?.token ?: 0
+        val positionedCandidate = candidate.copy(
+            lateQueuePlacement = turnAlreadyPassed,
+            lateArrivalAnchorToken = if (turnAlreadyPassed) activeToken else 0
+        )
         val pending = state.appointments
             .filter {
                 it.id != candidate.id && it.session == candidate.session && admittedToQueue(it) &&
@@ -475,7 +480,13 @@ class DoctorViewModel(
             }
             .sortedWith(compareBy<Appointment> { it.queueOrder }.thenBy { it.token })
             .toMutableList()
-        val insertionIndex = if (turnAlreadyPassed) {
+        val sameConsultationCohort = pending.withIndex().filter { (_, appointment) ->
+            appointment.lateQueuePlacement && appointment.lateArrivalAnchorToken == activeToken
+        }
+        val insertionIndex = if (turnAlreadyPassed && sameConsultationCohort.isNotEmpty()) {
+            sameConsultationCohort.firstOrNull { (_, appointment) -> appointment.token > candidate.token }?.index
+                ?: (sameConsultationCohort.last().index + 1)
+        } else if (turnAlreadyPassed) {
             minOf(LATE_ARRIVAL_PATIENTS_AHEAD, pending.size)
         } else {
             pending.indexOfFirst { !it.lateQueuePlacement && it.token > candidate.token }

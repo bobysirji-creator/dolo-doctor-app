@@ -44,4 +44,10 @@
   - [x] inclusive dated reports and detailed current/archive queue history
   - [x] safe drawing and navigation-bar inset handling
 
+- [x] Stage 11.3 - same-consultation late cohorts and financial-domain separation
+  - [x] persisted active-token cohort anchor for late admissions
+  - [x] immutable token ordering inside each late-arrival cohort
+  - [x] clinic-direct consultation-fee copy and UI clarification
+  - [x] Admin-owned patient and doctor service-charge architecture
+
 Admin App remains a separate future repository. Real providers remain disabled until the shared backend and policies are approved.

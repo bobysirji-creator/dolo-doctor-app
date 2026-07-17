@@ -38,7 +38,7 @@ Test at default font size and the largest practical Android font/display size:
 - TalkBack announces page headings, metric label/value pairs, status badges, buttons and selected navigation.
 - Dialogs receive focus, validation errors remain readable and keyboard actions do not hide confirmation controls.
 - Light and dark themes retain readable contrast.
-- Queue and payment state is communicated by text, not color alone.
+- Queue, clinic-fee-record and future service-charge states are communicated by text, not color alone.
 
 ## Security and privacy
 

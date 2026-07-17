@@ -62,9 +62,9 @@ import java.time.LocalDate
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     MetricTile("Absent", report.absent.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error)
-                    MetricTile("Fee pending", report.pending.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.secondary)
+                    MetricTile("Clinic fee pending", report.pending.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.secondary)
                 }
-                Text("Confirmed collections: INR ${report.collectedFees}", fontWeight = FontWeight.Bold)
+                Text("Clinic-reported consultation fees: INR ${report.collectedFees}", fontWeight = FontWeight.Bold)
             }
         }
         item {

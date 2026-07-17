@@ -1,3 +1,13 @@
+## Stage 11.3 late cohorts and clinic-fee boundary
+
+1. Put token 8 in consultation with tokens 9-14 waiting. Record clinic payment for late token 5, then late token 6 without advancing token 8. Confirm order 9, 10, 11, 12, 5, 6, 13, 14.
+2. Repeat by recording token 6 before token 5 while token 8 remains active. Confirm the final cohort is still token 5 followed by token 6.
+3. Remove the app from Recents and relaunch. Confirm both late tokens retain their cohort order and original printed token numbers.
+4. Advance the active consultation, then admit another late token. Confirm it receives a new four-patient placement and does not enter the older consultation cohort.
+5. Open walk-in and online fee-record dialogs. Confirm they explicitly state that consultation payment is collected directly by the clinic and no Online payment option appears.
+6. Confirm Cash, UPI, Card and Waived clinic records still generate/reopen receipts and control queue admission.
+7. Confirm the Doctor App offers no gateway action for doctor consultation fees and no control for DO-LO patient/doctor service-charge settlement.
+
 ## Stage 11.2 queue order, reports and screen-fit acceptance
 
 1. Put Morning token 5 in consultation. Admit offline token 8, then confirm fee for online token 7. Confirm Live queue serves token 7 before token 8.

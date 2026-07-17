@@ -265,12 +265,13 @@ internal object QueueStateCodec {
         appointment.availabilityBlockId,
         appointment.availabilityImpactStatus.name,
         appointment.availabilityUpdatedAt,
-        appointment.lateQueuePlacement.toString()
+        appointment.lateQueuePlacement.toString(),
+        appointment.lateArrivalAnchorToken.toString()
     ).joinToString(",") { encode(it) }
 
     fun decodeAppointment(value: String): Appointment? {
         val fields = value.split(",").mapNotNull(::decode)
-        if (fields.size !in setOf(7, 11, 15, 18, 19)) return null
+        if (fields.size !in setOf(7, 11, 15, 18, 19, 20)) return null
         val token = fields[1].toIntOrNull() ?: return null
         val status = runCatching { AppointmentStatus.valueOf(fields[5]) }.getOrNull() ?: return null
         if (fields.size == 7) return Appointment(fields[0], token, fields[2], fields[3], fields[4], status, fields[6])
@@ -303,7 +304,8 @@ internal object QueueStateCodec {
             availabilityBlockId = if (fields.size >= 18) fields[15] else "",
             availabilityImpactStatus = if (fields.size >= 18) runCatching { AvailabilityImpactStatus.valueOf(fields[16]) }.getOrDefault(AvailabilityImpactStatus.NONE) else AvailabilityImpactStatus.NONE,
             availabilityUpdatedAt = if (fields.size >= 18) fields[17] else "",
-            lateQueuePlacement = fields.size == 19 && fields[18].toBooleanStrictOrNull() == true
+            lateQueuePlacement = fields.size >= 19 && fields[18].toBooleanStrictOrNull() == true,
+            lateArrivalAnchorToken = if (fields.size == 20) fields[19].toIntOrNull() ?: 0 else 0
         )
     }    fun encodeHistory(history: DailyQueueHistory): String = listOf(
         history.date,

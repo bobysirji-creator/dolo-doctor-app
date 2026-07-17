@@ -2,7 +2,7 @@
 
 DO-LO Doctor is the dedicated lightweight Android app for doctors and permission-limited assistants in the DO-LO walk-in appointment ecosystem.
 
-Current prototype: **0.11.2-stage11** (version code 21).
+Current prototype: **0.11.3-stage11** (version code 22).
 
 ## Current prototype includes
 
@@ -12,10 +12,10 @@ Current prototype: **0.11.2-stage11** (version code 21).
 - Doctor-only independent session closure, automatic next-date rollover and daily history finalized after both sessions close;
 - pause/resume queue, call-next and permission-aware patient-status controls, including completion of the final active consultation;
 - explicit appointment status-transition rules and a persistent Doctor activity log with actor, time, token/patient and before/after status context;
-- token-aware admission that restores upcoming token order, plus a persistent four-patient buffer for genuinely late arrivals without changing the printed token;
+- token-aware admission that restores upcoming token order, plus a persistent four-patient late-arrival buffer whose same-consultation cohort is served by original token number;
 - authorized clinic walk-in booking synchronized into the same queue, compulsory token-receipt generation, receipt reprints and Android system printing;
 - session-aware booking that permits advance booking before a session starts, automatically closes each session at its configured end time, and reopens both on the next clinic day;
-- explicit consultation-fee confirmation using Cash, UPI, Card, Online or Waived status; only paid/waived appointments with receipts enter Queue;
+- clinic-direct consultation-fee recording using Cash, UPI, Card or Waived status; DO-LO does not process the doctor's fee, and only clinic-confirmed/waived appointments with receipts enter Queue;
 - independent Morning and Evening token sequences, persisted session selection, and centered 58 mm ESC/POS-oriented receipt output;
 - editable, validated and persisted Doctor profile with Admin-review status for sensitive changes;
 - persistent in-app notifications with an unread Home badge for queue, appointment, fee, receipt and session activity;
@@ -34,9 +34,10 @@ Current prototype: **0.11.2-stage11** (version code 21).
 - recurring weekday schedule with independent Morning/Evening closures or a full clinic day off, enforced for online and walk-in bookings;
 - permanent current-day-only clinic walk-ins, independent of the Patient App policy;
 - TalkBack semantics, large-font and system-navigation-inset layout protection, least-privilege mock manifest and unsigned release CI compilation;
+- an explicit financial boundary reserving Patient App booking service charges and doctor weekly/monthly platform billing for the shared backend and Admin App;
 - unit tests, Android lint and GitHub Actions APK builds.
 
-All data is dummy local prototype data. There is no production authentication, healthcare backend, patient record, real message, payment or provider credential. The mock-only APK intentionally has no Internet permission.
+All data is dummy local prototype data. There is no production authentication, healthcare backend, patient record, real message, service-charge transaction or provider credential. Consultation-fee values are clinic-recorded workflow data only. The mock-only APK intentionally has no Internet permission.
 
 ## Build without Android Studio
 

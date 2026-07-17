@@ -70,15 +70,22 @@ A session accepts advance bookings from the beginning of the clinic day; its con
 
 ## Consultation fee and queue admission
 
-Every appointment has a payment status: PENDING, PAID or WAIVED. Payment methods currently supported by the local workflow are CASH, UPI, CARD, ONLINE and WAIVED. A Patient App booking may appear in Today's appointments with a session token while payment remains pending, but it must not appear in Live queue or be callable.
+Every appointment has a clinic-fee record status: PENDING, PAID or WAIVED. Current clinic-record methods are CASH, UPI, CARD and WAIVED. The legacy ONLINE enum is retained only for installed-data compatibility and is not selectable. A Patient App booking may appear in Today's appointments with a session token while clinic confirmation remains pending, but it must not appear in Live queue or be callable.
 
-Authorized clinic staff confirm the fee amount and payment method only after payment is received, or explicitly select WAIVED. That confirmation marks the patient ARRIVED, generates the stable receipt and admits the appointment to Live queue. An upcoming online token is inserted before higher upcoming tokens even if those receipts were generated first. A token whose turn has passed keeps its printed number and is inserted after up to four waiting patients. Receipt generation without fee confirmation is not allowed. Both the app receipt preview and printed receipt display the amount/status and payment method.
+Authorized clinic staff record the fee amount and method only after the clinic directly receives payment, or explicitly selects WAIVED. That record marks the patient ARRIVED, generates the stable receipt and admits the appointment to Live queue. An upcoming online token is inserted before higher upcoming tokens even if those receipts were generated first. A token whose turn has passed keeps its printed number and is inserted after up to four waiting patients. Late patients admitted while the same token remains in consultation form one cohort ordered by original token number. Receipt generation without clinic confirmation is not allowed. Both the app receipt preview and printed receipt display the clinic-reported amount/status and method.
 
 Morning and Evening use separate token sequences beginning independently for each clinic day. Token M-1 and token E-1 may coexist because session is part of the identity and receipt number. The selected Morning/Evening view is shared by Appointments and Queue and remains selected after navigation or process recreation.
 
 Operational summary and Queue History use an inclusive start/end clinic-date range and default to the current day. Queue History includes the active day before archive and separates detailed Morning and Evening patient records.
 
 Android screens and bottom navigation must respect safe drawing, gesture-navigation and three-button-navigation insets across supported screen sizes.
+
+
+## Financial boundary: clinic fees versus DO-LO service charges
+
+The doctor's consultation fee is never collected or transferred by DO-LO in the current product model. Patients pay it directly to the doctor/clinic. Authorized staff record Cash, UPI, Card or Waived only after the clinic receives or waives that fee; this local record controls receipt generation and queue admission.
+
+DO-LO service charges are separate from consultation fees. The Patient App will pay a DO-LO service charge online when booking. Doctors will be billed by DO-LO weekly or monthly under an Admin-defined count/rate policy. Payment-gateway orders, reconciliation, invoices, waivers, disputes and settlement controls for both service-charge streams belong to the shared backend and Admin App. The Doctor App may later display read-only bills/invoices but must not treat them as consultation-fee receipts.
 
 ## Doctor notifications
 

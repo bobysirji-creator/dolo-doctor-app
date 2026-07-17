@@ -70,11 +70,19 @@ The response uses an ETag/revision. Clients may request changes after a known re
 1. The server rejects stale mutations; it never silently overwrites a newer queue.
 2. The Doctor App must pull and display the current revision before retrying.
 3. Appointment status transitions are server validated.
-4. Token numbers never change after allocation. The server transactionally inserts newly admitted upcoming tokens in token order, applies the configured late-arrival buffer after a turn has passed, and changes queueOrder only through admission or authorized skip/rejoin operations.
+4. Token numbers never change after allocation. The server transactionally inserts upcoming tokens in order, anchors late arrivals to the active consultation, orders each same-anchor cohort by token number, applies the late buffer, and changes queueOrder only through admission or authorized skip/rejoin operations.
 5. Morning and Evening token sequences are independent.
 6. Closing one session cannot close or disable the other.
 7. Duplicate idempotency keys return the original result.
 8. Offline local changes remain PENDING until accepted by the server.
+
+## Financial boundary
+
+- consultationFee and paymentStatus in an appointment are clinic-reported operational evidence only; DO-LO does not create a gateway order or settle the doctor's consultation fee.
+- Patient booking service charges are paid to DO-LO online and use a separate Admin-owned ledger and idempotent gateway transaction.
+- Doctor platform charges use a separate weekly/monthly Admin-owned billing ledger derived from the approved appointment/count policy.
+- Consultation receipts, patient service-charge receipts and doctor platform invoices are different documents and must have independent identifiers, audit trails, reconciliation and refund/dispute rules.
+
 
 ## Security and privacy gate
 

@@ -259,7 +259,7 @@ import java.time.LocalDate
                     }
                 }
                 if (sessionAppointments.isEmpty()) {
-                    item { ElevatedSection("No fee-confirmed " + selectedSession.lowercase() + " appointments for " + state.queueDate) { Text("This session queue is independent from the other consultation session.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+                    item { ElevatedSection("No clinic-fee-confirmed " + selectedSession.lowercase() + " appointments for " + state.queueDate) { Text("This session queue is independent from the other consultation session.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                 }
                 items(sessionAppointments.sortedBy { it.queueOrder }, key = { it.id }) { appointment ->
                     QueueAppointmentCard(
@@ -396,7 +396,7 @@ import java.time.LocalDate
             if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_TODAY_APPOINTMENTS permission.", color = MaterialTheme.colorScheme.error) } }
             else {
                 item {
-                    ElevatedSection("Appointments and fee desk", "Only fee-confirmed appointments with a generated receipt are admitted to the selected session queue.") {
+                    ElevatedSection("Appointments and clinic fee record", "Consultation fees are paid directly to the clinic. Recording receipt confirmation admits the patient to the selected queue.") {
                         Text("Morning: " + (if (morningBookingOpen) "booking open" else "booking closed") + " • Evening: " + (if (eveningBookingOpen) "booking open" else "booking closed"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("Morning capacity: " + morningCount + "/" + maxTokens + (if (morningCount >= maxTokens) " - LIMIT REACHED" else ""))
                         Text("Evening capacity: " + eveningCount + "/" + maxTokens + (if (eveningCount >= maxTokens) " - LIMIT REACHED" else ""))
@@ -441,7 +441,7 @@ import java.time.LocalDate
                             if (canConfirmFee && canGenerateReceipt) Button({ activeFeeAppointment = appointment }, Modifier.fillMaxWidth()) {
                                 Icon(Icons.Outlined.Payments, null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Confirm fee & admit to queue")
+                                Text("Record clinic fee & admit")
                             }
                         }
                     }
@@ -504,6 +504,7 @@ import java.time.LocalDate
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("The patient will be marked arrived, allotted the next token and shown a compulsory receipt.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("The clinic collects the consultation fee directly; DO-LO does not process this payment.", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 OutlinedTextField(name, { name = it; error = null }, Modifier.fillMaxWidth(), label = { Text("Patient name") }, singleLine = true)
                 OutlinedTextField(phone, { phone = it.filter(Char::isDigit).take(10); error = null }, Modifier.fillMaxWidth(), label = { Text("Mobile number") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), singleLine = true)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -519,14 +520,14 @@ import java.time.LocalDate
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
-                Text("Payment received by", fontWeight = FontWeight.Bold)
+                Text("Payment received directly at clinic by", fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(PaymentMethod.CASH, PaymentMethod.UPI, PaymentMethod.CARD).forEach { method ->
                         FilterChip(paymentMethod == method, { paymentMethod = method }, { Text(method.name) })
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(PaymentMethod.ONLINE, PaymentMethod.WAIVED).forEach { method ->
+                    listOf(PaymentMethod.WAIVED).forEach { method ->
                         FilterChip(paymentMethod == method, { paymentMethod = method }, { Text(method.name) })
                     }
                 }
@@ -539,7 +540,7 @@ import java.time.LocalDate
         },
         confirmButton = {
             Button({ error = onBook(WalkInBookingRequest(name, phone, patientType, session, feeText.toIntOrNull() ?: 0, paymentMethod)) }, enabled = (session == "Morning" && morningOpen) || (session == "Evening" && eveningOpen)) {
-                Text("Confirm fee, book & receipt")
+                Text("Record fee, book & receipt")
             }
         },
         dismissButton = { TextButton(onDismiss) { Text("Cancel") } }
@@ -558,11 +559,12 @@ import java.time.LocalDate
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Outlined.Payments, null) },
-        title = { Text("Confirm consultation fee") },
+        title = { Text("Record clinic consultation fee") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("${appointment.patientName} • ${appointment.session} token ${appointment.token}")
                 Text("Receipt generation admits this patient to the ${appointment.session.lowercase()} queue.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Payment is made directly to the clinic. This screen records it only; DO-LO does not transfer the doctor's fee.", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 OutlinedTextField(
                     value = if (method == PaymentMethod.WAIVED) "0" else feeText,
                     onValueChange = { feeText = it.filter(Char::isDigit).take(6); error = null },
@@ -578,14 +580,14 @@ import java.time.LocalDate
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(PaymentMethod.ONLINE, PaymentMethod.WAIVED).forEach { option ->
+                    listOf(PaymentMethod.WAIVED).forEach { option ->
                         FilterChip(method == option, { method = option }, { Text(option.name) })
                     }
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },
-        confirmButton = { Button({ error = onConfirm(feeText.toIntOrNull() ?: 0, method) }) { Text("Confirm & generate receipt") } },
+        confirmButton = { Button({ error = onConfirm(feeText.toIntOrNull() ?: 0, method) }) { Text("Record & generate receipt") } },
         dismissButton = { TextButton(onDismiss) { Text("Cancel") } }
     )
 }
