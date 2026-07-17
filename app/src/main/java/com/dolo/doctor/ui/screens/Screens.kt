@@ -31,8 +31,9 @@ import com.dolo.doctor.ui.components.*
 import com.dolo.doctor.printing.AndroidTokenReceiptPrinter
 import kotlinx.coroutines.delay
 import java.time.DayOfWeek
+import java.time.LocalDate
 
-@Composable private fun page() = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+@Composable private fun page() = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding()
 
 @Composable fun SplashScreen(onContinue: () -> Unit) {
     Box(page().padding(28.dp), contentAlignment = Alignment.Center) {
@@ -620,6 +621,70 @@ import java.time.DayOfWeek
     )
 }
 @Composable fun QueueHistoryScreen(state: DoctorUiState, onBack: () -> Unit) {
+    val initialDate = remember(state.queueDate) { runCatching { LocalDate.parse(state.queueDate) }.getOrDefault(LocalDate.now()) }
+    var fromDate by remember(state.queueDate) { mutableStateOf(initialDate) }
+    var toDate by remember(state.queueDate) { mutableStateOf(initialDate) }
+    val currentRecord = DailyQueueHistory(
+        date = state.queueDate,
+        clinicName = state.clinics.firstOrNull()?.name ?: "Clinic",
+        closedAt = "Now",
+        closureReason = "Current day (live)",
+        finalToken = state.sessionQueues.maxOfOrNull { it.currentToken } ?: state.currentToken,
+        appointments = state.appointments
+    )
+    val currentOrArchived = state.queueHistory.firstOrNull { it.date == state.queueDate } ?: currentRecord
+    val records = (state.queueHistory.filterNot { it.date == state.queueDate } + currentOrArchived)
+        .filter { history ->
+            val date = runCatching { LocalDate.parse(history.date) }.getOrNull()
+            date != null && !date.isBefore(fromDate) && !date.isAfter(toDate)
+        }
+        .sortedByDescending { it.date }
+
+    LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+        item { PageHeader("Queue history", onBack) }
+        item {
+            ElevatedSection("History period", "Current day is included before it is archived") {
+                DateRangeSelector(fromDate, toDate) { from, to -> fromDate = from; toDate = to }
+                Text("${records.size} day record(s)", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (records.isEmpty()) {
+            item { ElevatedSection("No queue records") { Text("No appointments were found in the selected date range.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+        }
+        items(records, key = { it.date }) { history ->
+            ElevatedSection(history.date, history.clinicName + " | " + history.closureReason + if (history.closedAt == "Now") "" else " at " + history.closedAt) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MetricTile("Appointments", history.appointments.size.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary)
+                    MetricTile("Completed", history.appointments.count { it.status == AppointmentStatus.COMPLETED }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.primary)
+                }
+                listOf("Morning", "Evening").forEach { session ->
+                    val sessionAppointments = history.appointments.filter { it.session == session }.sortedBy { it.token }
+                    Text("$session session | ${sessionAppointments.size} patient(s)", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                    if (sessionAppointments.isEmpty()) {
+                        Text("No appointments", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    }
+                    sessionAppointments.forEach { appointment ->
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(session.first().uppercase() + "-" + appointment.token + " | " + appointment.patientName, fontWeight = FontWeight.Bold)
+                                Text(
+                                    appointment.patientType + " | " + appointment.bookingSource.name.replace("_", " ") + " | INR " + appointment.consultationFee,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp
+                                )
+                            }
+                            StatusPill(appointment.status.name.replace("_", " "), appointment.status !in setOf(AppointmentStatus.ABSENT, AppointmentStatus.SKIPPED))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Suppress("unused")
+@Composable private fun ArchivedQueueHistoryLegacy(state: DoctorUiState, onBack: () -> Unit) {
     LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
         item { PageHeader("Queue history", onBack) }
         item {

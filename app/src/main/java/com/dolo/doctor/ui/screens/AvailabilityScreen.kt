@@ -33,7 +33,7 @@ fun AvailabilityManagementScreen(
     val clinic = state.clinics.firstOrNull()
 
     LazyColumn(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(20.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(15.dp)
     ) {
         item { PageHeader("Availability", onBack) }

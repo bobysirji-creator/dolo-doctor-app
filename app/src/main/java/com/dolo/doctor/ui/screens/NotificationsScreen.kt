@@ -32,7 +32,7 @@ fun NotificationsScreen(
     val unreadCount = notifications.count { it.sequence > state.notificationReadThrough }
 
     LazyColumn(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(20.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item { PageHeader("Notifications", onBack) }

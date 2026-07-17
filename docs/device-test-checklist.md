@@ -1,3 +1,14 @@
+## Stage 11.2 queue order, reports and screen-fit acceptance
+
+1. Put Morning token 5 in consultation. Admit offline token 8, then confirm fee for online token 7. Confirm Live queue serves token 7 before token 8.
+2. Put token 8 in consultation with at least tokens 9-14 waiting, then confirm fee for online token 7. Confirm the order is 9, 10, 11, 12, 7, 13, 14.
+3. Remove the app from Recents and relaunch. Confirm the late token retains its queue position and printed token number.
+4. Open Reports. Confirm the default start/end date is today and metrics include only today's current or archived appointments.
+5. Select a multi-day range and confirm appointment, completed, absent, fee-pending and collection totals change for that inclusive period.
+6. Open Queue History. Confirm today appears before archive, Morning and Evening are separate, and each patient shows token, source, fee and final/current status.
+7. Select a range with no records and confirm the empty state is clear.
+8. Test on gesture-navigation and three-button-navigation phones. Confirm bottom navigation and the last list/card/action remain above system controls in portrait and landscape.
+
 ## Stage 11.1 recurring weekly schedule
 
 1. As Doctor, open Clinic & schedule and mark Sunday Morning and Evening off. Save and confirm Sunday displays Full day off.

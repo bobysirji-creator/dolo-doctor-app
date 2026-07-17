@@ -325,24 +325,29 @@ class DoctorViewModel(
         if (!clearedForConsultation(appointment)) return
         if (!canTransition(appointment.status, status)) return
 
-        val progressedOrder = uiState.appointments.filter { it.session == appointment.session && it.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED) }.maxOfOrNull { it.queueOrder } ?: 0
-        val lateArrival = status == AppointmentStatus.ARRIVED && appointment.queueOrder < progressedOrder
-        val changed = appointment.copy(
-            status = status,
-            queueOrder = if (lateArrival) nextQueueOrder(appointment.session) else appointment.queueOrder
-        )
-        var updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == id) changed else it })
+        val progressedStatuses = setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED, AppointmentStatus.ABSENT)
+        val lateArrival = status == AppointmentStatus.ARRIVED && uiState.appointments.any {
+            it.id != appointment.id && it.session == appointment.session && admittedToQueue(it) &&
+                it.status in progressedStatuses && it.token >= appointment.token
+        }
+        val candidate = appointment.copy(status = status)
+        var updated = if (lateArrival) {
+            placeNewQueueAdmission(uiState, candidate)
+        } else {
+            uiState.copy(appointments = uiState.appointments.map { if (it.id == id) candidate else it })
+        }
+        val changed = updated.appointments.first { it.id == id }
         val action = when {
             status == AppointmentStatus.COMPLETED -> AuditAction.CONSULTATION_COMPLETED
             lateArrival -> AuditAction.PATIENT_REJOINED
             else -> AuditAction.STATUS_CHANGED
         }
         val detail = if (lateArrival) {
-            "Late arrival token " + appointment.token + " joined at the end of the active queue"
+            "Late arrival token " + appointment.token + " rejoined after up to four waiting patients"
         } else {
             "Changed token " + appointment.token + " from " + appointment.status.name + " to " + status.name
         }
-        updated = withAudit(updated, action, detail, appointment, appointment.status, status)
+        updated = withAudit(updated, action, detail, changed, appointment.status, status)
         persist(updated)
     }
 
@@ -370,7 +375,7 @@ class DoctorViewModel(
         val appointment = uiState.appointments.firstOrNull { it.id == id } ?: return false
         if (!clearedForConsultation(appointment)) return false
         if (queueFor(appointment.session).state == QueueState.CLOSED || appointment.status != AppointmentStatus.SKIPPED) return false
-        val rejoined = appointment.copy(status = AppointmentStatus.WAITING, queueOrder = nextQueueOrder(appointment.session))
+        val rejoined = appointment.copy(status = AppointmentStatus.WAITING, queueOrder = nextQueueOrder(appointment.session), lateQueuePlacement = true)
         val updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == id) rejoined else it })
         persist(withAudit(updated, AuditAction.PATIENT_REJOINED, "Rejoined skipped " + appointment.session.lowercase() + " token " + appointment.token + " at the end of its session queue", appointment, AppointmentStatus.SKIPPED, AppointmentStatus.WAITING))
         return true
@@ -404,16 +409,17 @@ class DoctorViewModel(
         val appointment = Appointment(
             id = "walkin-" + uiState.queueDate + "-" + session.first() + "-" + token + "-" + currentTime().toSecondOfDay(), token = token,
             patientName = name, patientType = patientType, session = session, status = AppointmentStatus.ARRIVED,
-            bookedAt = currentTime().format(timeFormatter), queueOrder = nextQueueOrder(session), bookingSource = BookingSource.CLINIC_WALK_IN,
+            bookedAt = currentTime().format(timeFormatter), queueOrder = 0, bookingSource = BookingSource.CLINIC_WALK_IN,
             patientPhone = phone, receiptNumber = receiptNumber(session, token), consultationFee = fee, paymentStatus = paymentStatus,
             paymentMethod = request.paymentMethod, paidAt = currentTime().format(timeFormatter)
         )
-        var updated = uiState.copy(appointments = uiState.appointments + appointment)
-        updated = withAudit(updated, AuditAction.WALK_IN_BOOKED, "Booked clinic walk-in and allotted " + session.lowercase() + " token " + token, appointment)
-        updated = withAudit(updated, AuditAction.FEE_CONFIRMED, "Confirmed " + paymentStatus.name.lowercase() + " consultation fee INR " + fee + " by " + request.paymentMethod.name, appointment)
-        updated = withAudit(updated, AuditAction.RECEIPT_GENERATED, "Generated compulsory token receipt " + appointment.receiptNumber, appointment)
+        var updated = placeNewQueueAdmission(uiState, appointment)
+        val admitted = updated.appointments.first { it.id == appointment.id }
+        updated = withAudit(updated, AuditAction.WALK_IN_BOOKED, "Booked clinic walk-in and allotted " + session.lowercase() + " token " + token, admitted)
+        updated = withAudit(updated, AuditAction.FEE_CONFIRMED, "Confirmed " + paymentStatus.name.lowercase() + " consultation fee INR " + fee + " by " + request.paymentMethod.name, admitted)
+        updated = withAudit(updated, AuditAction.RECEIPT_GENERATED, "Generated compulsory token receipt " + admitted.receiptNumber, admitted)
         persist(updated)
-        return WalkInBookingResult(receipt = tokenReceipt(appointment))
+        return WalkInBookingResult(receipt = tokenReceipt(admitted))
     }
 
     fun confirmConsultationFee(appointmentId: String, amount: Int, method: PaymentMethod): FeeConfirmationResult {
@@ -429,16 +435,17 @@ class DoctorViewModel(
         val fee = if (method == PaymentMethod.WAIVED) 0 else amount
         if (fee !in 0..100000 || (method != PaymentMethod.WAIVED && fee == 0)) return FeeConfirmationResult(error = "Enter a valid fee or select Waived.")
         val confirmed = appointment.copy(
-            status = AppointmentStatus.ARRIVED, queueOrder = nextQueueOrder(appointment.session),
+            status = AppointmentStatus.ARRIVED, queueOrder = 0,
             receiptNumber = receiptNumber(appointment.session, appointment.token), consultationFee = fee,
             paymentStatus = if (method == PaymentMethod.WAIVED) PaymentStatus.WAIVED else PaymentStatus.PAID,
             paymentMethod = method, paidAt = currentTime().format(timeFormatter)
         )
-        var updated = uiState.copy(appointments = uiState.appointments.map { if (it.id == appointmentId) confirmed else it })
-        updated = withAudit(updated, AuditAction.FEE_CONFIRMED, "Confirmed " + confirmed.paymentStatus.name.lowercase() + " consultation fee INR " + fee + " by " + method.name + " and admitted patient to " + appointment.session.lowercase() + " queue", confirmed, appointment.status, AppointmentStatus.ARRIVED)
-        updated = withAudit(updated, AuditAction.RECEIPT_GENERATED, "Generated compulsory token receipt " + confirmed.receiptNumber, confirmed)
+        var updated = placeNewQueueAdmission(uiState, confirmed)
+        val admitted = updated.appointments.first { it.id == appointmentId }
+        updated = withAudit(updated, AuditAction.FEE_CONFIRMED, "Confirmed " + admitted.paymentStatus.name.lowercase() + " consultation fee INR " + fee + " by " + method.name + " and admitted patient to " + appointment.session.lowercase() + " queue", admitted, appointment.status, AppointmentStatus.ARRIVED)
+        updated = withAudit(updated, AuditAction.RECEIPT_GENERATED, "Generated compulsory token receipt " + admitted.receiptNumber, admitted)
         persist(updated)
-        return FeeConfirmationResult(receipt = tokenReceipt(confirmed))
+        return FeeConfirmationResult(receipt = tokenReceipt(admitted))
     }
 
     fun receiptFor(appointmentId: String): TokenReceipt? {
@@ -448,6 +455,50 @@ class DoctorViewModel(
         return tokenReceipt(appointment)
     }
     private fun nextQueueOrder(session: String): Int = (uiState.appointments.filter { it.session == session && admittedToQueue(it) }.maxOfOrNull { it.queueOrder } ?: 0) + 1
+
+    private fun placeNewQueueAdmission(state: DoctorUiState, candidate: Appointment): DoctorUiState {
+        val progressedStatuses = setOf(
+            AppointmentStatus.IN_CONSULTATION,
+            AppointmentStatus.COMPLETED,
+            AppointmentStatus.SKIPPED,
+            AppointmentStatus.ABSENT
+        )
+        val progressed = state.appointments.filter {
+            it.id != candidate.id && it.session == candidate.session && admittedToQueue(it) && it.status in progressedStatuses
+        }
+        val turnAlreadyPassed = progressed.any { it.token >= candidate.token }
+        val positionedCandidate = candidate.copy(lateQueuePlacement = turnAlreadyPassed)
+        val pending = state.appointments
+            .filter {
+                it.id != candidate.id && it.session == candidate.session && admittedToQueue(it) &&
+                    it.status in setOf(AppointmentStatus.ARRIVED, AppointmentStatus.WAITING)
+            }
+            .sortedWith(compareBy<Appointment> { it.queueOrder }.thenBy { it.token })
+            .toMutableList()
+        val insertionIndex = if (turnAlreadyPassed) {
+            minOf(LATE_ARRIVAL_PATIENTS_AHEAD, pending.size)
+        } else {
+            pending.indexOfFirst { !it.lateQueuePlacement && it.token > candidate.token }
+                .takeIf { it >= 0 } ?: pending.size
+        }
+        pending.add(insertionIndex, positionedCandidate)
+        val firstPendingOrder = (progressed.maxOfOrNull { it.queueOrder } ?: 0) + 1
+        val queueOrders = pending.mapIndexed { index, appointment ->
+            appointment.id to (firstPendingOrder + index)
+        }.toMap()
+        val baseAppointments = if (state.appointments.any { it.id == candidate.id }) {
+            state.appointments.map { if (it.id == candidate.id) positionedCandidate else it }
+        } else {
+            state.appointments + positionedCandidate
+        }
+        return state.copy(appointments = baseAppointments.map { appointment ->
+            queueOrders[appointment.id]?.let { appointment.copy(queueOrder = it) } ?: appointment
+        })
+    }
+
+    private companion object {
+        const val LATE_ARRIVAL_PATIENTS_AHEAD = 4
+    }
 
     fun refreshDate() = rollOverIfNeeded()
 
@@ -857,8 +908,17 @@ class DoctorViewModel(
             hasPermission(Permission.VIEW_PATIENT_FEEDBACK) ||
             hasPermission(Permission.SEND_QUEUE_DELAY_NOTICE)
 
-    fun operationalReport(): OperationalReport {
-        val appointments = uiState.queueHistory.flatMap { it.appointments } + uiState.appointments
+    fun operationalReport(fromDate: LocalDate = currentDate(), toDate: LocalDate = currentDate()): OperationalReport {
+        val validRange = !fromDate.isAfter(toDate)
+        val archivedDays = if (validRange) uiState.queueHistory.filter { history ->
+            val date = runCatching { LocalDate.parse(history.date) }.getOrNull()
+            date != null && !date.isBefore(fromDate) && !date.isAfter(toDate)
+        } else emptyList()
+        val archivedDates = archivedDays.mapTo(mutableSetOf()) { it.date }
+        val activeDate = runCatching { LocalDate.parse(uiState.queueDate) }.getOrNull()
+        val includeActive = validRange && activeDate != null && uiState.queueDate !in archivedDates &&
+            !activeDate.isBefore(fromDate) && !activeDate.isAfter(toDate)
+        val appointments = archivedDays.flatMap { it.appointments } + if (includeActive) uiState.appointments else emptyList()
         val ratings = uiState.feedback.map { it.rating }
         return OperationalReport(
             appointments = appointments.size,

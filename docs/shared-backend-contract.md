@@ -70,7 +70,7 @@ The response uses an ETag/revision. Clients may request changes after a known re
 1. The server rejects stale mutations; it never silently overwrites a newer queue.
 2. The Doctor App must pull and display the current revision before retrying.
 3. Appointment status transitions are server validated.
-4. Token numbers never change after allocation. queueOrder may change only through authorized skip/rejoin operations.
+4. Token numbers never change after allocation. The server transactionally inserts newly admitted upcoming tokens in token order, applies the configured late-arrival buffer after a turn has passed, and changes queueOrder only through admission or authorized skip/rejoin operations.
 5. Morning and Evening token sequences are independent.
 6. Closing one session cannot close or disable the other.
 7. Duplicate idempotency keys return the original result.

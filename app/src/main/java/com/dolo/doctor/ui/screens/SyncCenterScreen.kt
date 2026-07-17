@@ -34,7 +34,7 @@ import com.dolo.doctor.ui.components.StatusPill
     val patientBookings = state.appointments.filter { it.bookingSource == BookingSource.PATIENT_APP }
 
     LazyColumn(
-        Modifier.fillMaxSize().padding(20.dp),
+        Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(15.dp)
     ) {
         item { PageHeader("Shared sync center", onBack) }

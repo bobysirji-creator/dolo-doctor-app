@@ -2,7 +2,7 @@
 
 DO-LO Doctor is the dedicated lightweight Android app for doctors and permission-limited assistants in the DO-LO walk-in appointment ecosystem.
 
-Current prototype: **0.11.1-stage11** (version code 20).
+Current prototype: **0.11.2-stage11** (version code 21).
 
 ## Current prototype includes
 
@@ -12,7 +12,7 @@ Current prototype: **0.11.1-stage11** (version code 20).
 - Doctor-only independent session closure, automatic next-date rollover and daily history finalized after both sessions close;
 - pause/resume queue, call-next and permission-aware patient-status controls, including completion of the final active consultation;
 - explicit appointment status-transition rules and a persistent Doctor activity log with actor, time, token/patient and before/after status context;
-- recoverable skipped patients with immediate resume or end-of-queue rejoin, plus late-arrival requeueing without changing the original token;
+- token-aware admission that restores upcoming token order, plus a persistent four-patient buffer for genuinely late arrivals without changing the printed token;
 - authorized clinic walk-in booking synchronized into the same queue, compulsory token-receipt generation, receipt reprints and Android system printing;
 - session-aware booking that permits advance booking before a session starts, automatically closes each session at its configured end time, and reopens both on the next clinic day;
 - explicit consultation-fee confirmation using Cash, UPI, Card, Online or Waived status; only paid/waived appointments with receipts enter Queue;
@@ -26,14 +26,14 @@ Current prototype: **0.11.1-stage11** (version code 20).
 - modular assistant permissions enforced in both UI controls and ViewModel actions, with provider-neutral server-authorization contracts;
 - editable-profile placeholders and Admin-review rules;
 - permission-aware read-only Clinic access for authorized Assistants while edits remain Doctor-only;
-- operational reports, patient-feedback summaries and acknowledgement, plus persisted queue-delay notices;
+- inclusive date-range operational reports, detailed live/archive Morning/Evening queue history, patient-feedback acknowledgement and persisted queue-delay notices;
 - ID-scoped multi-clinic data and provider-neutral service interfaces ready for shared-backend synchronization;
 - Doctor-only Shared Sync Center with revision conflicts, idempotent commands, local publish/pull simulation and persisted sync status;
 - simulated Patient App bookings with independent session tokens and fee-pending receipt/queue admission safeguards;
 - Doctor-controlled Patient App future-booking policy: current-day-only or a validated 1-90 day advance window;
 - recurring weekday schedule with independent Morning/Evening closures or a full clinic day off, enforced for online and walk-in bookings;
 - permanent current-day-only clinic walk-ins, independent of the Patient App policy;
-- TalkBack semantics, large-font layout improvements, least-privilege mock manifest and unsigned release CI compilation;
+- TalkBack semantics, large-font and system-navigation-inset layout protection, least-privilege mock manifest and unsigned release CI compilation;
 - unit tests, Android lint and GitHub Actions APK builds.
 
 All data is dummy local prototype data. There is no production authentication, healthcare backend, patient record, real message, payment or provider credential. The mock-only APK intentionally has no Internet permission.

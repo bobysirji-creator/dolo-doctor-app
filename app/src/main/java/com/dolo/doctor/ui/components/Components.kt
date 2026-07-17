@@ -103,7 +103,7 @@ import androidx.compose.ui.unit.sp
 enum class DoctorBottomDestination { HOME, QUEUE, APPOINTMENTS, PROFILE }
 
 @Composable fun DoctorBottomBar(selected: DoctorBottomDestination, onHome: () -> Unit, onQueue: () -> Unit, onAppointments: () -> Unit, onProfile: () -> Unit, profileEnabled: Boolean = true) {
-    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), shadowElevation = 14.dp) {
+    Surface(modifier = Modifier.navigationBarsPadding(), color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), shadowElevation = 14.dp) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
             BottomItem(Icons.Outlined.Home, "Home", selected == DoctorBottomDestination.HOME, onHome)
             BottomItem(Icons.Outlined.FormatListNumbered, "Queue", selected == DoctorBottomDestination.QUEUE, onQueue)
@@ -119,5 +119,50 @@ enum class DoctorBottomDestination { HOME, QUEUE, APPOINTMENTS, PROFILE }
         val color = if (!enabled) colors.outline else if (selected) colors.primary else colors.onSurfaceVariant
         Icon(icon, null, tint = color)
         Text(label, fontSize = 9.sp, color = color)
+    }
+}
+@Composable fun DateRangeSelector(
+    fromDate: java.time.LocalDate,
+    toDate: java.time.LocalDate,
+    onRangeChange: (java.time.LocalDate, java.time.LocalDate) -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    fun showPicker(initial: java.time.LocalDate, onPicked: (java.time.LocalDate) -> Unit) {
+        android.app.DatePickerDialog(
+            context,
+            { _, year, month, day -> onPicked(java.time.LocalDate.of(year, month + 1, day)) },
+            initial.year,
+            initial.monthValue - 1,
+            initial.dayOfMonth
+        ).show()
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Text("Date range", style = MaterialTheme.typography.labelLarge)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = {
+                    showPicker(fromDate) { selected ->
+                        onRangeChange(selected, if (selected.isAfter(toDate)) selected else toDate)
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(Icons.Outlined.DateRange, null)
+                Spacer(Modifier.width(5.dp))
+                Text(fromDate.toString(), fontSize = 11.sp)
+            }
+            OutlinedButton(
+                onClick = {
+                    showPicker(toDate) { selected ->
+                        onRangeChange(if (selected.isBefore(fromDate)) selected else fromDate, selected)
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(Icons.Outlined.Event, null)
+                Spacer(Modifier.width(5.dp))
+                Text(toDate.toString(), fontSize = 11.sp)
+            }
+        }
     }
 }

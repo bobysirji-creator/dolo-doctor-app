@@ -1148,4 +1148,104 @@ class DoctorViewModelTest {
         model.toggleQueue("Evening")
         assertEquals(QueueState.ACTIVE, model.queueFor("Evening").state)
     }
+
+    @Test fun onlineAdmissionRestoresTokenOrderBeforeFuturePatients() {
+        val appointments = listOf(
+            queuePatient(5, AppointmentStatus.IN_CONSULTATION, 5),
+            queuePatient(6, AppointmentStatus.WAITING, 6),
+            queuePatient(7, AppointmentStatus.BOOKED, 0, paid = false),
+            queuePatient(8, AppointmentStatus.ARRIVED, 7)
+        )
+        val initial = DummyData.initialState("2026-07-17").copy(
+            appointments = appointments,
+            sessionQueues = listOf(
+                ConsultationQueue("Morning", QueueState.ACTIVE, 5),
+                ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+            ),
+            currentToken = 5
+        )
+        val model = DoctorViewModel(MemoryDoctorStateStore(initial), currentDate = { LocalDate.parse("2026-07-17") })
+        model.login(UserRole.DOCTOR)
+
+        assertEquals(null, model.confirmConsultationFee("test-7-BOOKED", 500, PaymentMethod.CASH).error)
+
+        val serviceOrder = model.uiState.appointments
+            .filter { it.status in setOf(AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }
+            .sortedBy { it.queueOrder }
+            .map { it.token }
+        assertEquals(listOf(6, 7, 8), serviceOrder)
+        assertFalse(model.uiState.appointments.single { it.token == 7 }.lateQueuePlacement)
+    }
+
+    @Test fun lateOnlineAdmissionWaitsBehindFourPatientsAndKeepsThatPosition() {
+        val appointments = buildList {
+            add(queuePatient(8, AppointmentStatus.IN_CONSULTATION, 8))
+            (9..14).forEach { token -> add(queuePatient(token, AppointmentStatus.WAITING, token)) }
+            add(queuePatient(7, AppointmentStatus.BOOKED, 0, paid = false))
+        }
+        val initial = DummyData.initialState("2026-07-17").copy(
+            appointments = appointments,
+            sessionQueues = listOf(
+                ConsultationQueue("Morning", QueueState.ACTIVE, 8),
+                ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+            ),
+            currentToken = 8
+        )
+        val model = DoctorViewModel(MemoryDoctorStateStore(initial), currentDate = { LocalDate.parse("2026-07-17") })
+        model.login(UserRole.DOCTOR)
+
+        assertEquals(null, model.confirmConsultationFee("test-7-BOOKED", 500, PaymentMethod.UPI).error)
+
+        val serviceOrder = model.uiState.appointments
+            .filter { it.status in setOf(AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }
+            .sortedBy { it.queueOrder }
+            .map { it.token }
+        assertEquals(listOf(9, 10, 11, 12, 7, 13, 14), serviceOrder)
+        assertTrue(model.uiState.appointments.single { it.token == 7 }.lateQueuePlacement)
+    }
+
+    @Test fun operationalReportUsesInclusiveDateRangeWithoutDuplicatingCurrentArchive() {
+        val archivedAppointments = listOf(
+            queuePatient(1, AppointmentStatus.COMPLETED, 1),
+            queuePatient(2, AppointmentStatus.ABSENT, 2)
+        )
+        val initial = DummyData.initialState("2026-07-17").copy(
+            queueHistory = listOf(
+                DailyQueueHistory("2026-07-16", "Care Point Clinic", "09:00 PM", "Archived", 2, archivedAppointments)
+            )
+        )
+        val model = DoctorViewModel(MemoryDoctorStateStore(initial), currentDate = { LocalDate.parse("2026-07-17") })
+        model.login(UserRole.DOCTOR)
+
+        val archivedOnly = model.operationalReport(LocalDate.parse("2026-07-16"), LocalDate.parse("2026-07-16"))
+        val todayOnly = model.operationalReport(LocalDate.parse("2026-07-17"), LocalDate.parse("2026-07-17"))
+        val combined = model.operationalReport(LocalDate.parse("2026-07-16"), LocalDate.parse("2026-07-17"))
+
+        assertEquals(2, archivedOnly.appointments)
+        assertEquals(1, archivedOnly.completed)
+        assertEquals(1, archivedOnly.absent)
+        assertEquals(6, todayOnly.appointments)
+        assertEquals(8, combined.appointments)
+    }
+
+    private fun queuePatient(
+        token: Int,
+        status: AppointmentStatus,
+        queueOrder: Int,
+        paid: Boolean = true
+    ): Appointment = Appointment(
+        id = "test-$token-${status.name}",
+        token = token,
+        patientName = "Patient $token",
+        patientType = "Self",
+        session = "Morning",
+        status = status,
+        bookedAt = "09:00 AM",
+        queueOrder = queueOrder,
+        receiptNumber = if (paid) "DL-TEST-M-${token.toString().padStart(3, '0')}" else "",
+        consultationFee = if (paid) 500 else 0,
+        paymentStatus = if (paid) PaymentStatus.PAID else PaymentStatus.PENDING,
+        paymentMethod = if (paid) PaymentMethod.CASH else null,
+        paidAt = if (paid) "09:00 AM" else ""
+    )
 }

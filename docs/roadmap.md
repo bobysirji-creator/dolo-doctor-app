@@ -38,4 +38,10 @@
   - [x] shared booking, walk-in, fee-admission and queue-start enforcement
   - [x] backward-compatible persistence and physical-device checklist
 
+- [x] Stage 11.2 - deterministic queue admission, date-range operations and adaptive screen insets
+  - [x] token-order correction for on-time online admission
+  - [x] stable four-patient buffer for late arrivals
+  - [x] inclusive dated reports and detailed current/archive queue history
+  - [x] safe drawing and navigation-bar inset handling
+
 Admin App remains a separate future repository. Real providers remain disabled until the shared backend and policies are approved.

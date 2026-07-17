@@ -1,3 +1,15 @@
+## Stage 11.2 token-aware admission, dated reports and adaptive insets
+
+Version 0.11.2-stage11 (version code 21) corrects Live queue admission order. Fee-confirmed online patients whose token is still ahead are inserted before higher future tokens, regardless of receipt-generation order. If their token turn has already passed, they retain the printed token and are placed after up to four waiting patients. The late-placement marker and resulting queue order persist across process recreation.
+
+Operational summary now accepts an inclusive start/end date and defaults to the current clinic day. Queue History uses the same date-range interaction, includes today's live appointments before archive, and displays detailed Morning and Evening patient lists with status, source and fee.
+
+All standalone screens now respect safe drawing insets, and the persistent bottom navigation explicitly clears Android gesture/three-button navigation areas. Automated coverage is 97 unit tests, including ordered online admission, four-patient late admission, inclusive report ranges and persistence codec coverage.
+
+## Next recommended stage
+
+Run the Stage 11.2 physical-device checklist on both gesture-navigation and three-button-navigation phones. After acceptance, the next major dependency is the hosted shared backend; local queue ordering must become a server transaction before Patient and Doctor devices synchronize in production.
+
 ## Stage 11.1 recurring weekly schedule
 
 Version 0.11.1-stage11 (version code 20) adds Doctor-managed recurring weekday closures under Clinic & schedule. Morning and Evening can be disabled independently; selecting both creates a full-day clinic closure. Authorized Assistants retain read-only visibility.

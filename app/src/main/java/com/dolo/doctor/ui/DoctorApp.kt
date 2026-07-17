@@ -132,7 +132,7 @@ private object Routes {
         composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::queue, ::profile, doctorViewModel::bookWalkIn, doctorViewModel::receiptFor, doctorViewModel::confirmConsultationFee, doctorViewModel::sessionBookingOpen, doctorViewModel::selectSession, doctorViewModel::refreshDate) }
         composable(Routes.HISTORY) { QueueHistoryScreen(state, nav::popBackStack) }
         composable(Routes.ACTIVITY) { QueueActivityScreen(state, nav::popBackStack) }
-        composable(Routes.REPORTS) { ReportsScreen(state, permissions, doctorViewModel.operationalReport(), nav::popBackStack, doctorViewModel::acknowledgeFeedback, doctorViewModel::sendQueueDelayNotice) }
+        composable(Routes.REPORTS) { ReportsScreen(state, permissions, doctorViewModel::operationalReport, nav::popBackStack, doctorViewModel::acknowledgeFeedback, doctorViewModel::sendQueueDelayNotice) }
         composable(Routes.SYNC) { SyncCenterScreen(state, nav::popBackStack, doctorViewModel::publishLocalSnapshot, doctorViewModel::pullSharedSnapshot, doctorViewModel::simulatePatientAppBooking) }
         composable(Routes.CLINIC) { ClinicScreen(state, state.role == UserRole.DOCTOR, nav::popBackStack, doctorViewModel::updateClinic) }
         composable(Routes.AVAILABILITY) { AvailabilityManagementScreen(state, nav::popBackStack, doctorViewModel::saveAvailabilityBlock, doctorViewModel::setAvailabilityAppointmentsEnabled, doctorViewModel::deleteAvailabilityBlock, doctorViewModel::updateAffectedPatientStatus) }

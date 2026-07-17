@@ -264,12 +264,13 @@ internal object QueueStateCodec {
         appointment.paidAt,
         appointment.availabilityBlockId,
         appointment.availabilityImpactStatus.name,
-        appointment.availabilityUpdatedAt
+        appointment.availabilityUpdatedAt,
+        appointment.lateQueuePlacement.toString()
     ).joinToString(",") { encode(it) }
 
     fun decodeAppointment(value: String): Appointment? {
         val fields = value.split(",").mapNotNull(::decode)
-        if (fields.size !in setOf(7, 11, 15, 18)) return null
+        if (fields.size !in setOf(7, 11, 15, 18, 19)) return null
         val token = fields[1].toIntOrNull() ?: return null
         val status = runCatching { AppointmentStatus.valueOf(fields[5]) }.getOrNull() ?: return null
         if (fields.size == 7) return Appointment(fields[0], token, fields[2], fields[3], fields[4], status, fields[6])
@@ -299,9 +300,10 @@ internal object QueueStateCodec {
             paymentStatus = paymentStatus,
             paymentMethod = paymentMethod,
             paidAt = if (fields.size >= 15) fields[14] else "",
-            availabilityBlockId = if (fields.size == 18) fields[15] else "",
-            availabilityImpactStatus = if (fields.size == 18) runCatching { AvailabilityImpactStatus.valueOf(fields[16]) }.getOrDefault(AvailabilityImpactStatus.NONE) else AvailabilityImpactStatus.NONE,
-            availabilityUpdatedAt = if (fields.size == 18) fields[17] else ""
+            availabilityBlockId = if (fields.size >= 18) fields[15] else "",
+            availabilityImpactStatus = if (fields.size >= 18) runCatching { AvailabilityImpactStatus.valueOf(fields[16]) }.getOrDefault(AvailabilityImpactStatus.NONE) else AvailabilityImpactStatus.NONE,
+            availabilityUpdatedAt = if (fields.size >= 18) fields[17] else "",
+            lateQueuePlacement = fields.size == 19 && fields[18].toBooleanStrictOrNull() == true
         )
     }    fun encodeHistory(history: DailyQueueHistory): String = listOf(
         history.date,

@@ -40,7 +40,8 @@ class QueueStateCodecTest {
             paidAt = "06:10 PM",
             availabilityBlockId = "block-1",
             availabilityImpactStatus = AvailabilityImpactStatus.PATIENT_NOTIFIED,
-            availabilityUpdatedAt = "07:00 PM"
+            availabilityUpdatedAt = "07:00 PM",
+            lateQueuePlacement = true
         )
 
         assertEquals(appointment, QueueStateCodec.decodeAppointment(QueueStateCodec.encodeAppointment(appointment)))

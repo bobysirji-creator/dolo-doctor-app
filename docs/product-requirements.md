@@ -72,9 +72,13 @@ A session accepts advance bookings from the beginning of the clinic day; its con
 
 Every appointment has a payment status: PENDING, PAID or WAIVED. Payment methods currently supported by the local workflow are CASH, UPI, CARD, ONLINE and WAIVED. A Patient App booking may appear in Today's appointments with a session token while payment remains pending, but it must not appear in Live queue or be callable.
 
-Authorized clinic staff confirm the fee amount and payment method only after payment is received, or explicitly select WAIVED. That confirmation marks the patient ARRIVED, assigns the next service order in the selected session, generates the stable receipt and admits the appointment to Live queue. Receipt generation without fee confirmation is not allowed. Both the app receipt preview and printed receipt display the amount/status and payment method.
+Authorized clinic staff confirm the fee amount and payment method only after payment is received, or explicitly select WAIVED. That confirmation marks the patient ARRIVED, generates the stable receipt and admits the appointment to Live queue. An upcoming online token is inserted before higher upcoming tokens even if those receipts were generated first. A token whose turn has passed keeps its printed number and is inserted after up to four waiting patients. Receipt generation without fee confirmation is not allowed. Both the app receipt preview and printed receipt display the amount/status and payment method.
 
 Morning and Evening use separate token sequences beginning independently for each clinic day. Token M-1 and token E-1 may coexist because session is part of the identity and receipt number. The selected Morning/Evening view is shared by Appointments and Queue and remains selected after navigation or process recreation.
+
+Operational summary and Queue History use an inclusive start/end clinic-date range and default to the current day. Queue History includes the active day before archive and separates detailed Morning and Evening patient records.
+
+Android screens and bottom navigation must respect safe drawing, gesture-navigation and three-button-navigation insets across supported screen sizes.
 
 ## Doctor notifications
 

@@ -18,16 +18,18 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dolo.doctor.data.model.*
 import com.dolo.doctor.ui.components.ElevatedSection
+import com.dolo.doctor.ui.components.DateRangeSelector
 import com.dolo.doctor.ui.components.MetricTile
 import com.dolo.doctor.ui.components.PageHeader
 import com.dolo.doctor.ui.components.PrimaryAction
 import com.dolo.doctor.ui.components.StatusPill
 import kotlin.math.roundToInt
+import java.time.LocalDate
 
 @Composable fun ReportsScreen(
     state: DoctorUiState,
     permissions: Set<Permission>,
-    report: OperationalReport,
+    onReport: (LocalDate, LocalDate) -> OperationalReport,
     onBack: () -> Unit,
     onAcknowledgeFeedback: (String) -> Boolean,
     onSendDelayNotice: (String, Int, String) -> String?
@@ -36,15 +38,24 @@ import kotlin.math.roundToInt
     val canViewFeedback = doctorMode || Permission.VIEW_PATIENT_FEEDBACK in permissions
     val canSendDelay = doctorMode || Permission.SEND_QUEUE_DELAY_NOTICE in permissions
     var showDelayDialog by remember { mutableStateOf(false) }
+    val initialDate = remember(state.queueDate) { runCatching { LocalDate.parse(state.queueDate) }.getOrDefault(LocalDate.now()) }
+    var fromDate by remember(state.queueDate) { mutableStateOf(initialDate) }
+    var toDate by remember(state.queueDate) { mutableStateOf(initialDate) }
+    val report = onReport(fromDate, toDate)
     val displayedRating = (report.averageRating * 10).roundToInt() / 10.0
 
     LazyColumn(
-        Modifier.fillMaxSize().padding(20.dp),
+        Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(15.dp)
     ) {
         item { PageHeader("Reports & feedback", onBack) }
         item {
-            ElevatedSection("Operational summary", "Current and archived local appointments") {
+            ElevatedSection("Reporting period", "Defaults to the current clinic day") {
+                DateRangeSelector(fromDate, toDate) { from, to -> fromDate = from; toDate = to }
+            }
+        }
+        item {
+            ElevatedSection("Operational summary", "$fromDate to $toDate") {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     MetricTile("Appointments", report.appointments.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.primary)
                     MetricTile("Completed", report.completed.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary)

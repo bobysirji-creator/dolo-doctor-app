@@ -1,3 +1,11 @@
+## Stage 11.2 deterministic queue admission and dated operations
+
+- Token is immutable and queueOrder remains the mutable service sequence.
+- A newly fee-confirmed token that has not been passed is inserted before the first higher on-time token already waiting.
+- A token whose turn has passed is marked late and inserted after up to four currently waiting patients; later admissions do not silently erase that late-placement identity.
+- Reports and queue history use inclusive clinic-date ranges. The active clinic day is included without duplicating a same-date archive.
+- Safe drawing and navigation-bar insets are applied at screen and bottom-navigation boundaries.
+
 ## Stage 11.1 recurring weekly clinic schedule
 
 - Clinic stores a typed weekday-to-closure map. Each weekday may be open, Morning off, Evening off or both sessions off.

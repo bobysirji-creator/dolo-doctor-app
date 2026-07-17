@@ -91,7 +91,8 @@ data class Appointment(
     val paidAt: String = "",
     val availabilityBlockId: String = "",
     val availabilityImpactStatus: AvailabilityImpactStatus = AvailabilityImpactStatus.NONE,
-    val availabilityUpdatedAt: String = ""
+    val availabilityUpdatedAt: String = "",
+    val lateQueuePlacement: Boolean = false
 )
 
 data class WalkInBookingRequest(
