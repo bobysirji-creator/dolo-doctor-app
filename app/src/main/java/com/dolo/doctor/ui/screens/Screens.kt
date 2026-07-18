@@ -97,6 +97,7 @@ import java.time.LocalDate
     onActivity: () -> Unit,
     onReports: () -> Unit,
     onSync: () -> Unit,
+    onBackup: () -> Unit,
     onAvailability: () -> Unit,
     onAnnouncements: () -> Unit,
     onAssistants: () -> Unit,
@@ -148,6 +149,7 @@ import java.time.LocalDate
                 }
                 item { ToolRow(onActivity, onAvailability, true, true, "Activity log", "Availability", Icons.Outlined.FactCheck, Icons.Outlined.EventBusy) }
                 item { ToolRow(onAnnouncements, onAssistants, true, true, "Updates", "Assistants", Icons.Outlined.Campaign, Icons.Outlined.Groups) }
+                item { ElevatedSection("Data protection", "Encrypted portable clinic backup") { PrimaryAction("Backup & recovery", onBackup, icon = Icons.Outlined.Backup) } }
             } else {
                 if (canViewReports || Permission.MANAGE_ANNOUNCEMENTS in permissions) {
                     item { ToolRow(onReports, onAnnouncements, canViewReports, Permission.MANAGE_ANNOUNCEMENTS in permissions, "Reports", "Updates", Icons.Outlined.Insights, Icons.Outlined.Campaign) }

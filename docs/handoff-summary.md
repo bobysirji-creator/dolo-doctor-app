@@ -251,3 +251,15 @@ Version 0.12.1-stage12 (version code 24) fixes Android's App not installed resul
 The artifact is now dolo-doctor-stable-debug-apk and includes APK, APK checksum and signing-certificate SHA-256 files. Pull requests receive no signing material and publish no installable artifact. No key, password or base64 value exists in this repository.
 
 The initial stable APK still cannot update an APK signed by an old ephemeral key. After the repository secrets are saved and CI passes, the user must uninstall once, losing existing local prototype data, then install the stable APK. Every later APK using the protected key can update in place. The private setup bundle and individual secret-value files are stored outside the repository under C:\Users\Poly\Documents\codex\private\dolo-doctor-prototype-signing and must be securely backed up.
+
+## Stage 13 encrypted backup and recovery
+
+Version 0.13.0-stage13 (version code 25) adds a Doctor-only Backup & recovery workspace. It exports a portable `.dolo` file protected by PBKDF2-HMAC-SHA256 (150,000 iterations) and AES-256-GCM with a random salt and nonce. The authenticated encryption rejects incorrect passwords and modified files.
+
+The backup includes doctor profile, clinics and schedules, current Morning/Evening queues, appointments, archive history, audit events, announcements, availability blocks, feedback and queue-delay notices. It deliberately excludes the signed-in session, Doctor/Assistant PIN hashes, assistant authentication records, signing keys and integration credentials. Restore retains the current device's authenticated role and assistant registry, resets shared-sync metadata to local-only, and requires a destructive-replacement confirmation.
+
+GitHub Actions remains the authoritative compile, lint, unit-test and APK gate. Physical acceptance must first create a backup, change operational data, restore the backup, then build the next stable-signed APK and install it over this version without uninstalling to prove both recovery and in-place data retention.
+
+## Next recommended stage
+
+Design and security-review the separately deployed hosted API and Admin-owned service-charge ledger. Do not add Android Internet permission or real external providers until server authentication, authorization, atomic token allocation, audit and privacy policies pass.

@@ -65,3 +65,11 @@ Next dependency: build and security-review the hosted API as a separate service.
   - [x] PKCS#12 signing for debug and release artifacts on main
   - [x] APK/keystore certificate-digest verification
   - [x] private local backup bundle and one-time migration documentation
+
+- [x] Stage 13 - encrypted local backup and recovery
+  - [x] Doctor-only portable AES-GCM backup with password-derived encryption
+  - [x] clinic, queue, appointment, history, report and communication data coverage
+  - [x] authenticated restore with tamper/wrong-password rejection and explicit replacement confirmation
+  - [x] login credentials, assistant authentication, signing keys and provider secrets excluded
+
+Next dependency remains the separately deployed hosted API. Stage 13 provides local disaster recovery while that production backend is designed and reviewed.

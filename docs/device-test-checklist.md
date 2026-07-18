@@ -236,3 +236,13 @@ Run on both Vivo and Samsung devices.
 9. Edit the block to Evening or Both, then close/reopen the app and verify its dates, session, reason and enabled state persist.
 10. Delete the block and verify bookings reopen unless another active block covers the same date/session.
 11. Open Notifications and verify availability save/change/delete and affected-patient follow-up events appear and participate in the unread badge.
+
+## Stage 13 encrypted backup and recovery
+
+- Doctor Home exposes Backup & recovery; Assistant Home does not.
+- Export requires matching passwords with at least eight characters and opens Android's system document picker.
+- Restore displays a replacement confirmation before changing data.
+- Correct password restores clinic workflow state; wrong password, altered file and unrelated file fail without changing state.
+- Doctor/Assistant credentials remain device-local and unchanged after restore.
+- The restored clinic state survives process removal, relaunch and device restart.
+- Install the next stable-signed APK over this build without uninstalling and verify restored data remains.

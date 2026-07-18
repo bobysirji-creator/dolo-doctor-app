@@ -160,3 +160,11 @@ Every assistant action must be authorized on the server, not only hidden in Comp
 - QueueStateCodec schema version 3 persists complete block records and per-appointment follow-up state while preserving older appointment formats.
 - Availability save, enable/disable, delete and patient follow-up mutations create audit events that also drive the local notification center.
 - AvailabilityManager reserves backend save, enable/disable, delete and affected-patient operations. The server must later evaluate clinic timezone/date, notify patients and resolve concurrent bookings transactionally.
+
+## Stage 13 portable encrypted backup boundary
+
+`DoctorBackupCodec` serializes only operational clinic state through the existing lossless queue codecs. `EncryptedBackupService` wraps that payload with PBKDF2-HMAC-SHA256 key derivation and AES-256-GCM authenticated encryption using a fresh 16-byte salt and 12-byte nonce per export. The file format is versioned, size-limited to 10 MB and fail-closed for unknown, malformed, altered or incorrectly decrypted records.
+
+Restore is Doctor-only and replaces operational data only after UI confirmation. The active role, local Assistant registry and authentication repository remain device-owned and are not decoded from the file. Sync revision is reset to LOCAL_ONLY so restored data cannot masquerade as a server-authoritative revision. If the restored queue date is older than the device date, normal rollover immediately archives it and opens a clean current day.
+
+This is disaster recovery, not cross-device synchronization. Production multi-device state still requires the hosted API's authenticated, atomic and auditable operations.

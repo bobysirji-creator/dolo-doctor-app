@@ -26,7 +26,8 @@ class DoctorViewModel(
     private val currentDate: () -> LocalDate = LocalDate::now,
     private val currentTime: () -> LocalTime = LocalTime::now,
     private val pinGenerator: () -> String = { (SecureRandom().nextInt(9000) + 1000).toString() },
-    private val sharedBackend: SharedBackendGateway = SharedBackendProvider.create()
+    private val sharedBackend: SharedBackendGateway = SharedBackendProvider.create(),
+    private val backupManager: DoctorBackupManager = DoctorBackupManager()
 ) : ViewModel() {
     var uiState by mutableStateOf(stateStore.restore(DummyData.initialState(currentDate().toString())))
         private set
@@ -1228,6 +1229,19 @@ class DoctorViewModel(
             "${if (enabled) "Granted" else "Removed"} ${permission.name.replace("_", " ").lowercase()} for ${assistant.name}"
         )
         persist(updated)
+    }
+    fun exportEncryptedBackup(password: String): BackupExportResult {
+        if (uiState.role != UserRole.DOCTOR) return BackupExportResult(error = "Only the Doctor can create a backup.")
+        return backupManager.export(uiState, password.toCharArray())
+    }
+
+    fun restoreEncryptedBackup(bytes: ByteArray, password: String): String? {
+        if (uiState.role != UserRole.DOCTOR) return "Only the Doctor can restore a backup."
+        val result = backupManager.restore(bytes, password.toCharArray(), uiState)
+        val restored = result.state ?: return result.error ?: "Unable to restore backup."
+        persist(restored.copy(role = uiState.role, activeAssistantId = uiState.activeAssistantId, assistants = uiState.assistants), fromSharedBackend = true)
+        rollOverIfNeeded()
+        return null
     }
 }
 

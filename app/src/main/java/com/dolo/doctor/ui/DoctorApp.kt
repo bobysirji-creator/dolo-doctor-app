@@ -27,6 +27,7 @@ private object Routes {
     const val ACTIVITY = "activity"
     const val REPORTS = "reports"
     const val SYNC = "sync"
+    const val BACKUP = "backup"
     const val CLINIC = "clinic"
     const val AVAILABILITY = "availability"
     const val ANNOUNCEMENTS = "announcements"
@@ -70,6 +71,9 @@ private object Routes {
     fun reports() {
         if (doctorViewModel.canAccessReports()) nav.navigate(Routes.REPORTS) { launchSingleTop = true }
     }
+    fun backup() {
+        if (state.role == UserRole.DOCTOR) nav.navigate(Routes.BACKUP) { launchSingleTop = true }
+    }
     fun sync() {
         if (state.role == UserRole.DOCTOR) nav.navigate(Routes.SYNC) { launchSingleTop = true }
     }
@@ -99,6 +103,7 @@ private object Routes {
                 { protectedDoctorRoute(Routes.ACTIVITY) },
                 ::reports,
                 ::sync,
+                ::backup,
                 { protectedDoctorRoute(Routes.AVAILABILITY) },
                 { protectedDoctorRoute(Routes.ANNOUNCEMENTS) },
                 { protectedDoctorRoute(Routes.ASSISTANTS) },
@@ -134,6 +139,7 @@ private object Routes {
         composable(Routes.ACTIVITY) { QueueActivityScreen(state, nav::popBackStack) }
         composable(Routes.REPORTS) { ReportsScreen(state, permissions, doctorViewModel::operationalReport, nav::popBackStack, doctorViewModel::acknowledgeFeedback, doctorViewModel::sendQueueDelayNotice) }
         composable(Routes.SYNC) { SyncCenterScreen(state, doctorViewModel.sharedBackendReadiness(), nav::popBackStack, doctorViewModel::publishLocalSnapshot, doctorViewModel::pullSharedSnapshot, doctorViewModel::simulatePatientAppBooking) }
+        composable(Routes.BACKUP) { BackupScreen(nav::popBackStack, doctorViewModel::exportEncryptedBackup, doctorViewModel::restoreEncryptedBackup) }
         composable(Routes.CLINIC) { ClinicScreen(state, state.role == UserRole.DOCTOR, nav::popBackStack, doctorViewModel::updateClinic) }
         composable(Routes.AVAILABILITY) { AvailabilityManagementScreen(state, nav::popBackStack, doctorViewModel::saveAvailabilityBlock, doctorViewModel::setAvailabilityAppointmentsEnabled, doctorViewModel::deleteAvailabilityBlock, doctorViewModel::updateAffectedPatientStatus) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementManagementScreen(state, nav::popBackStack, doctorViewModel::saveAnnouncement, doctorViewModel::setAnnouncementActive, doctorViewModel::deleteAnnouncement) }

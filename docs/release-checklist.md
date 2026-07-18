@@ -86,3 +86,14 @@ Record APK version, Android version, device model, result and any screenshots in
 6. Build the next version with the same protected secrets and install it over the stable APK without uninstalling.
 7. Confirm Android accepts the update and existing local application state remains present.
 8. Compare signing-certificate.sha256 across stable builds and confirm it never changes.
+
+## Stage 13 encrypted-backup acceptance
+
+1. Install 0.13.0-stage13 over the current stable-signed APK without uninstalling and confirm all existing local state remains.
+2. Login as Doctor, open Backup & recovery, enter matching passwords of at least eight characters and save a `.dolo` file.
+3. Change a clinic field and at least one appointment/queue state, then restore the saved file and accept the replacement warning.
+4. Confirm the prior clinic, appointment, queue, history, announcement and availability data return.
+5. Confirm the current Doctor login and Assistant credentials were not replaced by the backup.
+6. Try a wrong password and a non-`.dolo` file; confirm neither changes current data.
+7. Keep the backup file private and store its password separately. Losing the password makes the backup unrecoverable.
+8. Repeat in light/dark mode and at large font size on Vivo and Samsung devices.
