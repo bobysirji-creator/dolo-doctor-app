@@ -66,9 +66,10 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk
-          APK_DIGEST="$("$APKSIGNER" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
-          KEY_DIGEST="$(keytool -list -v -keystore "$DOLO_SIGNING_STORE_FILE" -storetype PKCS12 -storepass "$DOLO_SIGNING_STORE_PASSWORD" -alias "$DOLO_SIGNING_KEY_ALIAS" | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          APK_DIGEST="$("$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk | sed -n 's/^.*certificate SHA-256 digest: //p' | head -1)"
+          KEY_DIGEST="$(keytool -exportcert -keystore "$DOLO_SIGNING_STORE_FILE" -storetype PKCS12 -storepass "$DOLO_SIGNING_STORE_PASSWORD" -alias "$DOLO_SIGNING_KEY_ALIAS" | sha256sum | awk '{print $1}')"
           test -n "$APK_DIGEST"
+          test -n "$KEY_DIGEST"
           test "$APK_DIGEST" = "$KEY_DIGEST"
           printf '%s\n' "$APK_DIGEST" > app/build/outputs/apk/debug/signing-certificate.sha256
       - name: Create APK checksum
