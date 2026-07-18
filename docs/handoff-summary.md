@@ -72,7 +72,7 @@ Version 0.8.0-stage8 (version code 16) replaces the fixed-assistant-only prototy
 
 Doctors can immediately disable or re-enable login, reset an assistant PIN, change each modular permission and permanently delete the profile and credentials. Assistant records, active status and permissions persist in local schema version 5. Disabled or deleted accounts cannot establish or restore a session. Existing Stage 2 demo assistants remain available as migration fixtures and can be managed through the same screen.
 
-Creation, status, permission, PIN-reset and deletion changes are appended to the durable audit/notification stream. DoctorViewModel remains the local authorization boundary, while AssistantAdminGateway reserves shared-backend operations. Production credential recovery, forced first-login PIN change, multi-device revocation and server authorization remain Stage 10 responsibilities.
+Creation, status, permission, PIN-reset and deletion changes are appended to the durable audit/notification stream. DoctorViewModel remains the local authorization boundary, while AssistantAdminGateway reserves shared-backend operations. Stage 14 now provides forced first-login PIN replacement locally. Production credential recovery, multi-device revocation and server authorization remain hosted-backend responsibilities.
 
 GitHub Actions remains the authoritative compile, lint, unit-test and APK gate. Stage 8 physical-device acceptance is listed in docs/device-test-checklist.md.
 
@@ -263,3 +263,12 @@ GitHub Actions remains the authoritative compile, lint, unit-test and APK gate. 
 ## Next recommended stage
 
 Design and security-review the separately deployed hosted API and Admin-owned service-charge ledger. Do not add Android Internet permission or real external providers until server authentication, authorization, atomic token allocation, audit and privacy policies pass.
+## Stage 14 local credential hardening
+
+Version 0.14.0-stage14 (version code 26) makes local PIN ownership functional. Doctors and Assistants can change their PIN from Home after proving the current PIN. New Assistant accounts and Doctor-issued PIN resets are persisted with a mandatory-change flag; login routes those Assistants directly to a non-bypassable replacement screen before any clinic tools become available.
+
+Four-digit format, confirmation, difference from the current PIN and a local predictable-PIN denylist are enforced. Session and Assistant credential codecs accept both the new flag-bearing format and existing Stage 13 records, so stable in-place upgrades retain all current logins without unexpectedly forcing legacy users through migration. The requirement is refreshed from the credential registry during process restoration, preventing a stale saved session from bypassing a later Doctor PIN reset.
+
+Doctor PIN changes persist locally across stable-signed updates but are excluded from clinic-data backups. There is no local Doctor PIN recovery in this prototype, so the UI tells the Doctor to record it securely. Assistants can be recovered through the existing Doctor reset flow. Server rate limiting, identity recovery, forced revocation and multi-device sessions remain hosted-backend responsibilities.
+
+Automated coverage is now 111 unit tests. GitHub Actions remains the authoritative compile, lint, test, signing and APK gate.

@@ -24,3 +24,6 @@ A production release requires:
 - removal of demo credentials and synthetic data.
 
 The Internet permission must be restored only with the audited production network client and domain policy.
+## Stage 14 local credential controls
+
+Replacement Doctor/Assistant PINs are stored only as per-record salted PBKDF2-HMAC-SHA256 hashes. Newly issued/reset Assistant PINs require replacement before clinic navigation, and older local Assistant hashes upgrade after successful authentication. These controls reduce local prototype risk but do not make a four-digit offline PIN equivalent to production identity; the server-side rate limiting, recovery and revocation gates above remain mandatory.

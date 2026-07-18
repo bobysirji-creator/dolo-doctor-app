@@ -136,3 +136,11 @@ Existing clinics default to current-day-only. The backend must publish this poli
 Clinic walk-in/offline booking is always for the current clinic day. Enabling Patient App advance booking must never add a future-date option to the Doctor/Assistant walk-in form.
 
 Every policy change is Doctor-only, persisted, auditable and included in shared synchronization.
+## Stage 14 local PIN lifecycle
+
+- Doctors and Assistants can change a local login PIN only after proving the current PIN.
+- Newly created Assistants and Assistants whose PIN is reset must replace the temporary PIN before clinic access.
+- Mandatory replacement survives process death and cannot be bypassed by a previously saved session.
+- New PINs use salted PBKDF2-HMAC-SHA256 storage; legacy Assistant hashes migrate after successful login.
+- Existing Stage 13 sessions and credentials remain compatible during stable in-place upgrade.
+- The local prototype has no Doctor PIN recovery; hosted identity recovery, retry throttling and multi-device revocation remain production requirements.

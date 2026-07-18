@@ -28,6 +28,7 @@ private object Routes {
     const val REPORTS = "reports"
     const val SYNC = "sync"
     const val BACKUP = "backup"
+    const val CHANGE_PIN = "change-pin"
     const val CLINIC = "clinic"
     const val AVAILABILITY = "availability"
     const val ANNOUNCEMENTS = "announcements"
@@ -48,7 +49,13 @@ private object Routes {
     val state = doctorViewModel.uiState
     val authState = authViewModel.uiState
     val permissions = doctorViewModel.permissions()
-    val startDestination = remember { if (authState.session == null) Routes.SPLASH else Routes.HOME }
+    val startDestination = remember {
+        when {
+            authState.session == null -> Routes.SPLASH
+            authState.session?.mustChangePin == true -> Routes.CHANGE_PIN
+            else -> Routes.HOME
+        }
+    }
 
     LaunchedEffect(authState.session) {
         val session = authState.session
@@ -71,6 +78,7 @@ private object Routes {
     fun reports() {
         if (doctorViewModel.canAccessReports()) nav.navigate(Routes.REPORTS) { launchSingleTop = true }
     }
+    fun changePin() = nav.navigate(Routes.CHANGE_PIN) { launchSingleTop = true }
     fun backup() {
         if (state.role == UserRole.DOCTOR) nav.navigate(Routes.BACKUP) { launchSingleTop = true }
     }
@@ -86,11 +94,16 @@ private object Routes {
         }
         composable(Routes.LOGIN) {
             LaunchedEffect(authState.session) {
-                if (authState.session != null) nav.navigate(Routes.HOME) { popUpTo(Routes.LOGIN) { inclusive = true } }
+                authState.session?.let { session ->
+                    nav.navigate(if (session.mustChangePin) Routes.CHANGE_PIN else Routes.HOME) { popUpTo(Routes.LOGIN) { inclusive = true } }
+                }
             }
             LoginScreen(authState, authViewModel::selectRole, authViewModel::updatePhone, authViewModel::updatePin, authViewModel::login)
         }
         composable(Routes.HOME) {
+            LaunchedEffect(authState.session?.mustChangePin) {
+                if (authState.session?.mustChangePin == true) nav.navigate(Routes.CHANGE_PIN) { popUpTo(Routes.HOME) { inclusive = true } }
+            }
             DashboardScreen(
                 state,
                 permissions,
@@ -104,6 +117,7 @@ private object Routes {
                 ::reports,
                 ::sync,
                 ::backup,
+                ::changePin,
                 { protectedDoctorRoute(Routes.AVAILABILITY) },
                 { protectedDoctorRoute(Routes.ANNOUNCEMENTS) },
                 { protectedDoctorRoute(Routes.ASSISTANTS) },
@@ -140,6 +154,25 @@ private object Routes {
         composable(Routes.REPORTS) { ReportsScreen(state, permissions, doctorViewModel::operationalReport, nav::popBackStack, doctorViewModel::acknowledgeFeedback, doctorViewModel::sendQueueDelayNotice) }
         composable(Routes.SYNC) { SyncCenterScreen(state, doctorViewModel.sharedBackendReadiness(), nav::popBackStack, doctorViewModel::publishLocalSnapshot, doctorViewModel::pullSharedSnapshot, doctorViewModel::simulatePatientAppBooking) }
         composable(Routes.BACKUP) { BackupScreen(nav::popBackStack, doctorViewModel::exportEncryptedBackup, doctorViewModel::restoreEncryptedBackup) }
+        composable(Routes.CHANGE_PIN) {
+            ChangePinScreen(
+                required = authState.session?.mustChangePin == true,
+                isDoctor = authState.session?.role == UserRole.DOCTOR,
+                message = authState.pinChangeMessage,
+                onBack = nav::popBackStack,
+                onLogout = {
+                    authViewModel.logout()
+                    doctorViewModel.logout(authRepository.removedAssistantIds())
+                    nav.navigate(Routes.LOGIN) { popUpTo(Routes.CHANGE_PIN) { inclusive = true } }
+                },
+                onClearMessage = authViewModel::clearPinChangeMessage,
+                onSubmit = { currentPin, newPin, confirmation ->
+                    authViewModel.changePin(currentPin, newPin, confirmation).also { changed ->
+                        if (changed) nav.navigate(Routes.HOME) { popUpTo(Routes.CHANGE_PIN) { inclusive = true } }
+                    }
+                }
+            )
+        }
         composable(Routes.CLINIC) { ClinicScreen(state, state.role == UserRole.DOCTOR, nav::popBackStack, doctorViewModel::updateClinic) }
         composable(Routes.AVAILABILITY) { AvailabilityManagementScreen(state, nav::popBackStack, doctorViewModel::saveAvailabilityBlock, doctorViewModel::setAvailabilityAppointmentsEnabled, doctorViewModel::deleteAvailabilityBlock, doctorViewModel::updateAffectedPatientStatus) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementManagementScreen(state, nav::popBackStack, doctorViewModel::saveAnnouncement, doctorViewModel::setAnnouncementActive, doctorViewModel::deleteAnnouncement) }

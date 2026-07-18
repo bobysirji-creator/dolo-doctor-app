@@ -12,15 +12,17 @@ object SessionCodec {
         session.role.name,
         session.userId,
         session.displayName,
-        session.phone
+        session.phone,
+        session.mustChangePin.toString()
     ).joinToString(SEPARATOR)
 
     fun decode(value: String): AuthSession? {
         val parts = value.trim().split(SEPARATOR)
-        if (parts.size != 4) return null
+        if (parts.size !in setOf(4, 5)) return null
         val role = runCatching { UserRole.valueOf(parts[0]) }.getOrNull() ?: return null
         if (parts[1].isBlank() || parts[2].isBlank() || !CredentialValidator.isValidPhone(parts[3])) return null
-        return AuthSession(role, parts[1], parts[2], CredentialValidator.normalizePhone(parts[3]))
+        val mustChangePin = if (parts.size == 5) parts[4].toBooleanStrictOrNull() ?: return null else false
+        return AuthSession(role, parts[1], parts[2], CredentialValidator.normalizePhone(parts[3]), mustChangePin)
     }
 }
 

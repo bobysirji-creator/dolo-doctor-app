@@ -1,6 +1,6 @@
 # DO-LO Doctor Release Checklist
 
-## Current Stage 12 candidate
+## Current Stage 14 candidate
 
 This checklist qualifies a local physical-device prototype. Passing it does not authorize production healthcare use.
 
@@ -97,3 +97,14 @@ Record APK version, Android version, device model, result and any screenshots in
 6. Try a wrong password and a non-`.dolo` file; confirm neither changes current data.
 7. Keep the backup file private and store its password separately. Losing the password makes the backup unrecoverable.
 8. Repeat in light/dark mode and at large font size on Vivo and Samsung devices.
+## Stage 14 credential-hardening acceptance
+
+1. Install 0.14.0-stage14 over 0.13.0 without uninstalling; confirm the existing session, clinic state and encrypted-backup workflow remain intact.
+2. As Doctor, open Change login PIN, prove the current PIN and select a non-predictable replacement. Record it securely.
+3. Remove the app from Recents, relaunch, logout, and confirm the old Doctor PIN fails while the new PIN succeeds.
+4. Create a new Assistant and login with the generated temporary PIN. Confirm the app opens Secure your account instead of Home and Back cannot expose clinic tools.
+5. Replace the temporary PIN, relaunch, logout and confirm only the replacement PIN succeeds.
+6. As Doctor, reset that Assistant PIN. Confirm the Assistant's restored session again requires replacement before clinic access.
+7. Confirm existing demo Assistants are not unexpectedly forced to change PIN after upgrade.
+8. Confirm 1234, 0000, repeated digits, mismatched confirmation and an incorrect current PIN are rejected without changing credentials.
+9. Re-test logout, process death, device restart, dark theme and large text on Vivo and Samsung.

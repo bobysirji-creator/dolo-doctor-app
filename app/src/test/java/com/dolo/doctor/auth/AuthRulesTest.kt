@@ -36,7 +36,39 @@ class AuthRulesTest {
         assertFalse(record.pinHash.contains("4826"))
     }
 
-    @Test fun malformedAssistantCredentialIsRejected() {
+
+    @Test fun temporaryPinFlagAndLegacyRecordsRemainCompatible() {
+        val salt = PinHasher.newSalt()
+        val temporary = AssistantCredentialRecord("staff-temp", "Temporary User", "9876508888", true, salt, PinHasher.hash("4826", salt), true)
+        assertTrue(AssistantCredentialCodec.decode(AssistantCredentialCodec.encode(temporary))?.mustChangePin == true)
+        val legacyFields = listOf("staff-old", "Old Assistant", "9876507777", "true", salt, PinHasher.hash("4826", salt))
+        val legacyRecord = legacyFields.joinToString("|") {
+            java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray())
+        }
+        assertFalse(AssistantCredentialCodec.decode(legacyRecord)?.mustChangePin == true)
+
+        val session = AuthSession(UserRole.ASSISTANT, "staff-temp", "Temporary User", "9876508888", true)
+        assertEquals(session, SessionCodec.decode(SessionCodec.encode(session)))
+        assertFalse(SessionCodec.decode("DOCTOR\tdoctor-1\tDoctor\t9999999999")?.mustChangePin == true)
+    }
+
+    @Test fun predictableReplacementPinsAreBlocked() {
+        assertFalse(CredentialValidator.isAcceptableNewPin("1234"))
+        assertFalse(CredentialValidator.isAcceptableNewPin("7777"))
+        assertTrue(CredentialValidator.isAcceptableNewPin("4826"))
+    }
+
+
+    @Test fun legacyPinHashStillAuthenticatesForUpgrade() {
+        val salt = PinHasher.newSalt()
+        val legacy = java.security.MessageDigest.getInstance("SHA-256")
+            .digest("$salt:4826".toByteArray(java.nio.charset.StandardCharsets.UTF_8))
+            .let { java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(it) }
+
+        assertTrue(PinHasher.matches("4826", salt, legacy))
+        assertTrue(PinHasher.needsUpgrade(legacy))
+        assertFalse(PinHasher.needsUpgrade(PinHasher.hash("4826", salt)))
+    }    @Test fun malformedAssistantCredentialIsRejected() {
         assertNull(AssistantCredentialCodec.decode("not-a-credential"))
     }
 

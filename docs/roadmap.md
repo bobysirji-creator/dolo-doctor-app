@@ -73,3 +73,11 @@ Next dependency: build and security-review the hosted API as a separate service.
   - [x] login credentials, assistant authentication, signing keys and provider secrets excluded
 
 Next dependency remains the separately deployed hosted API. Stage 13 provides local disaster recovery while that production backend is designed and reviewed.
+- [x] Stage 14 - local credential hardening
+  - [x] Doctor and Assistant current-PIN-verified PIN change
+  - [x] mandatory first-login replacement for newly created/reset Assistant temporary PINs
+  - [x] predictable PIN rejection and confirmation validation
+  - [x] backward-compatible credential/session codecs and process-safe requirement restoration
+  - [x] clinic access blocked until a temporary Assistant PIN is replaced
+
+Next dependency remains server-authoritative identity, throttling, recovery and multi-device revocation in the separately deployed hosted API.

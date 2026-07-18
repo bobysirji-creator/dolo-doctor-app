@@ -168,3 +168,8 @@ Every assistant action must be authorized on the server, not only hidden in Comp
 Restore is Doctor-only and replaces operational data only after UI confirmation. The active role, local Assistant registry and authentication repository remain device-owned and are not decoded from the file. Sync revision is reset to LOCAL_ONLY so restored data cannot masquerade as a server-authoritative revision. If the restored queue date is older than the device date, normal rollover immediately archives it and opens a clean current day.
 
 This is disaster recovery, not cross-device synchronization. Production multi-device state still requires the hosted API's authenticated, atomic and auditable operations.
+## Stage 14 local credential boundary
+
+`LocalAuthRepository` stores Doctor and Assistant replacement PINs as PBKDF2-HMAC-SHA256 hashes with per-credential random salts and 100,000 iterations. Existing salted SHA-256 Assistant records remain readable and are opportunistically upgraded after the next successful login. The raw PIN is never persisted.
+
+A versioned `mustChangePin` credential flag is independently refreshed when a session is restored. Newly created/reset Assistants cannot rely on a stale session to bypass mandatory replacement. The navigation layer blocks Home until replacement succeeds, while the repository remains the authoritative verifier. This local control does not replace hosted identity, server-side retry throttling, recovery, device revocation or Admin audit.

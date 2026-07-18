@@ -12,7 +12,8 @@ data class AuthUiState(
     val phone: String = "",
     val pin: String = "",
     val session: AuthSession? = null,
-    val error: String? = null
+    val error: String? = null,
+    val pinChangeMessage: String? = null
 )
 
 class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
@@ -28,6 +29,24 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
             is AuthResult.Failure -> uiState = uiState.copy(error = result.message)
         }
     }
+    fun changePin(currentPin: String, newPin: String, confirmation: String): Boolean {
+        val session = uiState.session ?: return false
+        if (newPin != confirmation) {
+            uiState = uiState.copy(pinChangeMessage = "New PINs do not match.")
+            return false
+        }
+        return when (val result = repository.changePin(session, currentPin, newPin)) {
+            is PinChangeResult.Success -> {
+                uiState = uiState.copy(session = result.session, pinChangeMessage = "PIN changed successfully.")
+                true
+            }
+            is PinChangeResult.Failure -> {
+                uiState = uiState.copy(pinChangeMessage = result.message)
+                false
+            }
+        }
+    }
+    fun clearPinChangeMessage() { uiState = uiState.copy(pinChangeMessage = null) }
     fun logout() { repository.logout(); uiState = AuthUiState() }
 }
 
