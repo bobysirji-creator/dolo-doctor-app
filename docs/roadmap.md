@@ -99,6 +99,6 @@ Recommended after acceptance: connect the accepted Patient and Doctor APKs simul
 - [x] server-owned active status and granular queue/clinic-fee permissions
 - [x] immediate hosted enforcement without uploading or replacing local Assistant data
 - [x] safe refresh after each access update and encrypted hosted-session retention
-- [ ] GitHub Actions, stable APK upgrade and physical-device acceptance
+- [x] GitHub Actions, stable APK upgrade and physical-device acceptance (2026-07-20)
 
 Real staff onboarding, OTP recovery and production identity remain gated on Admin workflow, privacy and security approval.

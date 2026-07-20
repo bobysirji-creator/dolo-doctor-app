@@ -1,5 +1,7 @@
 # Stages 16E and 16F Hosted Access Test
 
+**Accepted:** 2026-07-20. GitHub Actions, stable in-place upgrade, and all hosted-access physical-device checks passed.
+
 Use dummy data only. Platform API must deploy before installing the Doctor APK.
 
 ## Hosted API

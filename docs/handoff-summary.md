@@ -283,4 +283,6 @@ Stage 16D was accepted on 2026-07-20 after GitHub Actions passed and all physica
 
 Doctor App `0.16.0-stage16f` (version code 28) extends the accepted hosted queue with Doctor-only management of the seeded hosted Assistant. The Doctor can enable or disable the hosted account and independently grant queue-management and clinic-fee-confirmation permissions. Every save is sent to the authoritative Platform API and followed by a fresh bootstrap; the Assistant cannot see or mutate this management surface.
 
-The accepted local Doctor/Assistant workflow, credentials, clinic data, backups and history remain isolated. No real account enrollment, OTP recovery or external provider is enabled. GitHub Actions and the checks in `docs/stage16ef-device-test.md` remain pending.
+The accepted local Doctor/Assistant workflow, credentials, clinic data, backups and history remain isolated. No real account enrollment, OTP recovery or external provider is enabled.
+
+Stage 16F was accepted on 2026-07-20 after GitHub Actions passed, the stable APK upgraded the existing installation, and every physical-device check in `docs/stage16ef-device-test.md` passed. Server-owned permission isolation, immediate disable/re-enable behavior, restart restoration, offline recovery and preservation of local data were all verified.
