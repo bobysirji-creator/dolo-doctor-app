@@ -162,7 +162,10 @@ private object Routes {
         composable(Routes.HISTORY) { QueueHistoryScreen(state, nav::popBackStack) }
         composable(Routes.ACTIVITY) { QueueActivityScreen(state, nav::popBackStack) }
         composable(Routes.REPORTS) { ReportsScreen(state, permissions, doctorViewModel::operationalReport, nav::popBackStack, doctorViewModel::acknowledgeFeedback, doctorViewModel::sendQueueDelayNotice) }
-        composable(Routes.HOSTED_SYNC) { HostedStaffSyncScreen(state.role, nav::popBackStack, hostedViewModel) }
+        composable(Routes.HOSTED_SYNC) {
+            val localRole = state.role ?: return@composable
+            HostedStaffSyncScreen(localRole, nav::popBackStack, hostedViewModel)
+        }
         composable(Routes.SYNC) { SyncCenterScreen(state, doctorViewModel.sharedBackendReadiness(), nav::popBackStack, doctorViewModel::publishLocalSnapshot, doctorViewModel::pullSharedSnapshot, doctorViewModel::simulatePatientAppBooking) }
         composable(Routes.BACKUP) { BackupScreen(nav::popBackStack, doctorViewModel::exportEncryptedBackup, doctorViewModel::restoreEncryptedBackup) }
         composable(Routes.CHANGE_PIN) {
