@@ -2,7 +2,7 @@
 
 DO-LO Doctor is the dedicated lightweight Android app for doctors and permission-limited assistants in the DO-LO walk-in appointment ecosystem.
 
-Current prototype: **0.15.0-stage16d** (version code 27).
+Current prototype: **0.16.0-stage16f** (version code 28).
 
 ## Current prototype includes
 
@@ -70,4 +70,7 @@ gradle --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
 See `docs/roadmap.md` and `docs/handoff-summary.md` for staged development.
 ## Stage 16D hosted staff queue
 
-Home now exposes a separate **Hosted Stage 16D queue** for the local Doctor and queue-enabled Assistant. It uses demo PIN `1234`, encrypts renewable hosted tokens with Android Keystore, and polls the seeded server queue every 15 seconds while visible. Staff can confirm the clinic-direct fee and admit an online appointment, start/pause/resume the session, call the next patient, and complete/skip/resume/mark absent through the existing protected API. The mature local queue, appointments, backup and reports remain separate and unchanged.
+Home now exposes a separate **Hosted Stage 16F queue** for the local Doctor and queue-enabled Assistant. It uses demo PIN `1234`, encrypts renewable hosted tokens with Android Keystore, and polls the seeded server queue every 15 seconds while visible. Staff can confirm the clinic-direct fee and admit an online appointment, start/pause/resume the session, call the next patient, and complete/skip/resume/mark absent through the existing protected API. The mature local queue, appointments, backup and reports remain separate and unchanged.
+## Stage 16F hosted Assistant access
+
+The hosted Doctor screen now lists the seeded server Assistant and can authoritatively enable/disable the account or change queue and clinic-fee permissions. The local Assistant registry and clinic workflow remain separate and unchanged. Real onboarding and all external providers remain disabled.

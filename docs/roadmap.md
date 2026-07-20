@@ -93,3 +93,12 @@ Next dependency remains server-authoritative identity, throttling, recovery and 
 - [x] GitHub Actions, stable APK upgrade and physical-device acceptance (2026-07-20)
 
 Recommended after acceptance: connect the accepted Patient and Doctor APKs simultaneously and verify that Doctor admission/call-next/completion updates the Patient live queue end to end.
+## Stage 16F - Hosted Assistant access management
+
+- [x] Doctor-only hosted Assistant directory in the authoritative queue workspace
+- [x] server-owned active status and granular queue/clinic-fee permissions
+- [x] immediate hosted enforcement without uploading or replacing local Assistant data
+- [x] safe refresh after each access update and encrypted hosted-session retention
+- [ ] GitHub Actions, stable APK upgrade and physical-device acceptance
+
+Real staff onboarding, OTP recovery and production identity remain gated on Admin workflow, privacy and security approval.

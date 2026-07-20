@@ -279,3 +279,8 @@ Doctor App `0.15.0-stage16d` (version code 27) adds an explicit hosted staff que
 Local profile, clinic, assistants, appointments, queue history, reports, announcements and backup data are never uploaded or overwritten. Doctor-fee payment remains direct at the clinic; Maps, platform Payments, SMS and Push providers remain disabled.
 
 Stage 16D was accepted on 2026-07-20 after GitHub Actions passed and all physical-device checks in `docs/stage16d-device-test.md` succeeded, including stable in-place upgrade, Doctor and permitted-Assistant hosted access, authoritative fee admission and queue commands, Patient App live updates, restart restoration, polling idempotency, local-data isolation, offline safety and reconnection recovery.
+## Stage 16F implementation checkpoint
+
+Doctor App `0.16.0-stage16f` (version code 28) extends the accepted hosted queue with Doctor-only management of the seeded hosted Assistant. The Doctor can enable or disable the hosted account and independently grant queue-management and clinic-fee-confirmation permissions. Every save is sent to the authoritative Platform API and followed by a fresh bootstrap; the Assistant cannot see or mutate this management surface.
+
+The accepted local Doctor/Assistant workflow, credentials, clinic data, backups and history remain isolated. No real account enrollment, OTP recovery or external provider is enabled. GitHub Actions and the checks in `docs/stage16ef-device-test.md` remain pending.
