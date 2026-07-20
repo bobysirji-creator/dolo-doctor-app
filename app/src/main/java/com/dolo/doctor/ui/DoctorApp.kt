@@ -15,6 +15,9 @@ import com.dolo.doctor.data.DoctorViewModel
 import com.dolo.doctor.data.DoctorViewModelFactory
 import com.dolo.doctor.data.model.UserRole
 import com.dolo.doctor.data.model.AssistantCreationResult
+import com.dolo.doctor.hosted.HostedStaffViewModel
+import com.dolo.doctor.hosted.HostedStaffViewModelFactory
+import com.dolo.doctor.hosted.HttpHostedStaffApi
 import com.dolo.doctor.ui.screens.*
 
 private object Routes {
@@ -27,6 +30,7 @@ private object Routes {
     const val ACTIVITY = "activity"
     const val REPORTS = "reports"
     const val SYNC = "sync"
+    const val HOSTED_SYNC = "hosted-sync"
     const val BACKUP = "backup"
     const val CHANGE_PIN = "change-pin"
     const val CLINIC = "clinic"
@@ -40,10 +44,12 @@ private object Routes {
 @Composable fun DoloDoctorApp(
     authRepository: AuthRepository,
     doctorStateStore: DoctorStateStore,
+    hostedStaffApi: HttpHostedStaffApi,
     darkTheme: Boolean,
     onToggleTheme: () -> Unit,
     doctorViewModel: DoctorViewModel = viewModel(factory = DoctorViewModelFactory(doctorStateStore)),
-    authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(authRepository))
+    authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(authRepository)),
+    hostedViewModel: HostedStaffViewModel = viewModel(factory = HostedStaffViewModelFactory(hostedStaffApi))
 ) {
     val nav = rememberNavController()
     val state = doctorViewModel.uiState
@@ -85,6 +91,9 @@ private object Routes {
     fun sync() {
         if (state.role == UserRole.DOCTOR) nav.navigate(Routes.SYNC) { launchSingleTop = true }
     }
+    fun hostedSync() {
+        if (state.role == UserRole.DOCTOR || state.activeAssistantId == "staff-1") nav.navigate(Routes.HOSTED_SYNC) { launchSingleTop = true }
+    }
 
     NavHost(navController = nav, startDestination = startDestination) {
         composable(Routes.SPLASH) {
@@ -116,6 +125,7 @@ private object Routes {
                 { protectedDoctorRoute(Routes.ACTIVITY) },
                 ::reports,
                 ::sync,
+                ::hostedSync,
                 ::backup,
                 ::changePin,
                 { protectedDoctorRoute(Routes.AVAILABILITY) },
@@ -152,6 +162,7 @@ private object Routes {
         composable(Routes.HISTORY) { QueueHistoryScreen(state, nav::popBackStack) }
         composable(Routes.ACTIVITY) { QueueActivityScreen(state, nav::popBackStack) }
         composable(Routes.REPORTS) { ReportsScreen(state, permissions, doctorViewModel::operationalReport, nav::popBackStack, doctorViewModel::acknowledgeFeedback, doctorViewModel::sendQueueDelayNotice) }
+        composable(Routes.HOSTED_SYNC) { HostedStaffSyncScreen(state.role, nav::popBackStack, hostedViewModel) }
         composable(Routes.SYNC) { SyncCenterScreen(state, doctorViewModel.sharedBackendReadiness(), nav::popBackStack, doctorViewModel::publishLocalSnapshot, doctorViewModel::pullSharedSnapshot, doctorViewModel::simulatePatientAppBooking) }
         composable(Routes.BACKUP) { BackupScreen(nav::popBackStack, doctorViewModel::exportEncryptedBackup, doctorViewModel::restoreEncryptedBackup) }
         composable(Routes.CHANGE_PIN) {

@@ -1,0 +1,68 @@
+package com.dolo.doctor.hosted
+
+import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.security.KeyStore
+import java.time.Instant
+import java.util.Base64
+import java.util.UUID
+import java.util.concurrent.Executors
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
+
+enum class HostedStaffRole { DOCTOR, ASSISTANT }
+data class HostedStaffTokens(val accessToken:String,val accessExpiresAt:String,val refreshToken:String,val refreshExpiresAt:String,val role:HostedStaffRole)
+data class HostedClinic(val id:String,val name:String,val city:String,val doctorName:String,val specialty:String)
+data class HostedSession(val id:String,val date:String,val name:String,val startsAt:String,val endsAt:String,val available:Int,val enabled:Boolean)
+data class HostedAppointment(val id:String,val sessionId:String,val patientName:String,val token:Int,val status:String,val feeStatus:String,val receipt:String)
+data class HostedQueueEntry(val appointmentId:String,val patientName:String,val token:Int,val status:String,val feeStatus:String,val receipt:String)
+data class HostedQueue(val sessionId:String,val status:String,val currentToken:Int?,val lastCalledToken:Int,val entries:List<HostedQueueEntry>)
+data class HostedStaffSnapshot(val role:HostedStaffRole,val permissions:Set<String>,val clinic:HostedClinic,val sessions:List<HostedSession>,val appointments:List<HostedAppointment>,val queues:List<HostedQueue>)
+sealed interface HostedResult<out T>{data class Success<T>(val value:T):HostedResult<T>;data class Failure(val message:String):HostedResult<Nothing>}
+
+class HostedStaffTokenStore(private val preferences:SharedPreferences){
+ fun read():HostedStaffTokens?=runCatching{val iv=preferences.getString(KEY_IV,null)?:return null;val encrypted=preferences.getString(KEY_DATA,null)?:return null;val cipher=Cipher.getInstance(TRANSFORM);cipher.init(Cipher.DECRYPT_MODE,key(),GCMParameterSpec(128,Base64.getDecoder().decode(iv)));parseTokens(String(cipher.doFinal(Base64.getDecoder().decode(encrypted)),Charsets.UTF_8))}.getOrElse{clear();null}
+ fun save(tokens:HostedStaffTokens){val cipher=Cipher.getInstance(TRANSFORM);cipher.init(Cipher.ENCRYPT_MODE,key());val encrypted=cipher.doFinal(encodeTokens(tokens).toByteArray());preferences.edit().putString(KEY_IV,Base64.getEncoder().encodeToString(cipher.iv)).putString(KEY_DATA,Base64.getEncoder().encodeToString(encrypted)).commit()}
+ fun clear(){preferences.edit().remove(KEY_IV).remove(KEY_DATA).commit()}
+ private fun key():SecretKey{val store=KeyStore.getInstance("AndroidKeyStore").apply{load(null)};(store.getKey(KEY_ALIAS,null) as? SecretKey)?.let{return it};return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore").apply{init(KeyGenParameterSpec.Builder(KEY_ALIAS,KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT).setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).setKeySize(256).build())}.generateKey()}
+ private fun encodeTokens(t:HostedStaffTokens)=JSONObject().put("accessToken",t.accessToken).put("accessExpiresAt",t.accessExpiresAt).put("refreshToken",t.refreshToken).put("refreshExpiresAt",t.refreshExpiresAt).put("role",t.role.name).toString()
+ private fun parseTokens(value:String):HostedStaffTokens{val o=JSONObject(value);return HostedStaffTokens(o.getString("accessToken"),o.getString("accessExpiresAt"),o.getString("refreshToken"),o.getString("refreshExpiresAt"),HostedStaffRole.valueOf(o.getString("role")))}
+ private companion object{const val KEY_ALIAS="dolo_doctor_hosted_tokens_v1";const val TRANSFORM="AES/GCM/NoPadding";const val KEY_IV="hosted_staff_iv";const val KEY_DATA="hosted_staff_data"}
+}
+
+class HttpHostedStaffApi(baseUrl:String,private val store:HostedStaffTokenStore,private val preferences:SharedPreferences){
+ private val base=baseUrl.trim().trimEnd('/');init{require(URL(base).protocol.equals("https",true))}
+ fun savedRole():HostedStaffRole?=store.read()?.role
+ fun connect(role:HostedStaffRole,pin:String):HostedResult<HostedStaffSnapshot> = guarded {val identity=if(role==HostedStaffRole.DOCTOR)"doctor-demo" else "assistant-demo";val response=requestRaw("POST","/api/v1/auth/prototype/staff-sessions",JSONObject().put("identity",identity).put("pin",pin).put("deviceLabel","DO-LO Doctor Android").toString());store.save(parseTokens(response,role));load()}
+ fun refresh():HostedResult<HostedStaffSnapshot> = guarded{load()}
+ fun logout(){accessToken()?.let{runCatching{requestRaw("POST","/api/v1/auth/logout","{}",it)}};store.clear()}
+ fun admit(sessionId:String,appointmentId:String):HostedResult<HostedStaffSnapshot> = command("POST","/api/v1/clinic-sessions/$sessionId/queue/admissions",JSONObject().put("appointmentId",appointmentId).put("clinicFeeStatus","PAID").toString(),"admit-$appointmentId")
+ fun sessionCommand(sessionId:String,currentStatus:String,lastToken:Int,command:String):HostedResult<HostedStaffSnapshot> = command("POST","/api/v1/clinic-sessions/$sessionId/queue/commands",JSONObject().put("command",command).toString(),"session-$sessionId-$currentStatus-$lastToken-$command")
+ fun appointmentCommand(sessionId:String,appointmentId:String,status:String,command:String):HostedResult<HostedStaffSnapshot> = command("POST","/api/v1/clinic-sessions/$sessionId/queue/appointments/$appointmentId/commands",JSONObject().put("command",command).toString(),"appointment-$appointmentId-$status-$command")
+ private fun command(method:String,path:String,body:String,keyName:String):HostedResult<HostedStaffSnapshot> = guarded{val key=preferences.getString(keyName,null)?:UUID.randomUUID().toString().also{preferences.edit().putString(keyName,it).commit()};request(method,path,body,mapOf("Idempotency-Key" to "android16d-$key"));val snapshot=load();preferences.edit().remove(keyName).commit();snapshot}
+ private fun load()=parseSnapshot(request("POST","/api/v1/staff/sync/bootstrap","{}"))
+ private fun request(method:String,path:String,body:String?=null,headers:Map<String,String> = emptyMap()):String{val token=accessToken()?:error("Hosted staff session is unavailable. Connect again.");return requestRaw(method,path,body,token,headers)}
+ private fun accessToken():String?{val current=store.read()?:return null;if(usable(current.accessExpiresAt))return current.accessToken;if(!usable(current.refreshExpiresAt)){store.clear();return null};val refreshed=runCatching{requestRaw("POST","/api/v1/auth/refresh",JSONObject().put("refreshToken",current.refreshToken).toString())}.getOrNull()?:return null;val tokens=parseTokens(refreshed,current.role);store.save(tokens);return tokens.accessToken}
+ private fun requestRaw(method:String,path:String,body:String?,bearer:String?=null,headers:Map<String,String> = emptyMap()):String{val c=(URL(base+path).openConnection() as HttpURLConnection).apply{requestMethod=method;connectTimeout=15_000;readTimeout=25_000;setRequestProperty("Accept","application/json");setRequestProperty("User-Agent","DO-LO-Doctor-Android/Stage16D");bearer?.let{setRequestProperty("Authorization","Bearer $it")};headers.forEach{(k,v)->setRequestProperty(k,v)};if(body!=null){doOutput=true;setRequestProperty("Content-Type","application/json")};useCaches=false};return try{if(body!=null)c.outputStream.use{it.write(body.toByteArray())};val status=c.responseCode;val text=(if(status in 200..299)c.inputStream else c.errorStream)?.bufferedReader()?.use{it.readText().take(524_288)}.orEmpty();if(status !in 200..299)error(runCatching{JSONObject(text).getJSONObject("error").getString("message")}.getOrDefault("Hosted API returned HTTP $status"));text}finally{c.disconnect()}}
+ private fun guarded(call:()->HostedStaffSnapshot):HostedResult<HostedStaffSnapshot> = runCatching(call).fold({HostedResult.Success(it)},{HostedResult.Failure(when(it){is java.net.UnknownHostException->"Offline. Local Doctor data was not changed.";is java.net.SocketTimeoutException->"Hosted prototype is waking up. Retry shortly.";else->it.message?.take(180)?:"Hosted staff synchronization failed."})})
+ private fun usable(value:String)=runCatching{Instant.parse(value).isAfter(Instant.now())}.getOrDefault(false)
+ private fun parseTokens(json:String,role:HostedStaffRole):HostedStaffTokens{val o=JSONObject(json);require(o.getJSONObject("identity").optBoolean("seededDummy"));return HostedStaffTokens(o.getString("accessToken"),o.getString("accessExpiresAt"),o.getString("refreshToken"),o.getString("refreshExpiresAt"),role)}
+ private fun parseSnapshot(json:String):HostedStaffSnapshot{val o=JSONObject(json);require(o.optBoolean("authoritative"));val identity=o.getJSONObject("identity");val clinic=o.getJSONObject("clinic");val doctor=clinic.getJSONObject("doctor");val sessions=o.getJSONArray("sessions");val appointments=o.getJSONArray("appointments");val queues=o.getJSONArray("queues");return HostedStaffSnapshot(HostedStaffRole.valueOf(identity.getString("role")),buildSet{val a=identity.getJSONArray("permissions");for(i in 0 until a.length())add(a.getString(i))},HostedClinic(clinic.getString("id"),clinic.getString("name"),clinic.optString("city"),doctor.getString("name"),doctor.optString("specialty")),buildList{for(i in 0 until sessions.length()){val x=sessions.getJSONObject(i);add(HostedSession(x.getString("id"),x.getString("serviceDate"),x.getString("name"),x.getString("startsAt"),x.getString("endsAt"),x.getInt("availableTokens"),x.getBoolean("bookingEnabled")))}},buildList{for(i in 0 until appointments.length()){val x=appointments.getJSONObject(i);add(HostedAppointment(x.getString("id"),x.getString("clinicSessionId"),x.getString("patientName"),x.getInt("tokenNumber"),x.getString("status"),x.getString("clinicFeeStatus"),x.optString("receiptNumber")))}},buildList{for(i in 0 until queues.length()){val x=queues.getJSONObject(i);val e=x.getJSONArray("entries");add(HostedQueue(x.getString("clinicSessionId"),x.getString("queueStatus"),if(x.isNull("currentToken"))null else x.getInt("currentToken"),x.getInt("lastCalledToken"),buildList{for(j in 0 until e.length()){val q=e.getJSONObject(j);add(HostedQueueEntry(q.getString("appointmentId"),q.getString("patientName"),q.getInt("tokenNumber"),q.getString("appointmentStatus"),q.getString("clinicFeeStatus"),q.optString("receiptNumber")))}}))}})}
+}
+
+data class HostedStaffUiState(val loading:Boolean=false,val snapshot:HostedStaffSnapshot?=null,val message:String="Connect to the seeded hosted staff identity.",val error:Boolean=false)
+class HostedStaffViewModel(private val api:HttpHostedStaffApi):ViewModel(){var uiState by mutableStateOf(HostedStaffUiState());private set;private val executor=Executors.newSingleThreadExecutor();private val main=Handler(Looper.getMainLooper());init{if(api.savedRole()!=null)refresh()};fun connect(role:HostedStaffRole,pin:String)=execute{api.connect(role,pin)};fun refresh()=execute{api.refresh()};fun logout(){if(uiState.loading)return;uiState=uiState.copy(loading=true,message="Clearing hosted session...");executor.execute{api.logout();main.post{uiState=HostedStaffUiState(message="Hosted session cleared. Local Doctor login is unchanged.")}}};fun admit(s:String,a:String)=execute{api.admit(s,a)};fun sessionCommand(s:String,status:String,last:Int,c:String)=execute{api.sessionCommand(s,status,last,c)};fun appointmentCommand(s:String,a:String,status:String,c:String)=execute{api.appointmentCommand(s,a,status,c)};private fun execute(call:()->HostedResult<HostedStaffSnapshot>){if(uiState.loading)return;uiState=uiState.copy(loading=true,error=false,message="Synchronizing authoritative hosted queue...");executor.execute{val r=call();main.post{uiState=when(r){is HostedResult.Success->HostedStaffUiState(snapshot=r.value,message="Server queue is authoritative for this seeded flow.");is HostedResult.Failure->uiState.copy(loading=false,error=true,message=r.message)}}}};override fun onCleared(){executor.shutdownNow();super.onCleared()}}
+class HostedStaffViewModelFactory(private val api:HttpHostedStaffApi):ViewModelProvider.Factory{@Suppress("UNCHECKED_CAST")override fun <T:ViewModel> create(modelClass:Class<T>):T=HostedStaffViewModel(api) as T}

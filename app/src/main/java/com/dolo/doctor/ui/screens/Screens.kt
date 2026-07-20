@@ -97,6 +97,7 @@ import java.time.LocalDate
     onActivity: () -> Unit,
     onReports: () -> Unit,
     onSync: () -> Unit,
+    onHostedSync: () -> Unit,
     onBackup: () -> Unit,
     onChangePin: () -> Unit,
     onAvailability: () -> Unit,
@@ -112,6 +113,7 @@ import java.time.LocalDate
     val canViewAppointments = doctorMode || Permission.VIEW_TODAY_APPOINTMENTS in permissions
     val canViewClinic = doctorMode || Permission.VIEW_CLINIC in permissions || Permission.MANAGE_CLINIC_AVAILABILITY in permissions
     val canViewReports = doctorMode || Permission.VIEW_REPORTS in permissions || Permission.VIEW_PATIENT_FEEDBACK in permissions || Permission.SEND_QUEUE_DELAY_NOTICE in permissions
+    val canHostedQueue = doctorMode || state.activeAssistantId == "staff-1"
     val morningQueue = state.sessionQueues.firstOrNull { it.session == "Morning" } ?: ConsultationQueue("Morning", state.queueState, state.currentToken)
     val eveningQueue = state.sessionQueues.firstOrNull { it.session == "Evening" } ?: ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
     var confirmLogout by remember { mutableStateOf(false) }
@@ -135,6 +137,7 @@ import java.time.LocalDate
             item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("Morning token", morningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Evening token", eveningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
             item { ElevatedSection("Today's queue", state.clinics.first().name + " • " + state.queueDate) { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { Row { Text("Morning", Modifier.weight(1f)); StatusPill(morningQueue.state.name.replace("_", " "), morningQueue.state == QueueState.ACTIVE) }; Row { Text("Evening", Modifier.weight(1f)); StatusPill(eveningQueue.state.name.replace("_", " "), eveningQueue.state == QueueState.ACTIVE) } }; PrimaryAction("Open live queue", onQueue, enabled = canViewQueue, icon = Icons.Outlined.FormatListNumbered) } }
             item { Text("Clinic tools", style = MaterialTheme.typography.titleLarge) }
+            if (canHostedQueue) { item { ElevatedSection("Hosted Stage 16D queue", "Seeded dummy cross-device prototype") { Text("Server appointments and queue controls are isolated from local clinic data.", color = MaterialTheme.colorScheme.onSurfaceVariant); PrimaryAction("Open hosted staff queue", onHostedSync, icon = Icons.Outlined.CloudSync) } } }
             item { ToolRow(onAppointments, if (doctorMode) onHistory else onClinic, canViewAppointments, if (doctorMode) true else canViewClinic, secondLabel = if (doctorMode) "Queue history" else "Clinic", secondIcon = if (doctorMode) Icons.Outlined.History else Icons.Outlined.Business) }
             if (doctorMode) {
                 item { ToolRow(onClinic, onReports, true, true, "Clinic", "Reports", Icons.Outlined.Business, Icons.Outlined.Insights) }

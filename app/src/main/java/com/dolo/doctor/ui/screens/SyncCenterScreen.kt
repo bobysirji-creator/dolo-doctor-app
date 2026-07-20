@@ -59,7 +59,7 @@ import com.dolo.doctor.ui.components.StatusPill
                     Text("${index + 1}. $blocker", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text(
-                    "The APK still has no Android INTERNET permission. Remote mode cannot silently activate.",
+                    "Android Internet access is enabled only for the separate Stage 16D seeded hosted screen; this local simulator remains device-only.",
                     color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold
                 )
@@ -147,7 +147,7 @@ import com.dolo.doctor.ui.components.StatusPill
         item {
             ElevatedSection("Production boundary") {
                 Text(
-                    "A hosted HTTPS backend must replace this transport before real cross-device use. It must own authentication, authorization, clinic time, token transactions, audit retention and push delivery.",
+                    "Use the separate Stage 16D hosted staff screen for seeded cross-device queue testing. This local contract simulator remains isolated and is never uploaded.",
                     color = MaterialTheme.colorScheme.error
                 )
             }

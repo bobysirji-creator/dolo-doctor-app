@@ -81,3 +81,15 @@ Next dependency remains the separately deployed hosted API. Stage 13 provides lo
   - [x] clinic access blocked until a temporary Assistant PIN is replaced
 
 Next dependency remains server-authoritative identity, throttling, recovery and multi-device revocation in the separately deployed hosted API.
+## Stage 16D - Seeded hosted Doctor/Assistant queue
+
+- [x] explicit separate hosted screen; no local-state upload or replacement
+- [x] HTTPS-only Platform API endpoint and Android INTERNET permission
+- [x] fixed seeded Doctor/Assistant login with demo PIN 1234
+- [x] AES/GCM Android Keystore token storage and renewable access session
+- [x] server sessions, appointments and authoritative queue snapshots
+- [x] clinic-fee confirmation/receipt admission and queue commands
+- [x] 15-second visible-screen refresh with offline-safe local fallback
+- [ ] GitHub Actions, stable APK upgrade and physical-device acceptance
+
+Recommended after acceptance: connect the accepted Patient and Doctor APKs simultaneously and verify that Doctor admission/call-next/completion updates the Patient live queue end to end.

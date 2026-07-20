@@ -2,7 +2,7 @@
 
 DO-LO Doctor is the dedicated lightweight Android app for doctors and permission-limited assistants in the DO-LO walk-in appointment ecosystem.
 
-Current prototype: **0.14.0-stage14** (version code 26).
+Current prototype: **0.15.0-stage16d** (version code 27).
 
 ## Current prototype includes
 
@@ -41,7 +41,7 @@ Current prototype: **0.14.0-stage14** (version code 26).
 - Doctor and Assistant PIN change, mandatory replacement of newly issued/reset temporary Assistant PINs, weak-PIN rejection and backward-compatible session migration;
 - unit tests, Android lint and GitHub Actions APK builds.
 
-All data is dummy local prototype data. There is no production authentication, healthcare backend, patient record, real message, service-charge transaction or provider credential. Consultation-fee values are clinic-recorded workflow data only. The mock-only APK intentionally has no Internet permission.
+All data remains dummy prototype data. Stage 16D adds a separate HTTPS connection for fixed seeded Doctor/Assistant identities and the authoritative prototype queue. Existing local clinic data is never uploaded. There is no production authentication, real patient record, real message, service-charge transaction or provider credential. Consultation-fee values remain clinic-recorded workflow data only.
 
 ## Build without Android Studio
 
@@ -68,3 +68,6 @@ gradle --no-daemon :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
 7. Close Morning and Evening independently; the complete dated snapshot appears under **Queue history** after both sessions close.
 
 See `docs/roadmap.md` and `docs/handoff-summary.md` for staged development.
+## Stage 16D hosted staff queue
+
+Home now exposes a separate **Hosted Stage 16D queue** for the local Doctor and queue-enabled Assistant. It uses demo PIN `1234`, encrypts renewable hosted tokens with Android Keystore, and polls the seeded server queue every 15 seconds while visible. Staff can confirm the clinic-direct fee and admit an online appointment, start/pause/resume the session, call the next patient, and complete/skip/resume/mark absent through the existing protected API. The mature local queue, appointments, backup and reports remain separate and unchanged.

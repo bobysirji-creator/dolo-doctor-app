@@ -14,6 +14,8 @@ import androidx.core.view.WindowCompat
 import com.dolo.doctor.auth.LocalAuthRepository
 import com.dolo.doctor.auth.SessionFileStore
 import com.dolo.doctor.data.SharedPreferencesDoctorStateStore
+import com.dolo.doctor.hosted.HostedStaffTokenStore
+import com.dolo.doctor.hosted.HttpHostedStaffApi
 import com.dolo.doctor.settings.AppPreferences
 import com.dolo.doctor.ui.DoloDoctorApp
 import com.dolo.doctor.ui.theme.DoloDoctorTheme
@@ -30,6 +32,8 @@ class MainActivity : ComponentActivity() {
         )
         val appPreferences = AppPreferences(settingsPreferences)
         val doctorStateStore = SharedPreferencesDoctorStateStore(settingsPreferences)
+        val hostedPreferences = getSharedPreferences("dolo_doctor_hosted", MODE_PRIVATE)
+        val hostedStaffApi = HttpHostedStaffApi(BuildConfig.DOLO_API_BASE_URL, HostedStaffTokenStore(hostedPreferences), hostedPreferences)
 
         setContent {
             var darkTheme by remember { mutableStateOf(appPreferences.isDarkTheme()) }
@@ -46,6 +50,7 @@ class MainActivity : ComponentActivity() {
                 DoloDoctorApp(
                     authRepository = authRepository,
                     doctorStateStore = doctorStateStore,
+                    hostedStaffApi = hostedStaffApi,
                     darkTheme = darkTheme,
                     onToggleTheme = {
                         val updated = !darkTheme

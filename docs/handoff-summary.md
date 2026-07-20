@@ -272,3 +272,8 @@ Four-digit format, confirmation, difference from the current PIN and a local pre
 Doctor PIN changes persist locally across stable-signed updates but are excluded from clinic-data backups. There is no local Doctor PIN recovery in this prototype, so the UI tells the Doctor to record it securely. Assistants can be recovered through the existing Doctor reset flow. Server rate limiting, identity recovery, forced revocation and multi-device sessions remain hosted-backend responsibilities.
 
 Automated coverage is now 111 unit tests. GitHub Actions remains the authoritative compile, lint, test, signing and APK gate.
+## Stage 16D implementation checkpoint
+
+Doctor App `0.15.0-stage16d` (version code 27) adds an explicit hosted staff queue without replacing the accepted local Doctor/Assistant workflow. The screen obtains a fixed seeded Doctor or queue-enabled Assistant session using demo PIN `1234`, stores renewable tokens encrypted by Android Keystore, reads server clinic sessions/appointments/queues, confirms the clinic-direct consultation fee for receipt/admission, and invokes authoritative queue commands. It polls every 15 seconds only while visible.
+
+Local profile, clinic, assistants, appointments, queue history, reports, announcements and backup data are never uploaded or overwritten. Doctor-fee payment remains direct at the clinic; Maps, platform Payments, SMS and Push providers remain disabled. Local Android tools are unavailable, so GitHub Actions and `docs/stage16d-device-test.md` remain pending.

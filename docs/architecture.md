@@ -173,3 +173,6 @@ This is disaster recovery, not cross-device synchronization. Production multi-de
 `LocalAuthRepository` stores Doctor and Assistant replacement PINs as PBKDF2-HMAC-SHA256 hashes with per-credential random salts and 100,000 iterations. Existing salted SHA-256 Assistant records remain readable and are opportunistically upgraded after the next successful login. The raw PIN is never persisted.
 
 A versioned `mustChangePin` credential flag is independently refreshed when a session is restored. Newly created/reset Assistants cannot rely on a stale session to bypass mandatory replacement. The navigation layer blocks Home until replacement succeeds, while the repository remains the authoritative verifier. This local control does not replace hosted identity, server-side retry throttling, recovery, device revocation or Admin audit.
+## Stage 16D hosted boundary
+
+`hosted/HostedStaffSync.kt` is an isolated HTTPS/Keystore adapter. It never reads or serializes `DoctorUiState`; therefore local clinic state cannot be silently migrated to the prototype server. The hosted ViewModel owns only seeded snapshots and commands. Backend role and clinic permissions remain authoritative even when UI actions are hidden. Logout from the hosted screen clears only hosted token material, while local Doctor App login and saved clinic state remain unchanged.
