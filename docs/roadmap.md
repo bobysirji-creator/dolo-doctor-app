@@ -90,6 +90,6 @@ Next dependency remains server-authoritative identity, throttling, recovery and 
 - [x] server sessions, appointments and authoritative queue snapshots
 - [x] clinic-fee confirmation/receipt admission and queue commands
 - [x] 15-second visible-screen refresh with offline-safe local fallback
-- [ ] GitHub Actions, stable APK upgrade and physical-device acceptance
+- [x] GitHub Actions, stable APK upgrade and physical-device acceptance (2026-07-20)
 
 Recommended after acceptance: connect the accepted Patient and Doctor APKs simultaneously and verify that Doctor admission/call-next/completion updates the Patient live queue end to end.

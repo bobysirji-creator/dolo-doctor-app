@@ -1,5 +1,7 @@
 # Stage 16D Physical-Device Test
 
+**Accepted:** 2026-07-20. GitHub Actions passed and all twelve physical-device checks below passed successfully.
+
 Use dummy data only after Platform API `0.4.0-stage16d` is deployed and ready.
 
 1. Install stable Doctor App `0.15.0-stage16d` over the existing app. Confirm local login, clinic, queue, assistants, history and theme remain unchanged.
