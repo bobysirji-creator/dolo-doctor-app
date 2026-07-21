@@ -102,3 +102,14 @@ Recommended after acceptance: connect the accepted Patient and Doctor APKs simul
 - [x] GitHub Actions, stable APK upgrade and physical-device acceptance (2026-07-20)
 
 Real staff onboarding, OTP recovery and production identity remain gated on Admin workflow, privacy and security approval.
+
+## Stage 18B - Hosted in-app communications
+
+- [x] Doctor-only hosted announcement editor for availability, camps, offers and general updates
+- [x] authoritative list, create, edit, publish and draft operations with retry-safe commands
+- [x] Assistant identities excluded from hosted announcement management
+- [x] active Patient feed reads Doctor announcements and Admin broadcasts without uploading local data
+- [ ] GitHub Actions compile, lint and unit tests
+- [ ] stable APK in-place upgrade and physical-device acceptance
+
+SMS and Push delivery remain disabled. Stage 18B is an in-app prototype boundary only.

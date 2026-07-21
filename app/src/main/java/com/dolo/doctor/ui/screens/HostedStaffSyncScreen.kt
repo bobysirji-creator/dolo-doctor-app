@@ -18,6 +18,7 @@ import com.dolo.doctor.ui.components.PageHeader
 import com.dolo.doctor.ui.components.PrimaryAction
 import com.dolo.doctor.ui.components.StatusPill
 import kotlinx.coroutines.delay
+import java.time.LocalDate
 
 @Composable fun HostedStaffSyncScreen(localRole:UserRole,onBack:()->Unit,viewModel:HostedStaffViewModel){
  val state=viewModel.uiState;var pin by remember{mutableStateOf("")};var selectedSessionId by remember{mutableStateOf<String?>(null)}
@@ -25,11 +26,11 @@ import kotlinx.coroutines.delay
  LaunchedEffect(state.snapshot!=null){if(state.snapshot!=null)while(true){delay(15_000);viewModel.refresh()}}
  LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
   item{PageHeader("Hosted staff queue",onBack)}
-  item{ElevatedSection("Stage 16F hosted access control",state.message){StatusPill(if(state.error)"Needs attention" else if(state.snapshot!=null)"Connected" else "Not connected",state.snapshot!=null&&!state.error);Text("Local Doctor/Assistant data remains separate and is never uploaded.",color=MaterialTheme.colorScheme.onSurfaceVariant)}}
+  item{ElevatedSection("Stage 18B hosted announcements and queue",state.message){StatusPill(if(state.error)"Needs attention" else if(state.snapshot!=null)"Connected" else "Not connected",state.snapshot!=null&&!state.error);Text("Local Doctor/Assistant data remains separate and is never uploaded.",color=MaterialTheme.colorScheme.onSurfaceVariant)}}
   if(state.snapshot==null){item{ElevatedSection("Connect hosted identity",if(localRole==UserRole.DOCTOR)"Seeded Doctor" else "Seeded queue Assistant"){OutlinedTextField(pin,{pin=it.filter(Char::isDigit).take(4)},Modifier.fillMaxWidth(),label={Text("Demo PIN")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.NumberPassword),visualTransformation=PasswordVisualTransformation(),singleLine=true);Text("Use demo PIN 1234. No real credential is sent.",color=MaterialTheme.colorScheme.onSurfaceVariant);PrimaryAction(if(state.loading)"Connecting..." else "Connect to hosted prototype",{viewModel.connect(if(localRole==UserRole.DOCTOR)HostedStaffRole.DOCTOR else HostedStaffRole.ASSISTANT,pin)},enabled=pin.length==4&&!state.loading)}}}
   state.snapshot?.let{snapshot->
    item{ElevatedSection(snapshot.clinic.name,"${snapshot.clinic.doctorName} • ${snapshot.clinic.city}"){Text("Identity: ${snapshot.role.name}",fontWeight=FontWeight.Bold);Text("Permissions: ${snapshot.permissions.sorted().joinToString()}",color=MaterialTheme.colorScheme.onSurfaceVariant);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button({viewModel.refresh()},enabled=!state.loading){Text("Refresh")};OutlinedButton({viewModel.logout()}){Text("Disconnect hosted")}}}}
-   if(snapshot.role==HostedStaffRole.DOCTOR){item{Text("Hosted Assistant access",style=MaterialTheme.typography.titleLarge)};if(snapshot.assistants.isEmpty())item{Text("No hosted Assistants assigned.",color=MaterialTheme.colorScheme.onSurfaceVariant)}else items(snapshot.assistants,key={"assistant-${it.id}"}){assistant->HostedAssistantAccessCard(assistant,state.loading,viewModel::updateAssistant)}}
+   if(snapshot.role==HostedStaffRole.DOCTOR){item{HostedAnnouncementEditor(snapshot.clinic.id,snapshot.announcements,state.loading,viewModel::saveAnnouncement)};item{Text("Hosted Assistant access",style=MaterialTheme.typography.titleLarge)};if(snapshot.assistants.isEmpty())item{Text("No hosted Assistants assigned.",color=MaterialTheme.colorScheme.onSurfaceVariant)}else items(snapshot.assistants,key={"assistant-${it.id}"}){assistant->HostedAssistantAccessCard(assistant,state.loading,viewModel::updateAssistant)}}
    item{Text("Clinic sessions",style=MaterialTheme.typography.titleLarge)}
    items(snapshot.sessions,key={it.id}){session->FilterChip(selected=selectedSessionId==session.id,onClick={selectedSessionId=session.id},label={Text("${session.date} • ${session.name} • ${session.available} available")},modifier=Modifier.fillMaxWidth())}
    val session= snapshot.sessions.firstOrNull{it.id==selectedSessionId};val queue=snapshot.queues.firstOrNull{it.sessionId==selectedSessionId};val appointments=snapshot.appointments.filter{it.sessionId==selectedSessionId}
@@ -50,5 +51,28 @@ import kotlinx.coroutines.delay
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Confirm clinic fee");Switch(fee,{fee=it})}
   Text("Changes are enforced by the hosted API. Disabling access blocks the Assistant's hosted session without changing local app data.",color=MaterialTheme.colorScheme.onSurfaceVariant)
   PrimaryAction("Save hosted access",{onSave(assistant,active,buildSet{if(queue)add("MANAGE_QUEUE");if(fee)add("CONFIRM_CLINIC_FEE")})},enabled=!loading)
+ }
+}
+
+@Composable private fun HostedAnnouncementEditor(clinicId:String,announcements:List<HostedAnnouncement>,loading:Boolean,onSave:(HostedAnnouncement)->Unit){
+ var editing by remember{mutableStateOf<HostedAnnouncement?>(null)}
+ val today=remember{LocalDate.now().toString()}
+ var kind by remember(editing){mutableStateOf(editing?.kind?:"DOCTOR_GENERAL")}
+ var title by remember(editing){mutableStateOf(editing?.title.orEmpty())}
+ var message by remember(editing){mutableStateOf(editing?.message.orEmpty())}
+ var startsOn by remember(editing){mutableStateOf(editing?.startsOn?:today)}
+ var endsOn by remember(editing){mutableStateOf(editing?.endsOn?:today)}
+ var active by remember(editing){mutableStateOf(editing?.active?:true)}
+ ElevatedSection("Hosted Patient announcements","Visible on the Patient App only while active and within the selected dates"){
+  Text("Announcement type",fontWeight=FontWeight.Bold)
+  listOf("DOCTOR_AVAILABILITY" to "Availability","DOCTOR_CAMP" to "Camp","DOCTOR_OFFER" to "Offer","DOCTOR_GENERAL" to "General").chunked(2).forEach{row->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)){row.forEach{(value,label)->FilterChip(selected=kind==value,onClick={kind=value},label={Text(label)},modifier=Modifier.weight(1f))}}}
+  OutlinedTextField(title,{title=it.take(100)},Modifier.fillMaxWidth(),label={Text("Title")},singleLine=true)
+  OutlinedTextField(message,{message=it.take(500)},Modifier.fillMaxWidth(),label={Text("Message")},minLines=3)
+  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){OutlinedTextField(startsOn,{startsOn=it.take(10)},Modifier.weight(1f),label={Text("Starts YYYY-MM-DD")},singleLine=true);OutlinedTextField(endsOn,{endsOn=it.take(10)},Modifier.weight(1f),label={Text("Ends YYYY-MM-DD")},singleLine=true)}
+  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Published and active");Switch(active,{active=it})}
+  PrimaryAction(if(editing==null)"Save hosted announcement" else "Update hosted announcement",{onSave(HostedAnnouncement(editing?.id.orEmpty(),clinicId,kind,title.trim(),message.trim(),startsOn,endsOn,active))},enabled=!loading&&title.isNotBlank()&&message.isNotBlank()&&startsOn.length==10&&endsOn.length==10)
+  if(editing!=null)OutlinedButton({editing=null},Modifier.fillMaxWidth()){Text("Cancel editing")}
+  if(announcements.isEmpty())Text("No hosted announcements have been created.",color=MaterialTheme.colorScheme.onSurfaceVariant)
+  announcements.forEach{announcement->HorizontalDivider();Text(announcement.title,fontWeight=FontWeight.Bold);Text("${announcement.kind.replace('_',' ')} | ${announcement.startsOn} to ${announcement.endsOn} | ${if(announcement.active)"Active" else "Draft"}",color=MaterialTheme.colorScheme.onSurfaceVariant);Text(announcement.message);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){OutlinedButton({editing=announcement},enabled=!loading){Text("Edit")};OutlinedButton({onSave(announcement.copy(active=!announcement.active))},enabled=!loading){Text(if(announcement.active)"Set draft" else "Publish")}}}
  }
 }

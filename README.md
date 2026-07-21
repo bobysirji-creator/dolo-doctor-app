@@ -74,3 +74,7 @@ Home now exposes a separate **Hosted Stage 16F queue** for the local Doctor and 
 ## Stage 16F hosted Assistant access
 
 The hosted Doctor screen now lists the seeded server Assistant and can authoritatively enable/disable the account or change queue and clinic-fee permissions. The local Assistant registry and clinic workflow remain separate and unchanged. Real onboarding and all external providers remain disabled.
+
+## Stage 18B hosted announcements
+
+The seeded hosted Doctor can manage in-app announcements for Patient profiles. Hosted Assistants cannot access this surface. The mature local announcement workflow remains separate; no local data is uploaded and external providers remain disabled.
