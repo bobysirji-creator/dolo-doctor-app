@@ -297,3 +297,8 @@ Hosted Assistants cannot see the editor and the API independently rejects their 
 ## Stage 18B acceptance
 
 Doctor App `0.17.0-stage18b` passed GitHub Actions, stable in-place APK upgrade and all Stage 18B cross-app physical-device checks on 21 July 2026. Doctor-only creation, editing, publish/draft handling, Assistant exclusion, restart restoration and offline recovery passed; all local Doctor data remained intact. External providers remain disabled.
+## Stage 19B implementation checkpoint
+
+Doctor App `0.18.0-stage19b` (version code 30) extends the separate hosted Doctor workspace with reviewed profile editing. The seeded Doctor reads the current approved profile, submits bounded changes with a retry-safe command, sees pending-review status and can replace a still-pending proposal. No local profile or operational data is uploaded or overwritten.
+
+The approved profile remains authoritative until the Admin App accepts a proposal. Hosted Assistants cannot load or submit profile changes. GitHub Actions is the authoritative Android compile/lint/test gate because this PC has no JDK or Android SDK. Follow `docs/stage19b-device-test.md` after a green build.

@@ -113,3 +113,15 @@ Real staff onboarding, OTP recovery and production identity remain gated on Admi
 - [x] stable APK in-place upgrade and cross-app physical-device acceptance
 
 SMS and Push delivery remain disabled. Stage 18B is an in-app prototype boundary only.
+## Stage 19B - reviewed hosted Doctor profile
+
+- [x] Doctor-only approved profile workspace inside the hosted boundary
+- [x] bounded name, registration, specialty, qualification, experience and about editor
+- [x] pending revision status and safe replacement submission
+- [x] retry-safe idempotency key retained until a successful response
+- [x] local Doctor profile, clinic, queue, credentials and backup data remain isolated
+- [x] JSON contract unit coverage and stable-signed version increment
+- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [ ] Doctor/Admin/Patient cross-app physical-device acceptance
+
+Assistants cannot access this surface. Patient-facing profile values remain unchanged until the Admin approves the pending revision.

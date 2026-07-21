@@ -21,7 +21,7 @@ import kotlinx.coroutines.delay
 import java.time.LocalDate
 
 @Composable fun HostedStaffSyncScreen(localRole:UserRole,onBack:()->Unit,viewModel:HostedStaffViewModel){
- val state=viewModel.uiState;var pin by remember{mutableStateOf("")};var selectedSessionId by remember{mutableStateOf<String?>(null)}
+ val state=viewModel.uiState;val profileState=viewModel.profileUiState;var pin by remember{mutableStateOf("")};var selectedSessionId by remember{mutableStateOf<String?>(null)}
  LaunchedEffect(state.snapshot?.sessions){if(selectedSessionId==null)selectedSessionId=state.snapshot?.sessions?.firstOrNull()?.id}
  LaunchedEffect(state.snapshot!=null){if(state.snapshot!=null)while(true){delay(15_000);viewModel.refresh()}}
  LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
@@ -30,7 +30,7 @@ import java.time.LocalDate
   if(state.snapshot==null){item{ElevatedSection("Connect hosted identity",if(localRole==UserRole.DOCTOR)"Seeded Doctor" else "Seeded queue Assistant"){OutlinedTextField(pin,{pin=it.filter(Char::isDigit).take(4)},Modifier.fillMaxWidth(),label={Text("Demo PIN")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.NumberPassword),visualTransformation=PasswordVisualTransformation(),singleLine=true);Text("Use demo PIN 1234. No real credential is sent.",color=MaterialTheme.colorScheme.onSurfaceVariant);PrimaryAction(if(state.loading)"Connecting..." else "Connect to hosted prototype",{viewModel.connect(if(localRole==UserRole.DOCTOR)HostedStaffRole.DOCTOR else HostedStaffRole.ASSISTANT,pin)},enabled=pin.length==4&&!state.loading)}}}
   state.snapshot?.let{snapshot->
    item{ElevatedSection(snapshot.clinic.name,"${snapshot.clinic.doctorName} • ${snapshot.clinic.city}"){Text("Identity: ${snapshot.role.name}",fontWeight=FontWeight.Bold);Text("Permissions: ${snapshot.permissions.sorted().joinToString()}",color=MaterialTheme.colorScheme.onSurfaceVariant);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button({viewModel.refresh()},enabled=!state.loading){Text("Refresh")};OutlinedButton({viewModel.logout()}){Text("Disconnect hosted")}}}}
-   if(snapshot.role==HostedStaffRole.DOCTOR){item{HostedAnnouncementEditor(snapshot.clinic.id,snapshot.announcements,state.loading,viewModel::saveAnnouncement)};item{Text("Hosted Assistant access",style=MaterialTheme.typography.titleLarge)};if(snapshot.assistants.isEmpty())item{Text("No hosted Assistants assigned.",color=MaterialTheme.colorScheme.onSurfaceVariant)}else items(snapshot.assistants,key={"assistant-${it.id}"}){assistant->HostedAssistantAccessCard(assistant,state.loading,viewModel::updateAssistant)}}
+   if(snapshot.role==HostedStaffRole.DOCTOR){item{HostedDoctorProfileEditor(profileState,state.loading,viewModel::refreshDoctorProfile,viewModel::submitDoctorProfile)};item{HostedAnnouncementEditor(snapshot.clinic.id,snapshot.announcements,state.loading,viewModel::saveAnnouncement)};item{Text("Hosted Assistant access",style=MaterialTheme.typography.titleLarge)};if(snapshot.assistants.isEmpty())item{Text("No hosted Assistants assigned.",color=MaterialTheme.colorScheme.onSurfaceVariant)}else items(snapshot.assistants,key={"assistant-${it.id}"}){assistant->HostedAssistantAccessCard(assistant,state.loading,viewModel::updateAssistant)}}
    item{Text("Clinic sessions",style=MaterialTheme.typography.titleLarge)}
    items(snapshot.sessions,key={it.id}){session->FilterChip(selected=selectedSessionId==session.id,onClick={selectedSessionId=session.id},label={Text("${session.date} • ${session.name} • ${session.available} available")},modifier=Modifier.fillMaxWidth())}
    val session= snapshot.sessions.firstOrNull{it.id==selectedSessionId};val queue=snapshot.queues.firstOrNull{it.sessionId==selectedSessionId};val appointments=snapshot.appointments.filter{it.sessionId==selectedSessionId}
@@ -74,5 +74,31 @@ import java.time.LocalDate
   if(editing!=null)OutlinedButton({editing=null},Modifier.fillMaxWidth()){Text("Cancel editing")}
   if(announcements.isEmpty())Text("No hosted announcements have been created.",color=MaterialTheme.colorScheme.onSurfaceVariant)
   announcements.forEach{announcement->HorizontalDivider();Text(announcement.title,fontWeight=FontWeight.Bold);Text("${announcement.kind.replace('_',' ')} | ${announcement.startsOn} to ${announcement.endsOn} | ${if(announcement.active)"Active" else "Draft"}",color=MaterialTheme.colorScheme.onSurfaceVariant);Text(announcement.message);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){OutlinedButton({editing=announcement},enabled=!loading){Text("Edit")};OutlinedButton({onSave(announcement.copy(active=!announcement.active))},enabled=!loading){Text(if(announcement.active)"Set draft" else "Publish")}}}
+ }
+}
+@Composable private fun HostedDoctorProfileEditor(state:HostedDoctorProfileUiState,queueLoading:Boolean,onRefresh:()->Unit,onSubmit:(HostedDoctorProfile)->Unit){
+ val workspace=state.workspace
+ if(workspace==null){ElevatedSection("Reviewed Doctor profile",state.message){StatusPill(if(state.error)"Needs attention" else "Loading",false);PrimaryAction("Load approved profile",onRefresh,enabled=!state.loading&&!queueLoading)};return}
+ val approved=workspace.profile;val draft=workspace.pendingRevision
+ var displayName by remember(approved.profileRevision,draft?.id){mutableStateOf(draft?.displayName?:approved.displayName)}
+ var registration by remember(approved.profileRevision,draft?.id){mutableStateOf(draft?.registrationNumber?:approved.registrationNumber)}
+ var specialty by remember(approved.profileRevision,draft?.id){mutableStateOf(draft?.specialty?:approved.specialty)}
+ var qualification by remember(approved.profileRevision,draft?.id){mutableStateOf(draft?.qualification?:approved.qualification)}
+ var experience by remember(approved.profileRevision,draft?.id){mutableStateOf((draft?.experienceYears?:approved.experienceYears).toString())}
+ var about by remember(approved.profileRevision,draft?.id){mutableStateOf(draft?.about?:approved.about)}
+ val years=experience.toIntOrNull();val registrationValid=registration.trim().matches(Regex("[A-Za-z0-9][A-Za-z0-9 ./-]{1,79}"));val valid=displayName.trim().length in 2..100&&registrationValid&&specialty.trim().length in 2..80&&qualification.trim().length in 2..160&&years!=null&&years in 0..80&&about.trim().length<=1000
+ ElevatedSection("Reviewed Doctor profile","Approved revision ${approved.profileRevision} | ${approved.verificationStatus}"){
+  Text("Patient-facing values change only after Admin approval.",color=MaterialTheme.colorScheme.onSurfaceVariant)
+  draft?.let{StatusPill("Pending Admin review",true);Text("Submitted ${it.submittedAt}",color=MaterialTheme.colorScheme.onSurfaceVariant)}
+  Text("Approved: ${approved.displayName} | ${approved.specialty}",fontWeight=FontWeight.Bold)
+  OutlinedTextField(displayName,{displayName=it.take(100)},Modifier.fillMaxWidth(),label={Text("Doctor display name")},singleLine=true)
+  OutlinedTextField(registration,{registration=it.take(80)},Modifier.fillMaxWidth(),label={Text("Registration number")},singleLine=true,isError=registration.isNotBlank()&&!registrationValid)
+  OutlinedTextField(specialty,{specialty=it.take(80)},Modifier.fillMaxWidth(),label={Text("Specialty")},singleLine=true)
+  OutlinedTextField(qualification,{qualification=it.take(160)},Modifier.fillMaxWidth(),label={Text("Qualification")},singleLine=true)
+  OutlinedTextField(experience,{experience=it.filter(Char::isDigit).take(2)},Modifier.fillMaxWidth(),label={Text("Experience years")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),singleLine=true)
+  OutlinedTextField(about,{about=it.take(1000)},Modifier.fillMaxWidth(),label={Text("About")},minLines=3,supportingText={Text("${about.length}/1000")})
+  Text(state.message,color=if(state.error)MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+  PrimaryAction(if(draft==null)"Submit profile for review" else "Replace pending revision",{onSubmit(approved.copy(displayName=displayName.trim(),registrationNumber=registration.trim(),specialty=specialty.trim(),qualification=qualification.trim(),experienceYears=years?:0,about=about.trim()))},enabled=valid&&!state.loading&&!queueLoading)
+  OutlinedButton(onRefresh,Modifier.fillMaxWidth(),enabled=!state.loading&&!queueLoading){Text("Refresh review status")}
  }
 }
