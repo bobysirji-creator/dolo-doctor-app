@@ -78,3 +78,7 @@ The hosted Doctor screen now lists the seeded server Assistant and can authorita
 ## Stage 18B hosted announcements
 
 The seeded hosted Doctor can manage in-app announcements for Patient profiles. Hosted Assistants cannot access this surface. The mature local announcement workflow remains separate; no local data is uploaded and external providers remain disabled.
+
+## Stage 20B hosted clinic schedule
+
+The separate hosted Doctor workspace now includes an authoritative clinic-schedule editor. The seeded Doctor can set current-day-only or 1-90 day advance booking, the 1-30 day missed-appointment window, recurring Morning/Evening rules for every weekday, per-session token limits and average consultation time, plus date-specific whole-day or per-session closure/reopening. Hosted Assistants cannot see this editor. The accepted local clinic workflow and all local data remain isolated; Maps, Payments, SMS and Push remain disabled.

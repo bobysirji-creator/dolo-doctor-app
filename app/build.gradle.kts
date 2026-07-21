@@ -23,8 +23,8 @@ android {
         applicationId = "com.dolo.doctor"
         minSdk = 26
         targetSdk = 35
-        versionCode = 31
-        versionName = "0.18.1-stage19b"
+        versionCode = 32
+        versionName = "0.19.0-stage20b"
         buildConfigField("String", "DOLO_API_BASE_URL", "\"https://dolo-platform-api-prototype.onrender.com\"")
     }
     signingConfigs {

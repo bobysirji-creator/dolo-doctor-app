@@ -308,3 +308,9 @@ Doctor App `0.18.1-stage19b` (version code 31) fixes the physical-test finding w
 ## Stage 19B acceptance
 
 Doctor App `0.18.1-stage19b` passed GitHub Actions, stable in-place APK upgrade and all cross-app physical-device checks on 21 July 2026. Reviewed-profile submission, pending/replacement behavior, Admin approval/rejection, Patient propagation, restart/offline safety and local-data isolation passed. The role-isolation retest also passed: switching from a saved hosted Doctor session to a local Assistant clears the Doctor credential and exposes no Doctor-only action.
+
+## Stage 20B implementation checkpoint
+
+Doctor App `0.19.0-stage20b` (version code 32) adds a Doctor-only schedule editor to the separate hosted workspace. The Doctor can change the authoritative future-booking and reschedule windows, edit recurring Morning/Evening rules for each weekday, set capacity and average consultation time, and close or reopen a whole date or one session. The screen reloads server state after every mutation.
+
+Hosted Assistants cannot see the editor and the API remains the independent authorization boundary. Existing local clinic schedules, queues, appointments, credentials and backups are never uploaded or replaced. GitHub Actions is the authoritative Android compile/lint/unit/APK gate because this PC has no JDK/Android SDK. Follow `docs/stage20b-device-test.md` after API Stage 20A is deployed.

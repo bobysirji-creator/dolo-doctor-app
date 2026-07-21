@@ -126,3 +126,16 @@ SMS and Push delivery remain disabled. Stage 18B is an in-app prototype boundary
 - [x] Doctor/Admin/Patient cross-app physical-device acceptance (2026-07-21)
 
 Assistants cannot access this surface. Patient-facing profile values remain unchanged until the Admin approves the pending revision.
+
+## Stage 20B - authoritative hosted clinic schedule
+
+- [x] Doctor-only hosted schedule editor
+- [x] current-day-only or 1-90 day future booking control
+- [x] recurring weekday Morning/Evening rules and per-session closure
+- [x] token limit and average consultation-time editing
+- [x] whole-day or session-specific date exceptions
+- [x] hosted JSON contract unit coverage and stable version increment
+- [x] local and hosted data remain isolated; external providers remain disabled
+- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [ ] stable APK in-place upgrade
+- [ ] paired Doctor/Patient physical-device acceptance
