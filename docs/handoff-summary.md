@@ -292,3 +292,8 @@ Stage 16F was accepted on 2026-07-20 after GitHub Actions passed, the stable APK
 Doctor App `0.17.0-stage18b` (version code 29) adds a separate Doctor-only hosted announcement editor inside the accepted hosted workspace. Doctors can create or edit bounded availability, camp, offer and general messages, and switch each message between published and draft. Every mutation uses the Stage 18A authoritative Platform API and reloads the server list; retry keys are retained until success.
 
 Hosted Assistants cannot see the editor and the API independently rejects their access. Existing local announcements, clinic state, queues, credentials and backups are not uploaded or merged. SMS, Push, Maps and Payments remain disabled. GitHub Actions is the authoritative Android build gate because this PC has no local JDK/SDK.
+
+
+## Stage 18B acceptance
+
+Doctor App `0.17.0-stage18b` passed GitHub Actions, stable in-place APK upgrade and all Stage 18B cross-app physical-device checks on 21 July 2026. Doctor-only creation, editing, publish/draft handling, Assistant exclusion, restart restoration and offline recovery passed; all local Doctor data remained intact. External providers remain disabled.

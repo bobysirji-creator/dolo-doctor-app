@@ -109,7 +109,7 @@ Real staff onboarding, OTP recovery and production identity remain gated on Admi
 - [x] authoritative list, create, edit, publish and draft operations with retry-safe commands
 - [x] Assistant identities excluded from hosted announcement management
 - [x] active Patient feed reads Doctor announcements and Admin broadcasts without uploading local data
-- [ ] GitHub Actions compile, lint and unit tests
-- [ ] stable APK in-place upgrade and physical-device acceptance
+- [x] GitHub Actions compile, lint and unit tests
+- [x] stable APK in-place upgrade and cross-app physical-device acceptance
 
 SMS and Push delivery remain disabled. Stage 18B is an in-app prototype boundary only.
