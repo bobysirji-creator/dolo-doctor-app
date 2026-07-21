@@ -122,7 +122,7 @@ SMS and Push delivery remain disabled. Stage 18B is an in-app prototype boundary
 - [x] local Doctor profile, clinic, queue, credentials and backup data remain isolated
 - [x] hosted session is bound to the current local Doctor/Assistant role
 - [x] JSON contract unit coverage and stable-signed version increment
-- [ ] GitHub Actions compile, lint, unit tests and stable APK
-- [ ] Doctor/Admin/Patient cross-app physical-device acceptance
+- [x] GitHub Actions compile, lint, unit tests and stable APK
+- [x] Doctor/Admin/Patient cross-app physical-device acceptance (2026-07-21)
 
 Assistants cannot access this surface. Patient-facing profile values remain unchanged until the Admin approves the pending revision.

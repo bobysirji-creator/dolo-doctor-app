@@ -305,3 +305,6 @@ The approved profile remains authoritative until the Admin App accepts a proposa
 ## Stage 19B role-isolation correction
 
 Doctor App `0.18.1-stage19b` (version code 31) fixes the physical-test finding where a restored hosted Doctor token could appear after switching the local app to an Assistant. Hosted snapshots now render only when the encrypted hosted role matches the current local role. A mismatch immediately hides every hosted action, clears the saved session, and requires a fresh matching-role connection. Local logout also clears the hosted session. Pure role-matrix tests cover both permitted and both denied combinations.
+## Stage 19B acceptance
+
+Doctor App `0.18.1-stage19b` passed GitHub Actions, stable in-place APK upgrade and all cross-app physical-device checks on 21 July 2026. Reviewed-profile submission, pending/replacement behavior, Admin approval/rejection, Patient propagation, restart/offline safety and local-data isolation passed. The role-isolation retest also passed: switching from a saved hosted Doctor session to a local Assistant clears the Doctor credential and exposes no Doctor-only action.
