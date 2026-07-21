@@ -1,5 +1,6 @@
 package com.dolo.doctor.hosted
 
+import com.dolo.doctor.data.model.UserRole
 import org.json.JSONObject
 
 data class HostedDoctorProfile(
@@ -81,4 +82,14 @@ object HostedDoctorProfileJson {
         submittedAt = item.getString("submittedAt"),
         reviewedAt = item.optString("reviewedAt").takeIf { it.isNotBlank() }
     )
+}
+object HostedRoleBoundary {
+    fun allows(localRole: UserRole, hostedRole: HostedStaffRole): Boolean =
+        (localRole == UserRole.DOCTOR && hostedRole == HostedStaffRole.DOCTOR) ||
+            (localRole == UserRole.ASSISTANT && hostedRole == HostedStaffRole.ASSISTANT)
+
+    fun expected(localRole: UserRole): HostedStaffRole = when (localRole) {
+        UserRole.DOCTOR -> HostedStaffRole.DOCTOR
+        UserRole.ASSISTANT -> HostedStaffRole.ASSISTANT
+    }
 }

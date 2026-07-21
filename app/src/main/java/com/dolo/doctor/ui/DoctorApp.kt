@@ -134,6 +134,7 @@ private object Routes {
                 ::profile,
                 { nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } },
                 {
+                    hostedViewModel.localLogout()
                     authViewModel.logout()
                     doctorViewModel.logout(authRepository.removedAssistantIds())
                     nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }

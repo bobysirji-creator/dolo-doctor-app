@@ -50,7 +50,9 @@ class HttpHostedStaffApi(baseUrl:String,private val store:HostedStaffTokenStore,
  fun savedRole():HostedStaffRole?=store.read()?.role
  fun connect(role:HostedStaffRole,pin:String):HostedResult<HostedStaffSnapshot> = guarded {val identity=if(role==HostedStaffRole.DOCTOR)"doctor-demo" else "assistant-demo";val response=requestRaw("POST","/api/v1/auth/prototype/staff-sessions",JSONObject().put("identity",identity).put("pin",pin).put("deviceLabel","DO-LO Doctor Android").toString());store.save(parseTokens(response,role));load()}
  fun refresh():HostedResult<HostedStaffSnapshot> = guarded{load()}
- fun logout(){accessToken()?.let{runCatching{requestRaw("POST","/api/v1/auth/logout","{}",it)}};store.clear()}
+ fun detachSession():String?=store.read()?.accessToken.also{store.clear()}
+ fun revokeDetached(token:String?){token?.let{runCatching{requestRaw("POST","/api/v1/auth/logout","{}",it)}}}
+ fun logout(){revokeDetached(detachSession())}
  fun admit(sessionId:String,appointmentId:String):HostedResult<HostedStaffSnapshot> = command("POST","/api/v1/clinic-sessions/$sessionId/queue/admissions",JSONObject().put("appointmentId",appointmentId).put("clinicFeeStatus","PAID").toString(),"admit-$appointmentId")
  fun sessionCommand(sessionId:String,currentStatus:String,lastToken:Int,command:String):HostedResult<HostedStaffSnapshot> = command("POST","/api/v1/clinic-sessions/$sessionId/queue/commands",JSONObject().put("command",command).toString(),"session-$sessionId-$currentStatus-$lastToken-$command")
  fun appointmentCommand(sessionId:String,appointmentId:String,status:String,command:String):HostedResult<HostedStaffSnapshot> = command("POST","/api/v1/clinic-sessions/$sessionId/queue/appointments/$appointmentId/commands",JSONObject().put("command",command).toString(),"appointment-$appointmentId-$status-$command")
@@ -82,6 +84,8 @@ class HostedStaffViewModel(private val api:HttpHostedStaffApi):ViewModel(){
  private val executor=Executors.newSingleThreadExecutor();private val main=Handler(Looper.getMainLooper())
  init{if(api.savedRole()!=null)refresh()}
  fun connect(role:HostedStaffRole,pin:String)=execute{api.connect(role,pin)}
+ fun bindLocalRole(localRole:com.dolo.doctor.data.model.UserRole){val expected=HostedRoleBoundary.expected(localRole);val mismatch=api.savedRole()?.let{it!=expected}==true||uiState.snapshot?.let{it.role!=expected}==true;if(!mismatch)return;val token=api.detachSession();uiState=HostedStaffUiState(loading=true,message="Clearing a hosted session that belongs to another local role...");profileUiState=HostedDoctorProfileUiState();executor.execute{api.revokeDetached(token);api.detachSession();main.post{uiState=HostedStaffUiState(message="Previous hosted role cleared. Connect as ${expected.name.lowercase()}.")}}}
+ fun localLogout(){val token=api.detachSession();uiState=HostedStaffUiState(message="Local account signed out; hosted session cleared.");profileUiState=HostedDoctorProfileUiState();executor.execute{api.revokeDetached(token);api.detachSession()}}
  fun refresh()=execute{api.refresh()}
  fun refreshDoctorProfile()=executeProfile{api.loadDoctorProfile()}
  fun submitDoctorProfile(profile:HostedDoctorProfile)=executeProfile{api.submitDoctorProfile(profile)}

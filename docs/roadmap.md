@@ -120,6 +120,7 @@ SMS and Push delivery remain disabled. Stage 18B is an in-app prototype boundary
 - [x] pending revision status and safe replacement submission
 - [x] retry-safe idempotency key retained until a successful response
 - [x] local Doctor profile, clinic, queue, credentials and backup data remain isolated
+- [x] hosted session is bound to the current local Doctor/Assistant role
 - [x] JSON contract unit coverage and stable-signed version increment
 - [ ] GitHub Actions compile, lint, unit tests and stable APK
 - [ ] Doctor/Admin/Patient cross-app physical-device acceptance

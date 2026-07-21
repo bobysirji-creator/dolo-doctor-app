@@ -8,7 +8,7 @@
 6. Approve the revision with a short note. Refresh the Doctor profile and confirm the approved revision/value changes and pending status disappears.
 7. Refresh/re-login the Patient App and confirm the approved name/specialty appears.
 8. Submit a second Doctor revision, reject it from Admin, then confirm Doctor and Patient retain the last approved values.
-9. Connect as hosted Assistant and confirm no profile editor or submission access is shown.
+9. While a hosted Doctor session is saved, log out locally, sign in as Assistant, and open Hosted staff queue. Confirm the Doctor session is cleared, a fresh Assistant connection is required, and no profile editor, announcements, Assistant management or other Doctor-only actions appear.
 10. Disable internet, attempt a Doctor profile refresh/submission, and confirm the local Doctor data remains safe; reconnect and recover.
 
 Do not enter real registration, qualification or personal data in this seeded prototype.

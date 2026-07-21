@@ -302,3 +302,6 @@ Doctor App `0.17.0-stage18b` passed GitHub Actions, stable in-place APK upgrade 
 Doctor App `0.18.0-stage19b` (version code 30) extends the separate hosted Doctor workspace with reviewed profile editing. The seeded Doctor reads the current approved profile, submits bounded changes with a retry-safe command, sees pending-review status and can replace a still-pending proposal. No local profile or operational data is uploaded or overwritten.
 
 The approved profile remains authoritative until the Admin App accepts a proposal. Hosted Assistants cannot load or submit profile changes. GitHub Actions is the authoritative Android compile/lint/test gate because this PC has no JDK or Android SDK. Follow `docs/stage19b-device-test.md` after a green build.
+## Stage 19B role-isolation correction
+
+Doctor App `0.18.1-stage19b` (version code 31) fixes the physical-test finding where a restored hosted Doctor token could appear after switching the local app to an Assistant. Hosted snapshots now render only when the encrypted hosted role matches the current local role. A mismatch immediately hides every hosted action, clears the saved session, and requires a fresh matching-role connection. Local logout also clears the hosted session. Pure role-matrix tests cover both permitted and both denied combinations.
