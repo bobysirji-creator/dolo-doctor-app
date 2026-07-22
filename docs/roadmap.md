@@ -139,3 +139,12 @@ Assistants cannot access this surface. Patient-facing profile values remain unch
 - [x] GitHub Actions compile, lint, unit tests and stable APK
 - [x] stable APK in-place upgrade
 - [x] paired Doctor/Patient physical-device acceptance
+
+## Stage 21B/22A cross-app companion
+
+- [x] Stage 21B SELF/FAMILY names and tokens accepted in hosted appointments/queue
+- [x] no local Patient family data consumed by Doctor App
+- [x] existing ABSENT command provides server-authoritative reschedule eligibility
+- [ ] Stage 22A original/replacement status and lineage physical-device acceptance
+
+No Doctor APK change is required for this checkpoint.

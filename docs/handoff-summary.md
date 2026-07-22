@@ -318,3 +318,11 @@ Hosted Assistants cannot see the editor and the API remains the independent auth
 ## Stage 20B acceptance
 
 Doctor App `0.19.0-stage20b` passed GitHub Actions, stable in-place upgrade and the complete cross-app physical-device checklist on 22 July 2026. Hosted schedule policy, weekday/session controls, date exceptions, token limits, restart restoration, Assistant exclusion and local-data isolation passed. An intermittent weekday-session re-enable doubt remains monitored but unconfirmed; date-specific closures, elapsed session time, closed queue state and full capacity can legitimately keep a weekly session enabled again unavailable.
+
+## Stage 21B family-booking cross-app acceptance
+
+The existing hosted Doctor queue passed the Stage 21B family-booking physical-device checklist on 22 July 2026 without an APK change. SELF and FAMILY appointments retained their respective patient names, tokens, fee admission and queue progress across refresh, restart and offline recovery. The Doctor App did not receive or expose the Patient App's private local family list.
+
+## Stage 22A companion boundary
+
+No Doctor APK change is required for the Patient reschedule client. The accepted hosted appointments workspace already displays original and replacement appointments returned by the Platform API and provides the ABSENT command used to establish eligibility. Stage 22A device acceptance must confirm both records and their status/lineage remain operationally clear; consultation fees remain clinic-direct and platform billing excludes the replacement.
