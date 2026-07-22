@@ -1,3 +1,8 @@
+## Stage 23A hosted fee testability correction
+
+Version 0.20.0-stage23a (version code 33) exposes both authoritative clinic-direct admission outcomes in the hosted staff queue: `Confirm paid fee and admit` and `Waive fee and admit`. The selected status is sent to the existing protected API contract and included in its idempotency fingerprint.
+
+Current-day PENDING appointments already created for SELF and FAMILY can be reused for Patient receipt verification. Duplicate-booking protection and the prohibition on future-date clinic fee confirmation remain unchanged.
 ## Stage 11.3 late-arrival cohorts and financial boundary
 
 Version 0.11.3-stage11 (version code 22) groups late arrivals by the token that was in consultation when they were admitted. The first late patient receives the established position after up to four waiting patients. Additional late patients admitted during that same consultation join the same persisted cohort and are sorted by original token number, so token 6 cannot overtake token 5. A new active consultation creates a new cohort.
