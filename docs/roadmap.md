@@ -145,6 +145,13 @@ Assistants cannot access this surface. Patient-facing profile values remain unch
 - [x] Stage 21B SELF/FAMILY names and tokens accepted in hosted appointments/queue
 - [x] no local Patient family data consumed by Doctor App
 - [x] existing ABSENT command provides server-authoritative reschedule eligibility
-- [ ] Stage 22A original/replacement status and lineage physical-device acceptance
+- [x] Stage 22A original/replacement status and lineage physical-device acceptance
+
+No Doctor APK change is required for this checkpoint.
+## Stage 23A clinic receipt companion
+
+- [x] existing hosted fee confirmation generates the authoritative receipt record
+- [x] PAID and WAIVED remain clinic-direct and separate from DO-LO service charges
+- [ ] Patient receipt status/reference cross-app physical-device acceptance
 
 No Doctor APK change is required for this checkpoint.

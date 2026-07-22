@@ -326,3 +326,10 @@ The existing hosted Doctor queue passed the Stage 21B family-booking physical-de
 ## Stage 22A companion boundary
 
 No Doctor APK change is required for the Patient reschedule client. The accepted hosted appointments workspace already displays original and replacement appointments returned by the Platform API and provides the ABSENT command used to establish eligibility. Stage 22A device acceptance must confirm both records and their status/lineage remain operationally clear; consultation fees remain clinic-direct and platform billing excludes the replacement.
+## Stage 22A cross-app acceptance
+
+The unchanged Doctor hosted queue passed the Stage 22A physical-device checklist on 22 July 2026. ABSENT state creation, original/replacement visibility and lineage remained clear across refresh, restart and offline recovery. An additional observation retest is planned for 23 July.
+
+## Stage 23A clinic receipt companion
+
+No Doctor APK change is required. The accepted Doctor/Assistant hosted admission action already records PAID or WAIVED, the clinic amount and compulsory receipt reference. Platform API Stage 23A now carries that safe record into Patient history. Cross-app testing must compare the Doctor receipt reference with the Patient card and confirm that no clinic payment method or online payment data is exposed.
