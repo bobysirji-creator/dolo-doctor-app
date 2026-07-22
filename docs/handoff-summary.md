@@ -314,3 +314,7 @@ Doctor App `0.18.1-stage19b` passed GitHub Actions, stable in-place APK upgrade 
 Doctor App `0.19.0-stage20b` (version code 32) adds a Doctor-only schedule editor to the separate hosted workspace. The Doctor can change the authoritative future-booking and reschedule windows, edit recurring Morning/Evening rules for each weekday, set capacity and average consultation time, and close or reopen a whole date or one session. The screen reloads server state after every mutation.
 
 Hosted Assistants cannot see the editor and the API remains the independent authorization boundary. Existing local clinic schedules, queues, appointments, credentials and backups are never uploaded or replaced. GitHub Actions is the authoritative Android compile/lint/unit/APK gate because this PC has no JDK/Android SDK. Follow `docs/stage20b-device-test.md` after API Stage 20A is deployed.
+
+## Stage 20B acceptance
+
+Doctor App `0.19.0-stage20b` passed GitHub Actions, stable in-place upgrade and the complete cross-app physical-device checklist on 22 July 2026. Hosted schedule policy, weekday/session controls, date exceptions, token limits, restart restoration, Assistant exclusion and local-data isolation passed. An intermittent weekday-session re-enable doubt remains monitored but unconfirmed; date-specific closures, elapsed session time, closed queue state and full capacity can legitimately keep a weekly session enabled again unavailable.

@@ -136,6 +136,6 @@ Assistants cannot access this surface. Patient-facing profile values remain unch
 - [x] whole-day or session-specific date exceptions
 - [x] hosted JSON contract unit coverage and stable version increment
 - [x] local and hosted data remain isolated; external providers remain disabled
-- [ ] GitHub Actions compile, lint, unit tests and stable APK
-- [ ] stable APK in-place upgrade
-- [ ] paired Doctor/Patient physical-device acceptance
+- [x] GitHub Actions compile, lint, unit tests and stable APK
+- [x] stable APK in-place upgrade
+- [x] paired Doctor/Patient physical-device acceptance
