@@ -153,6 +153,6 @@ No Doctor APK change is required for this checkpoint.
 - [x] existing hosted fee confirmation generates the authoritative receipt record
 - [x] hosted staff can explicitly confirm PAID or WAIVED before admission
 - [x] PAID and WAIVED remain clinic-direct and separate from DO-LO service charges
-- [ ] Patient receipt status/reference cross-app physical-device acceptance
+- [x] Patient receipt status/reference cross-app physical-device acceptance
 
 Use existing current-day PENDING appointments for this checkpoint; duplicate test bookings are not required. Future appointments remain ineligible for clinic fee confirmation.

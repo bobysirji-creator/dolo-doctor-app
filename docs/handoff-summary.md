@@ -338,3 +338,7 @@ The unchanged Doctor hosted queue passed the Stage 22A physical-device checklist
 ## Stage 23A clinic receipt companion
 
 No Doctor APK change is required. The accepted Doctor/Assistant hosted admission action already records PAID or WAIVED, the clinic amount and compulsory receipt reference. Platform API Stage 23A now carries that safe record into Patient history. Cross-app testing must compare the Doctor receipt reference with the Patient card and confirm that no clinic payment method or online payment data is exposed.
+
+## Stage 23A acceptance
+
+Doctor App `0.20.0-stage23a` passed the hosted PAID/WAIVED admission and Patient receipt cross-app checklist on 22 July 2026. Duplicate and future-date protections remained enforced. A next-clinic-day observation retest is planned for 23 July without blocking Stage 24A.
