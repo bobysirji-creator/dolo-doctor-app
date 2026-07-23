@@ -359,3 +359,7 @@ Stages 26A-26B require no Doctor APK change. Patient support requests are a sepa
 Doctor App `0.22.0-stage28b` (version code 35) consumes Platform API `0.19.0-stage28ab` clinic-scoped staff notifications. The existing Home bell counts hosted unread events, the Notifications screen shows Patient name and token with bounded appointment/queue copy, and reading one or all cards advances only the authenticated Doctor or Assistant's monotonic server cursor. A matching hosted session refreshes every 15 seconds; role mismatch protection remains active.
 
 Local Doctor/Assistant notifications and all offline clinic data remain independent. Deploy API migration 024 before building the stable APK, then follow `docs/stage28ab-device-test.md`. Android Push, SMS, Maps and Payments remain disabled.
+
+## Stage 28B acceptance
+
+Doctor App `0.22.0-stage28b` and Platform API `0.19.0-stage28ab` passed GitHub Actions, stable upgrade, Render deployment and the complete Stage 28A-B device checklist on 23 July 2026. Doctor/Assistant notification scope, independent read state, Patient/token identity, new-event refresh, role switching, restart/offline recovery and local-data safety are accepted.

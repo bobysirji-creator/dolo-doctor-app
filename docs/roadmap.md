@@ -179,8 +179,8 @@ External providers remain disabled.
 - [x] retain local notification data separately
 - [x] refresh hosted activity every 15 seconds while the matching role is connected
 - [x] JSON parsing regression coverage and stable version increment
-- [ ] GitHub Actions compile, lint, unit tests and stable APK
-- [ ] stable APK in-place upgrade
-- [ ] paired Doctor/Assistant physical-device acceptance
+- [x] GitHub Actions compile, lint, unit tests and stable APK
+- [x] stable APK in-place upgrade
+- [x] paired Doctor/Assistant physical-device acceptance
 
 Android Push, SMS, Maps and Payments remain disabled.
