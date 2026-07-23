@@ -156,3 +156,15 @@ No Doctor APK change is required for this checkpoint.
 - [x] Patient receipt status/reference cross-app physical-device acceptance
 
 Use existing current-day PENDING appointments for this checkpoint; duplicate test bookings are not required. Future appointments remain ineligible for clinic fee confirmation.
+## Stage 25C - published Patient review feed
+
+- [x] Doctor-only owner-scoped hosted review endpoint consumption
+- [x] read-only PUBLISHED review cards for the clinic
+- [x] PENDING, HIDDEN and REJECTED states excluded
+- [x] Assistant UI exclusion backed by API denial
+- [x] JSON boundary regression coverage and stable version increment
+- [x] local Doctor data remains isolated
+- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [ ] combined Admin/Doctor/Patient physical-device acceptance
+
+External providers remain disabled.

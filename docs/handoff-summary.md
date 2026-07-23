@@ -342,3 +342,8 @@ No Doctor APK change is required. The accepted Doctor/Assistant hosted admission
 ## Stage 23A acceptance
 
 Doctor App `0.20.0-stage23a` passed the hosted PAID/WAIVED admission and Patient receipt cross-app checklist on 22 July 2026. Duplicate and future-date protections remained enforced. A next-clinic-day observation retest is planned for 23 July without blocking Stage 24A.
+## Stage 25C implementation checkpoint
+
+Doctor App 0.21.0-stage25c (version code 34) adds a read-only Published Patient reviews section to the Doctor-only hosted workspace. Refresh loads the new protected staff review endpoint alongside announcements. The API returns only reviews owned by the authenticated Doctor and already PUBLISHED by Admin. The parser rejects any unpublished payload defensively.
+
+Hosted Assistants neither request nor render the feed, and the API independently returns forbidden. Local Doctor/Assistant credentials, clinic data, queues, schedules, announcements and backups remain separate. Build after API 0.16.0-stage25cd is deployed, then follow docs/stage25cd-device-test.md.
