@@ -39,9 +39,10 @@ fun NotificationsScreen(
         ?.cursor
     val unreadCount = notifications.count { it.sequence > state.notificationReadThrough } +
         hostedNotifications.count { !it.read }
-    val markAll = {
+    val markAll: () -> Unit = {
         onMarkAllRead()
         newestHostedCursor?.let(onMarkHostedRead)
+        Unit
     }
     LazyColumn(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding().padding(20.dp),
