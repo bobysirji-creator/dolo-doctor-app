@@ -353,3 +353,9 @@ Hosted Assistants neither request nor render the feed, and the API independently
 Doctor App `0.21.0-stage25c` passed GitHub Actions, stable in-place upgrade and the complete combined Stage 25C-25D checklist on 23 July 2026. The Doctor received only published owner-scoped Patient reviews; PENDING, HIDDEN and REJECTED content remained excluded, Assistants remained denied, and all existing local Doctor/Assistant data stayed intact.
 
 Stages 26A-26B require no Doctor APK change. Patient support requests are a separate Patient/Admin boundary, and both Doctor and Assistant roles are denied by the Platform API.
+
+## Stage 28B implementation checkpoint
+
+Doctor App `0.22.0-stage28b` (version code 35) consumes Platform API `0.19.0-stage28ab` clinic-scoped staff notifications. The existing Home bell counts hosted unread events, the Notifications screen shows Patient name and token with bounded appointment/queue copy, and reading one or all cards advances only the authenticated Doctor or Assistant's monotonic server cursor. A matching hosted session refreshes every 15 seconds; role mismatch protection remains active.
+
+Local Doctor/Assistant notifications and all offline clinic data remain independent. Deploy API migration 024 before building the stable APK, then follow `docs/stage28ab-device-test.md`. Android Push, SMS, Maps and Payments remain disabled.

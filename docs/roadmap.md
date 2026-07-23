@@ -168,3 +168,19 @@ Use existing current-day PENDING appointments for this checkpoint; duplicate tes
 - [x] combined Admin/Doctor/Patient physical-device acceptance
 
 External providers remain disabled.
+
+## Stage 28B - authoritative hosted staff notifications
+
+- [x] load clinic-scoped hosted notifications for matching Doctor or Assistant identity
+- [x] include hosted unread events in the Home notification badge
+- [x] show Patient name, token and bounded appointment/queue event copy
+- [x] mark one or all hosted events through a server-owned cursor
+- [x] keep Doctor and Assistant read cursors independent
+- [x] retain local notification data separately
+- [x] refresh hosted activity every 15 seconds while the matching role is connected
+- [x] JSON parsing regression coverage and stable version increment
+- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [ ] stable APK in-place upgrade
+- [ ] paired Doctor/Assistant physical-device acceptance
+
+Android Push, SMS, Maps and Payments remain disabled.

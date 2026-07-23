@@ -89,6 +89,7 @@ import java.time.LocalDate
     state: DoctorUiState,
     permissions: Set<Permission>,
     darkTheme: Boolean,
+    hostedUnreadNotifications: Int,
     onToggleTheme: () -> Unit,
     onQueue: () -> Unit,
     onAppointments: () -> Unit,
@@ -117,7 +118,7 @@ import java.time.LocalDate
     val morningQueue = state.sessionQueues.firstOrNull { it.session == "Morning" } ?: ConsultationQueue("Morning", state.queueState, state.currentToken)
     val eveningQueue = state.sessionQueues.firstOrNull { it.session == "Evening" } ?: ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
     var confirmLogout by remember { mutableStateOf(false) }
-    val unreadNotifications = state.auditEvents.count { it.sequence > state.notificationReadThrough }
+    val unreadNotifications = state.auditEvents.count { it.sequence > state.notificationReadThrough } + hostedUnreadNotifications
     Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.HOME, {}, onQueue, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {

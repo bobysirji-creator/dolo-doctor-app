@@ -19,6 +19,7 @@ import com.dolo.doctor.hosted.HostedStaffViewModel
 import com.dolo.doctor.hosted.HostedStaffViewModelFactory
 import com.dolo.doctor.hosted.HttpHostedStaffApi
 import com.dolo.doctor.ui.screens.*
+import kotlinx.coroutines.delay
 
 private object Routes {
     const val SPLASH = "splash"
@@ -69,6 +70,10 @@ private object Routes {
         else doctorViewModel.login(session.role, session.userId.takeIf { session.role == UserRole.ASSISTANT }, authRepository.removedAssistantIds())
     }
 
+    LaunchedEffect(state.role) { state.role?.let(hostedViewModel::bindLocalRole) }
+    val hostedSnapshot = hostedViewModel.uiState.snapshot?.takeIf { snapshot -> state.role?.let { com.dolo.doctor.hosted.HostedRoleBoundary.allows(it,snapshot.role) } == true }
+    LaunchedEffect(hostedSnapshot?.role) { if(hostedSnapshot!=null) while(true){ delay(15_000);hostedViewModel.refresh() } }
+    val hostedUnread = hostedSnapshot?.notifications?.count{!it.read} ?: 0
     fun home() = nav.navigate(Routes.HOME) { launchSingleTop = true }
     fun queue() = nav.navigate(Routes.QUEUE) { launchSingleTop = true }
     fun appointments() = nav.navigate(Routes.APPOINTMENTS) { launchSingleTop = true }
@@ -117,6 +122,7 @@ private object Routes {
                 state,
                 permissions,
                 darkTheme,
+                hostedUnread,
                 onToggleTheme,
                 ::queue,
                 ::appointments,
@@ -220,6 +226,6 @@ private object Routes {
             )
         }
         composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::queue, ::appointments, doctorViewModel::updateProfile) }
-        composable(Routes.NOTIFICATIONS) { NotificationsScreen(state, nav::popBackStack, doctorViewModel::markNotificationRead, doctorViewModel::markAllNotificationsRead) }
+        composable(Routes.NOTIFICATIONS) { NotificationsScreen(state, hostedViewModel.uiState.copy(snapshot=hostedSnapshot), nav::popBackStack, doctorViewModel::markNotificationRead, doctorViewModel::markAllNotificationsRead, hostedViewModel::markHostedNotificationsRead) }
     }
 }

@@ -18,19 +18,31 @@ import androidx.compose.ui.unit.sp
 import com.dolo.doctor.data.model.AuditAction
 import com.dolo.doctor.data.model.DoctorUiState
 import com.dolo.doctor.data.model.QueueAuditEvent
+import com.dolo.doctor.hosted.HostedStaffNotification
+import com.dolo.doctor.hosted.HostedStaffUiState
 import com.dolo.doctor.ui.components.ElevatedSection
 import com.dolo.doctor.ui.components.PageHeader
 
 @Composable
 fun NotificationsScreen(
     state: DoctorUiState,
+    hostedState: HostedStaffUiState,
     onBack: () -> Unit,
     onRead: (Int) -> Unit,
-    onMarkAllRead: () -> Unit
+    onMarkAllRead: () -> Unit,
+    onMarkHostedRead: (String) -> Unit
 ) {
     val notifications = state.auditEvents.sortedByDescending { it.sequence }
-    val unreadCount = notifications.count { it.sequence > state.notificationReadThrough }
-
+    val hostedNotifications = hostedState.snapshot?.notifications.orEmpty()
+    val newestHostedCursor = hostedNotifications
+        .maxByOrNull { runCatching { it.cursor.toLong() }.getOrDefault(0L) }
+        ?.cursor
+    val unreadCount = notifications.count { it.sequence > state.notificationReadThrough } +
+        hostedNotifications.count { !it.read }
+    val markAll = {
+        onMarkAllRead()
+        newestHostedCursor?.let(onMarkHostedRead)
+    }
     LazyColumn(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -41,16 +53,58 @@ fun NotificationsScreen(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("$unreadCount unread", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onMarkAllRead, enabled = unreadCount > 0) { Text("Mark all read") }
+                    TextButton(onClick = markAll, enabled = unreadCount > 0) { Text("Mark all read") }
                 }
-                Text("Mock shared events appear locally in Stage 10; real remote Patient App events and Android push alerts still require the hosted backend.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                Text("Hosted Doctor/Assistant alerts are clinic-scoped and synchronized in-app. Android Push and SMS remain disabled.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             }
         }
-        if (notifications.isEmpty()) {
+        if (hostedNotifications.isNotEmpty()) {
+            item {
+                Text(
+                    "Hosted clinic activity",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            items(hostedNotifications, key = { "hosted-${it.cursor}" }) { event ->
+                HostedNotificationCard(event, !event.read) { onMarkHostedRead(event.cursor) }
+            }
+        }
+        if (notifications.isEmpty() && hostedNotifications.isEmpty()) {
             item { ElevatedSection("No notifications yet") { Text("New queue and appointment activity will appear here.") } }
         }
         items(notifications, key = { it.id }) { event ->
             NotificationCard(event, event.sequence > state.notificationReadThrough) { onRead(event.sequence) }
+        }
+    }
+}
+
+@Composable
+private fun HostedNotificationCard(event: HostedStaffNotification, unread: Boolean, onRead: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onRead),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (unread) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(if (unread) 7.dp else 2.dp)
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.NotificationsActive, null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(10.dp))
+                Text(event.title, Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                if (unread) Badge()
+            }
+            Text(event.message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "${event.patientName} - Token ${event.tokenNumber}",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp
+            )
         }
     }
 }
