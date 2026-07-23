@@ -164,7 +164,7 @@ Use existing current-day PENDING appointments for this checkpoint; duplicate tes
 - [x] Assistant UI exclusion backed by API denial
 - [x] JSON boundary regression coverage and stable version increment
 - [x] local Doctor data remains isolated
-- [ ] GitHub Actions compile, lint, unit tests and stable APK
-- [ ] combined Admin/Doctor/Patient physical-device acceptance
+- [x] GitHub Actions compile, lint, unit tests and stable APK
+- [x] combined Admin/Doctor/Patient physical-device acceptance
 
 External providers remain disabled.

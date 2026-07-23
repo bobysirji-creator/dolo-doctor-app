@@ -347,3 +347,9 @@ Doctor App `0.20.0-stage23a` passed the hosted PAID/WAIVED admission and Patient
 Doctor App 0.21.0-stage25c (version code 34) adds a read-only Published Patient reviews section to the Doctor-only hosted workspace. Refresh loads the new protected staff review endpoint alongside announcements. The API returns only reviews owned by the authenticated Doctor and already PUBLISHED by Admin. The parser rejects any unpublished payload defensively.
 
 Hosted Assistants neither request nor render the feed, and the API independently returns forbidden. Local Doctor/Assistant credentials, clinic data, queues, schedules, announcements and backups remain separate. Build after API 0.16.0-stage25cd is deployed, then follow docs/stage25cd-device-test.md.
+
+## Stage 25C acceptance
+
+Doctor App `0.21.0-stage25c` passed GitHub Actions, stable in-place upgrade and the complete combined Stage 25C-25D checklist on 23 July 2026. The Doctor received only published owner-scoped Patient reviews; PENDING, HIDDEN and REJECTED content remained excluded, Assistants remained denied, and all existing local Doctor/Assistant data stayed intact.
+
+Stages 26A-26B require no Doctor APK change. Patient support requests are a separate Patient/Admin boundary, and both Doctor and Assistant roles are denied by the Platform API.
