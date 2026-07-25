@@ -184,3 +184,18 @@ External providers remain disabled.
 - [x] paired Doctor/Assistant physical-device acceptance
 
 Android Push, SMS, Maps and Payments remain disabled.
+
+## Stage 37B - Doctor-targeted in-app messages
+
+- [x] load authenticated Doctor-only Admin-approved campaign feed
+- [x] require authoritative, in-app-only, provider-disabled metadata
+- [x] dedicated targeted message section in hosted Doctor workspace
+- [x] Assistant role receives no feed request, section or inherited messages
+- [x] preserve last hosted snapshot and every local Doctor record during ordinary offline failures
+- [x] parser and provider-rejection regression coverage
+- [x] stable version increment
+- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [ ] API deployment and stable APK in-place upgrade
+- [ ] Stage 37 physical-device acceptance
+
+SMS remains OTP-only and disabled; Push, Maps and Payments remain disabled.

@@ -363,3 +363,9 @@ Local Doctor/Assistant notifications and all offline clinic data remain independ
 ## Stage 28B acceptance
 
 Doctor App `0.22.0-stage28b` and Platform API `0.19.0-stage28ab` passed GitHub Actions, stable upgrade, Render deployment and the complete Stage 28A-B device checklist on 23 July 2026. Doctor/Assistant notification scope, independent read state, Patient/token identity, new-event refresh, role switching, restart/offline recovery and local-data safety are accepted.
+
+## Stages 37A-37B implementation checkpoint
+
+Doctor App `0.23.0-stage37b` (version code 36) consumes Platform API `0.28.0-stage37ab`'s authenticated Doctor-targeted campaign feed. Matching informational, promotional and app-update messages appear only for the hosted Doctor under `Targeted DO-LO messages`, with active dates and explicit in-app-only copy. Hosted Assistants neither request nor render this feed.
+
+Provider-backed responses are rejected. Ordinary offline failures retain the last hosted snapshot and all local Doctor data. Deploy the API before building the stable Doctor APK, then follow `docs/stage37ab-device-test.md`. SMS remains OTP-only and disabled; Push, Maps and Payments remain disabled.
