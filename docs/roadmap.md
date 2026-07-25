@@ -194,8 +194,8 @@ Android Push, SMS, Maps and Payments remain disabled.
 - [x] preserve last hosted snapshot and every local Doctor record during ordinary offline failures
 - [x] parser and provider-rejection regression coverage
 - [x] stable version increment
-- [ ] GitHub Actions compile, lint, unit tests and stable APK
-- [ ] API deployment and stable APK in-place upgrade
-- [ ] Stage 37 physical-device acceptance
+- [x] GitHub Actions compile, lint, unit tests and stable APK
+- [x] API deployment and stable APK in-place upgrade
+- [x] Stage 37 physical-device acceptance
 
 SMS remains OTP-only and disabled; Push, Maps and Payments remain disabled.

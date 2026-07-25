@@ -369,3 +369,6 @@ Doctor App `0.22.0-stage28b` and Platform API `0.19.0-stage28ab` passed GitHub A
 Doctor App `0.23.0-stage37b` (version code 36) consumes Platform API `0.28.0-stage37ab`'s authenticated Doctor-targeted campaign feed. Matching informational, promotional and app-update messages appear only for the hosted Doctor under `Targeted DO-LO messages`, with active dates and explicit in-app-only copy. Hosted Assistants neither request nor render this feed.
 
 Provider-backed responses are rejected. Ordinary offline failures retain the last hosted snapshot and all local Doctor data. Deploy the API before building the stable Doctor APK, then follow `docs/stage37ab-device-test.md`. SMS remains OTP-only and disabled; Push, Maps and Payments remain disabled.
+## Stages 37A-37B acceptance
+
+Platform API `0.28.0-stage37ab` and Doctor App `0.23.0-stage37b` passed GitHub Actions, Render deployment, stable APK upgrade and every `stage37ab-device-test.md` check on 25 July 2026. Doctor-only campaign visibility, Assistant exclusion, cancellation/date filtering, restart/offline recovery, local-data preservation and provider boundaries are accepted.
