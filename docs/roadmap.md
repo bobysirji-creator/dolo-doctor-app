@@ -199,3 +199,10 @@ Android Push, SMS, Maps and Payments remain disabled.
 - [x] Stage 37 physical-device acceptance
 
 SMS remains OTP-only and disabled; Push, Maps and Payments remain disabled.
+
+## Stage 42B - public DO-LO identity
+
+- [x] implementation and strict parser coverage
+- [x] stable version increment
+- [ ] GitHub Actions stable APK
+- [ ] physical-device acceptance

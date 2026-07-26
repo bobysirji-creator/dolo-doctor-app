@@ -372,3 +372,7 @@ Provider-backed responses are rejected. Ordinary offline failures retain the las
 ## Stages 37A-37B acceptance
 
 Platform API `0.28.0-stage37ab` and Doctor App `0.23.0-stage37b` passed GitHub Actions, Render deployment, stable APK upgrade and every `stage37ab-device-test.md` check on 25 July 2026. Doctor-only campaign visibility, Assistant exclusion, cancellation/date filtering, restart/offline recovery, local-data preservation and provider boundaries are accepted.
+
+## Stage 42 implementation checkpoint
+
+Public role-prefixed DO-LO identity is displayed without exposing an internal user UUID. See docs/stage42ab-device-test.md for acceptance.
