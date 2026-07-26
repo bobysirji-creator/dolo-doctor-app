@@ -204,5 +204,5 @@ SMS remains OTP-only and disabled; Push, Maps and Payments remain disabled.
 
 - [x] implementation and strict parser coverage
 - [x] stable version increment
-- [ ] GitHub Actions stable APK
-- [ ] physical-device acceptance
+- [x] GitHub Actions stable APK
+- [x] physical-device acceptance

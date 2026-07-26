@@ -376,3 +376,7 @@ Platform API `0.28.0-stage37ab` and Doctor App `0.23.0-stage37b` passed GitHub A
 ## Stage 42 implementation checkpoint
 
 Public role-prefixed DO-LO identity is displayed without exposing an internal user UUID. See docs/stage42ab-device-test.md for acceptance.
+
+## Stage 42AB acceptance
+
+Platform API `0.33.0-stage42ab`, Admin App `0.16.0-stage42a` and Doctor App `0.24.0-stage42b` passed GitHub Actions, Render deployment, stable APK upgrades and every Stage 42AB physical-device check. Public Patient/Doctor directory IDs, private audience membership IDs, and role-scoped Doctor/Assistant self identities are accepted.
