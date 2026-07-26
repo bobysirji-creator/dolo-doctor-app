@@ -216,7 +216,7 @@ SMS remains OTP-only and disabled; Push, Maps and Payments remain disabled.
 - [x] reject cross-role IDs and unknown relationship values
 - [x] preserve Doctor/Assistant role and permission boundaries
 - [x] stable version increment and unit coverage
-- [ ] GitHub Actions compile, lint, unit tests and stable APK
-- [ ] stable APK in-place upgrade and Stage 44AB physical-device acceptance
+- [x] GitHub Actions compile, lint, unit tests and stable APK
+- [x] stable APK in-place upgrade and Stage 44AB physical-device acceptance
 
 Patient phone data and internal UUIDs are not displayed. External providers remain disabled.

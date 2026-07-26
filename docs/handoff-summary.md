@@ -385,3 +385,6 @@ Platform API `0.33.0-stage42ab`, Admin App `0.16.0-stage42a` and Doctor App `0.2
 Doctor App `0.25.0-stage44b` (version code 38) consumes Platform API `0.35.0-stage44ab` booking-account identity fields. Hosted appointment cards display the validated Patient public DO-LO ID. Family appointments explicitly identify it as the booking account's ID rather than the family member's identity. Doctor and Assistant see the same clinic-scoped value, while Doctor-only workspaces and server-enforced Assistant permissions remain unchanged.
 
 Build after the API deployment and follow the API repository's `docs/stage44ab-device-test.md`. No phone/internal Patient UUID is displayed and SMS, Push, Maps, Payments and media storage remain disabled.
+## Stage 44AB acceptance
+
+Doctor App `0.25.0-stage44b` and Platform API `0.35.0-stage44ab` passed GitHub Actions, Render deployment, stable APK upgrade and the complete device checklist. SELF and family booking-account labels, queue persistence, Doctor/Assistant role boundaries, restart/offline safety and privacy constraints are accepted.
