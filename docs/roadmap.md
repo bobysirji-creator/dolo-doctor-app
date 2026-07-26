@@ -206,3 +206,17 @@ SMS remains OTP-only and disabled; Push, Maps and Payments remain disabled.
 - [x] stable version increment
 - [x] GitHub Actions stable APK
 - [x] physical-device acceptance
+
+## Stage 44B - clinic booking-account public identity
+
+- [x] parse strict `DLO-PAT-NNNNNN` booking-account identity
+- [x] parse explicit SELF/FAMILY relationship
+- [x] display Patient DO-LO ID on every hosted appointment card
+- [x] label family bookings as belonging to the booking account
+- [x] reject cross-role IDs and unknown relationship values
+- [x] preserve Doctor/Assistant role and permission boundaries
+- [x] stable version increment and unit coverage
+- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [ ] stable APK in-place upgrade and Stage 44AB physical-device acceptance
+
+Patient phone data and internal UUIDs are not displayed. External providers remain disabled.

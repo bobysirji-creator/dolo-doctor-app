@@ -380,3 +380,8 @@ Public role-prefixed DO-LO identity is displayed without exposing an internal us
 ## Stage 42AB acceptance
 
 Platform API `0.33.0-stage42ab`, Admin App `0.16.0-stage42a` and Doctor App `0.24.0-stage42b` passed GitHub Actions, Render deployment, stable APK upgrades and every Stage 42AB physical-device check. Public Patient/Doctor directory IDs, private audience membership IDs, and role-scoped Doctor/Assistant self identities are accepted.
+## Stage 44B implementation checkpoint
+
+Doctor App `0.25.0-stage44b` (version code 38) consumes Platform API `0.35.0-stage44ab` booking-account identity fields. Hosted appointment cards display the validated Patient public DO-LO ID. Family appointments explicitly identify it as the booking account's ID rather than the family member's identity. Doctor and Assistant see the same clinic-scoped value, while Doctor-only workspaces and server-enforced Assistant permissions remain unchanged.
+
+Build after the API deployment and follow the API repository's `docs/stage44ab-device-test.md`. No phone/internal Patient UUID is displayed and SMS, Push, Maps, Payments and media storage remain disabled.
