@@ -102,7 +102,16 @@ Completion gate: PostgreSQL-verified migration, GitHub Actions, Render deploymen
 
 Dependency: paid production hosting choices, security owner, approved operational region and independently reviewed evidence. Stage 55A does not satisfy this dependency.
 
-## Stage 56 - managed OTP and production authentication
+## Stage 56A - fail-closed managed authentication readiness foundation
+
+- Enumerate provider, sender, template, commercial, credential, abuse, audit, session, device and staff-auth gates.
+- Keep production authentication and real OTP delivery disabled with all gates blocked.
+- Reserve SMS exclusively for authentication, forbid promotional SMS and accept no phone/OTP/credential input.
+- Preserve seeded prototype sessions without treating them as production identities.
+
+Completion gate: PostgreSQL-verified migration, GitHub Actions, Render deployment and no-input hosted verification.
+
+## Stage 56B-F - managed OTP and production authentication
 
 - Select and integrate an OTP provider for authentication-only SMS.
 - Challenge-bound codes, resend/attempt limits, abuse protection and delivery audit.
@@ -110,7 +119,7 @@ Dependency: paid production hosting choices, security owner, approved operationa
 - Patient OTP UX plus hardened Doctor/Assistant and Admin authentication.
 - No promotional SMS capability.
 
-Dependency: OTP provider account, approved sender/template, credentials in managed secrets and commercial/data-processing review.
+Dependency: OTP provider account, approved sender/template, credentials in managed secrets and commercial/data-processing review. Stage 56A does not satisfy this dependency.
 
 ## Stage 57 - atomic Patient enrollment
 
