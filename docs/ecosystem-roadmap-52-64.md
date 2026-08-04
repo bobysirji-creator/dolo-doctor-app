@@ -22,11 +22,19 @@ This is the cross-repository source of truth for moving the accepted seeded-dumm
 - Fail-closed publication controls and public readiness metadata.
 - No legal content, Patient viewing, consent collection or enrollment activation.
 
-### 52B - approved publication and Patient viewer
+### 52B-P - prototype legal-document viewer
+
+- Serve three bounded, integrity-protected English test drafts outside the immutable production release table.
+- Mark every document `DRAFT_TEST_ONLY` and visibly **TEST DRAFT - NOT LEGALLY APPROVED**.
+- Patient App viewer supports small screens, dark mode and accessibility.
+- Test acknowledgement is memory-only, creates no consent record and disappears when UI state is recreated.
+- Production publication, consent collection, enrollment and every external provider remain disabled.
+
+### 52B-F - approved publication and Patient viewer
 
 - Insert only legally approved immutable document versions through a reviewed migration.
-- Activate read-only viewing with effective-date and language handling.
-- Patient App viewer with accessible version/effective-date presentation.
+- Activate production read-only viewing with effective-date and language handling.
+- Replace the test viewer source with approved, integrity-verified releases.
 - Consent collection remains disabled until the acceptance transaction is reviewed.
 
 Dependency: legally approved Terms, Privacy Notice and Health Data Consent content, version identifiers, effective dates and approval references.
