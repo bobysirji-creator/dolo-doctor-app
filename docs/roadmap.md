@@ -220,3 +220,7 @@ SMS remains OTP-only and disabled; Push, Maps and Payments remain disabled.
 - [x] stable APK in-place upgrade and Stage 44AB physical-device acceptance
 
 Patient phone data and internal UUIDs are not displayed. External providers remain disabled.
+
+## Stages 52-64 - production-capable ecosystem roadmap
+
+The cross-app production sequence, dependencies and completion rules are maintained in docs/ecosystem-roadmap-52-64.md. App-specific implementation and acceptance checkpoints will be added here as each stage reaches this repository.
