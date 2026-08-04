@@ -66,14 +66,22 @@ Completion gate: API/PostgreSQL verification, Patient and Admin stable builds, h
 
 Dependency: approved recovery and duplicate-account policy plus production support ownership. Stages 53A and 53B-P do not satisfy this dependency.
 
-## Stage 54 - retention, correction, deletion and consent withdrawal
+## Stage 54A - fail-closed data lifecycle policy foundation
 
-- Data inventory and per-record retention schedule.
-- Patient correction/export/deletion request workflow.
+- Inventory required record classes without reading or returning record contents.
+- Enumerate retention, correction, export, deletion, statutory-hold, anonymization, consent-withdrawal and audit decisions.
+- Keep every retention duration undefined and every lifecycle action disabled.
+- Preserve appointment, clinic-receipt, billing and audit integrity; expose no lifecycle mutation route.
+
+Completion gate: PostgreSQL-verified migration, GitHub Actions, Render deployment and no-input hosted verification.
+
+## Stage 54B-F - approved lifecycle requests and governed execution
+
+- Patient correction/export/deletion and consent-withdrawal request workflow.
 - Admin review, statutory hold, anonymization and immutable audit evidence.
-- Consent withdrawal effects on future processing without corrupting financial or clinical operational records.
+- Approved per-record retention schedule and withdrawal effects without corrupting operational records.
 
-Dependency: approved retention, correction, deletion and legal-hold policy.
+Dependency: approved retention, correction, deletion, legal-hold, anonymization and consent-withdrawal policy plus accountable ownership. Stage 54A does not satisfy this dependency.
 
 ## Stage 55 - production infrastructure and security controls
 
