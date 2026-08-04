@@ -39,14 +39,23 @@ This is the cross-repository source of truth for moving the accepted seeded-dumm
 
 Dependency: legally approved Terms, Privacy Notice and Health Data Consent content, version identifiers, effective dates and approval references.
 
-## Stage 53 - account recovery and duplicate-account policy
+## Stage 53A - fail-closed account-recovery policy foundation
 
-- Define verified mobile-number change, lost-device recovery and session revocation.
-- Normalize and hash identity lookup keys without exposing phones.
-- Prevent duplicate production accounts and define safe merge/escalation handling.
-- Patient recovery UX and Admin exception audit, with no support-agent credential bypass.
+- Record verified-mobile change, lost-device recovery, duplicate prevention/resolution and support ownership as explicit decisions.
+- Require HMAC-SHA-256 identity lookup with a separately managed pepper; forbid plaintext phone lookup.
+- Forbid support-agent credential bypass and automatic account merging.
+- Accept no Patient recovery input and expose no recovery, lookup, merge or mutation action.
 
-Dependency: approved recovery and duplicate-account policy plus support ownership.
+Completion gate: PostgreSQL-verified migration, hosted readiness checks and all decisions remain fail closed.
+
+## Stage 53B - approved recovery policy and governed UX
+
+- Define approved evidence rules for mobile-number change and lost-device recovery.
+- Assign accountable support ownership and immutable exception auditing.
+- Define manual duplicate-account escalation without automatic record merging.
+- Add Patient recovery UX only after the policy, privacy and security review is approved.
+
+Dependency: approved recovery and duplicate-account policy plus support ownership. Stage 53A does not satisfy this dependency.
 
 ## Stage 54 - retention, correction, deletion and consent withdrawal
 
