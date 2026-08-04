@@ -48,14 +48,23 @@ Dependency: legally approved Terms, Privacy Notice and Health Data Consent conte
 
 Completion gate: PostgreSQL-verified migration, hosted readiness checks and all decisions remain fail closed.
 
-## Stage 53B - approved recovery policy and governed UX
+## Stage 53B-P - seeded dummy recovery simulation
+
+- Seeded Patient submits only a predefined scenario and exact test-only acknowledgement.
+- Seeded Admin owns review through predefined no-change or test-escalation commands.
+- Persist immutable append-only event history without phone, identity evidence or free-text recovery data.
+- Never change credentials, mobile numbers, account ownership or records; never merge accounts.
+
+Completion gate: API/PostgreSQL verification, Patient and Admin stable builds, hosted checks and combined physical-device acceptance.
+
+## Stage 53B-F - approved production recovery policy and governed UX
 
 - Define approved evidence rules for mobile-number change and lost-device recovery.
-- Assign accountable support ownership and immutable exception auditing.
+- Assign accountable production support ownership and immutable exception auditing.
 - Define manual duplicate-account escalation without automatic record merging.
-- Add Patient recovery UX only after the policy, privacy and security review is approved.
+- Add production Patient recovery UX only after policy, privacy, legal and security approval.
 
-Dependency: approved recovery and duplicate-account policy plus support ownership. Stage 53A does not satisfy this dependency.
+Dependency: approved recovery and duplicate-account policy plus production support ownership. Stages 53A and 53B-P do not satisfy this dependency.
 
 ## Stage 54 - retention, correction, deletion and consent withdrawal
 
