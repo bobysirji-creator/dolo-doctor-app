@@ -83,7 +83,16 @@ Completion gate: PostgreSQL-verified migration, GitHub Actions, Render deploymen
 
 Dependency: approved retention, correction, deletion, legal-hold, anonymization and consent-withdrawal policy plus accountable ownership. Stage 54A does not satisfy this dependency.
 
-## Stage 55 - production infrastructure and security controls
+## Stage 55A - fail-closed production security readiness foundation
+
+- Enumerate required topology, secrets, TLS, networking, distributed limits, monitoring, incident, backup, restore and independent-review gates.
+- Keep every gate blocked with no evidence, region, topology approval or security owner.
+- Explicitly identify the hosted environment as a dummy-data prototype and disable production traffic/data acceptance.
+- Expose no credential, evidence-submission or activation route.
+
+Completion gate: PostgreSQL-verified migration, GitHub Actions, Render deployment and no-input hosted verification.
+
+## Stage 55B-F - approved production infrastructure and security controls
 
 - Approved India-region production compute/database topology.
 - Managed secrets, verified TLS, private networking where possible and key rotation.
@@ -91,7 +100,7 @@ Dependency: approved retention, correction, deletion, legal-hold, anonymization 
 - Monitoring, incident response, encrypted backups and measured restore drills.
 - Independent security review of production configuration.
 
-Dependency: paid production hosting choices, security owner and approved operational region.
+Dependency: paid production hosting choices, security owner, approved operational region and independently reviewed evidence. Stage 55A does not satisfy this dependency.
 
 ## Stage 56 - managed OTP and production authentication
 
