@@ -1,6 +1,10 @@
 package com.dolo.doctor.hosted
 
 import android.content.SharedPreferences
+import com.dolo.doctor.authority.AuthorityFreshness
+import com.dolo.doctor.authority.AuthorityRehearsalPolicy
+import com.dolo.doctor.authority.AuthorityTracker
+import com.dolo.doctor.authority.EncryptedAuthorityReadCache
 import android.os.Handler
 import android.os.Looper
 import android.security.keystore.KeyGenParameterSpec
@@ -39,6 +43,7 @@ data class HostedDoctorCampaign(val id:String,val messageType:String,val title:S
 data class HostedPublicIdentity(val doloId:String,val displayName:String,val role:HostedStaffRole,val prototype:Boolean)
 data class HostedStaffSnapshot(val role:HostedStaffRole,val permissions:Set<String>,val clinic:HostedClinic,val sessions:List<HostedSession>,val appointments:List<HostedAppointment>,val queues:List<HostedQueue>,val assistants:List<HostedAssistant>,val announcements:List<HostedAnnouncement> = emptyList(),val patientReviews:List<HostedPatientReview> = emptyList(),val notifications:List<HostedStaffNotification> = emptyList(),val campaigns:List<HostedDoctorCampaign> = emptyList(),val publicIdentity:HostedPublicIdentity? = null)
 sealed interface HostedResult<out T>{data class Success<T>(val value:T):HostedResult<T>;data class Failure(val message:String):HostedResult<Nothing>}
+private class HostedStaffHttpException(val status:Int,val code:String,message:String):Exception(message)
 
 class HostedStaffTokenStore(private val preferences:SharedPreferences){
  fun read():HostedStaffTokens?=runCatching{val iv=preferences.getString(KEY_IV,null)?:return null;val encrypted=preferences.getString(KEY_DATA,null)?:return null;val cipher=Cipher.getInstance(TRANSFORM);cipher.init(Cipher.DECRYPT_MODE,key(),GCMParameterSpec(128,Base64.getDecoder().decode(iv)));parseTokens(String(cipher.doFinal(Base64.getDecoder().decode(encrypted)),Charsets.UTF_8))}.getOrElse{clear();null}
@@ -51,11 +56,15 @@ class HostedStaffTokenStore(private val preferences:SharedPreferences){
 }
 
 class HttpHostedStaffApi(baseUrl:String,private val store:HostedStaffTokenStore,private val preferences:SharedPreferences){
- private val base=baseUrl.trim().trimEnd('/');init{require(URL(base).protocol.equals("https",true))}
+ private val base=baseUrl.trim().trimEnd('/')
+ private val authorityCache=EncryptedAuthorityReadCache(preferences)
+ private val authorityTracker=AuthorityTracker()
+ init{require(URL(base).protocol.equals("https",true))}
  fun savedRole():HostedStaffRole?=store.read()?.role
+ fun authorityFreshness():AuthorityFreshness=authorityTracker.snapshot()
  fun connect(role:HostedStaffRole,pin:String):HostedResult<HostedStaffSnapshot> = guarded {val identity=if(role==HostedStaffRole.DOCTOR)"doctor-demo" else "assistant-demo";val response=requestRaw("POST","/api/v1/auth/prototype/staff-sessions",JSONObject().put("identity",identity).put("pin",pin).put("deviceLabel","DO-LO Doctor Android").toString());store.save(parseTokens(response,role));load()}
  fun refresh():HostedResult<HostedStaffSnapshot> = guarded{load()}
- fun detachSession():String?=store.read()?.accessToken.also{store.clear()}
+ fun detachSession():String?=store.read()?.accessToken.also{store.clear();authorityCache.clearAll();authorityTracker.beginOperation()}
  fun revokeDetached(token:String?){token?.let{runCatching{requestRaw("POST","/api/v1/auth/logout","{}",it)}}}
  fun logout(){revokeDetached(detachSession())}
  fun admit(sessionId:String,appointmentId:String,feeStatus:HostedClinicFeeStatus):HostedResult<HostedStaffSnapshot> = command("POST","/api/v1/clinic-sessions/$sessionId/queue/admissions",JSONObject().put("appointmentId",appointmentId).put("clinicFeeStatus",feeStatus.name).toString(),"admit-$appointmentId-${feeStatus.name}")
@@ -76,10 +85,46 @@ class HttpHostedStaffApi(baseUrl:String,private val store:HostedStaffTokenStore,
   snapshot=snapshot.copy(notifications=HostedStaffNotificationJson.parse(request("GET","/api/v1/staff/notifications?after=0&limit=100")))
   return if(snapshot.role==HostedStaffRole.DOCTOR)snapshot.copy(announcements=HostedAnnouncementJson.parse(request("GET","/api/v1/staff/announcements")),patientReviews=HostedPatientReviewJson.parse(request("GET","/api/v1/staff/reviews")),campaigns=HostedDoctorCampaignJson.parse(request("GET","/api/v1/staff/campaigns"))) else snapshot
  }
- private fun request(method:String,path:String,body:String?=null,headers:Map<String,String> = emptyMap()):String{val token=accessToken()?:error("Hosted staff session is unavailable. Connect again.");return requestRaw(method,path,body,token,headers)}
+ private fun request(method:String,path:String,body:String?=null,headers:Map<String,String> = emptyMap()):String{
+  return try{
+   val token=accessToken()?:error("Hosted staff session is unavailable. Connect again.")
+   requestRaw(method,path,body,token,headers)
+  }catch(error:Throwable){
+   val cacheable=method=="GET"||(method=="POST"&&path=="/api/v1/staff/sync/bootstrap")
+   val role=store.read()?.role?.name
+   if(cacheable&&role!=null&&AuthorityRehearsalPolicy.canUseCacheAfterFailure((error as? HostedStaffHttpException)?.status)){
+    authorityCache.read("$method:$path:$role")?.let{authorityTracker.recordCache(it.freshness);return it.body}
+   }
+   throw error
+  }
+ }
  private fun accessToken():String?{val current=store.read()?:return null;if(usable(current.accessExpiresAt))return current.accessToken;if(!usable(current.refreshExpiresAt)){store.clear();return null};val refreshed=runCatching{requestRaw("POST","/api/v1/auth/refresh",JSONObject().put("refreshToken",current.refreshToken).toString())}.getOrNull()?:return null;val tokens=parseTokens(refreshed,current.role);store.save(tokens);return tokens.accessToken}
- private fun requestRaw(method:String,path:String,body:String?,bearer:String?=null,headers:Map<String,String> = emptyMap()):String{val c=(URL(base+path).openConnection() as HttpURLConnection).apply{requestMethod=method;connectTimeout=15_000;readTimeout=25_000;setRequestProperty("Accept","application/json");setRequestProperty("User-Agent","DO-LO-Doctor-Android/Stage44B");bearer?.let{setRequestProperty("Authorization","Bearer $it")};headers.forEach{(k,v)->setRequestProperty(k,v)};if(body!=null){doOutput=true;setRequestProperty("Content-Type","application/json")};useCaches=false};return try{if(body!=null)c.outputStream.use{it.write(body.toByteArray())};val status=c.responseCode;val text=(if(status in 200..299)c.inputStream else c.errorStream)?.bufferedReader()?.use{it.readText().take(524_288)}.orEmpty();if(status !in 200..299)error(runCatching{JSONObject(text).getJSONObject("error").getString("message")}.getOrDefault("Hosted API returned HTTP $status"));text}finally{c.disconnect()}}
- private fun <T> guarded(call:()->T):HostedResult<T> = runCatching(call).fold({HostedResult.Success(it)},{HostedResult.Failure(when(it){is java.net.UnknownHostException->"Offline. Local Doctor data was not changed.";is java.net.SocketTimeoutException->"Hosted prototype is waking up. Retry shortly.";else->it.message?.take(180)?:"Hosted staff synchronization failed."})})
+ private fun requestRaw(method:String,path:String,body:String?,bearer:String?=null,headers:Map<String,String> = emptyMap()):String{
+  val cacheable=method=="GET"||(method=="POST"&&path=="/api/v1/staff/sync/bootstrap")
+  val cacheKey="$method:$path:${store.read()?.role?.name ?: "NO_ROLE"}"
+  var completedAttempts=0
+  var lastFailure:Throwable?=null
+  while(completedAttempts<AuthorityRehearsalPolicy.MAX_COMMAND_ATTEMPTS){
+   try{
+    val value=requestNetwork(method,path,body,bearer,headers)
+    if(cacheable)authorityCache.put(cacheKey,value)
+    authorityTracker.recordLive()
+    return value
+   }catch(error:Throwable){
+    completedAttempts+=1;lastFailure=error
+    val status=(error as? HostedStaffHttpException)?.status
+    if(!AuthorityRehearsalPolicy.canRetry(method,headers.keys.any{it.equals("Idempotency-Key",true)},completedAttempts,status))break
+   }
+  }
+  val failureStatus=(lastFailure as? HostedStaffHttpException)?.status
+  if(cacheable&&AuthorityRehearsalPolicy.canUseCacheAfterFailure(failureStatus))authorityCache.read(cacheKey)?.let{authorityTracker.recordCache(it.freshness);return it.body}
+  throw lastFailure?:error("Hosted staff request failed.")
+ }
+ private fun requestNetwork(method:String,path:String,body:String?,bearer:String?,headers:Map<String,String>):String{
+  val c=(URL(base+path).openConnection() as HttpURLConnection).apply{requestMethod=method;connectTimeout=15_000;readTimeout=25_000;setRequestProperty("Accept","application/json");setRequestProperty("User-Agent","DO-LO-Doctor-Android/Stage61BP");bearer?.let{setRequestProperty("Authorization","Bearer $it")};headers.forEach{(k,v)->setRequestProperty(k,v)};if(body!=null){doOutput=true;setRequestProperty("Content-Type","application/json")};useCaches=false}
+  return try{if(body!=null)c.outputStream.use{it.write(body.toByteArray())};val status=c.responseCode;val responseBody=(if(status in 200..299)c.inputStream else c.errorStream)?.bufferedReader()?.use{it.readText().take(524_288)}.orEmpty();if(status !in 200..299){val apiError=runCatching{JSONObject(responseBody).getJSONObject("error")}.getOrNull();throw HostedStaffHttpException(status,apiError?.optString("code").orEmpty(),apiError?.optString("message").takeUnless{it.isNullOrBlank()}?:"Hosted API returned HTTP $status")};responseBody}finally{c.disconnect()}
+ }
+ private fun <T> guarded(call:()->T):HostedResult<T>{authorityTracker.beginOperation();return runCatching(call).fold({HostedResult.Success(it)},{HostedResult.Failure(when(it){is java.net.UnknownHostException->"Offline. Local Doctor data was not changed.";is java.net.SocketTimeoutException->"Hosted prototype is waking up. Retry shortly.";is HostedStaffHttpException->AuthorityRehearsalPolicy.conflictMessage(it.status)?:it.message?.take(180)?:"Hosted staff synchronization failed.";else->it.message?.take(180)?:"Hosted staff synchronization failed."})})}
  private fun usable(value:String)=runCatching{Instant.parse(value).isAfter(Instant.now())}.getOrDefault(false)
  private fun parseTokens(json:String,role:HostedStaffRole):HostedStaffTokens{val o=JSONObject(json);require(o.getJSONObject("identity").optBoolean("seededDummy"));return HostedStaffTokens(o.getString("accessToken"),o.getString("accessExpiresAt"),o.getString("refreshToken"),o.getString("refreshExpiresAt"),role)}
  private fun parseSnapshot(json:String):HostedStaffSnapshot{val o=JSONObject(json);require(o.optBoolean("authoritative"));val identity=o.getJSONObject("identity");val clinic=o.getJSONObject("clinic");val doctor=clinic.getJSONObject("doctor");val sessions=o.getJSONArray("sessions");val appointments=o.getJSONArray("appointments");val queues=o.getJSONArray("queues");val assistants=o.optJSONArray("assistants")?:org.json.JSONArray();return HostedStaffSnapshot(HostedStaffRole.valueOf(identity.getString("role")),buildSet{val a=identity.getJSONArray("permissions");for(i in 0 until a.length())add(a.getString(i))},HostedClinic(clinic.getString("id"),clinic.getString("name"),clinic.optString("city"),doctor.getString("name"),doctor.optString("specialty")),buildList{for(i in 0 until sessions.length()){val x=sessions.getJSONObject(i);add(HostedSession(x.getString("id"),x.getString("serviceDate"),x.getString("name"),x.getString("startsAt"),x.getString("endsAt"),x.getInt("availableTokens"),x.getBoolean("bookingEnabled")))}},buildList{for(i in 0 until appointments.length()){val x=appointments.getJSONObject(i);add(HostedAppointment(x.getString("id"),x.getString("clinicSessionId"),x.getString("patientName"),HostedBookingAccountIdentityJson.relationship(x),HostedBookingAccountIdentityJson.doloId(x),x.getInt("tokenNumber"),x.getString("status"),x.getString("clinicFeeStatus"),x.optString("receiptNumber")))}},buildList{for(i in 0 until queues.length()){val x=queues.getJSONObject(i);val e=x.getJSONArray("entries");add(HostedQueue(x.getString("clinicSessionId"),x.getString("queueStatus"),if(x.isNull("currentToken"))null else x.getInt("currentToken"),x.getInt("lastCalledToken"),buildList{for(j in 0 until e.length()){val q=e.getJSONObject(j);add(HostedQueueEntry(q.getString("appointmentId"),q.getString("patientName"),HostedBookingAccountIdentityJson.relationship(q),HostedBookingAccountIdentityJson.doloId(q),q.getInt("tokenNumber"),q.getString("appointmentStatus"),q.getString("clinicFeeStatus"),q.optString("receiptNumber")))}}))}},buildList{for(i in 0 until assistants.length()){val x=assistants.getJSONObject(i);add(HostedAssistant(x.getString("id"),x.getString("clinicId"),x.getString("displayName"),x.optString("phone"),x.getBoolean("active"),buildSet{val p=x.getJSONArray("permissions");for(j in 0 until p.length())add(p.getString(j))}))}})}
@@ -131,7 +176,7 @@ class HostedStaffViewModel(private val api:HttpHostedStaffApi):ViewModel(){
  fun updateAssistant(a:HostedAssistant,active:Boolean,permissions:Set<String>)=execute{api.updateAssistant(a,active,permissions)}
  fun saveAnnouncement(a:HostedAnnouncement)=execute{api.saveAnnouncement(a)}
  fun markHostedNotificationsRead(cursor:String)=execute{api.markNotificationsRead(cursor)}
- private fun execute(call:()->HostedResult<HostedStaffSnapshot>){if(uiState.loading)return;uiState=uiState.copy(loading=true,error=false,message="Synchronizing authoritative hosted queue...");executor.execute{val r=call();val profile=if(r is HostedResult.Success&&r.value.role==HostedStaffRole.DOCTOR)api.loadDoctorProfile() else null;val schedule=if(r is HostedResult.Success&&r.value.role==HostedStaffRole.DOCTOR)api.loadClinicSchedule(r.value.clinic.id) else null;main.post{uiState=when(r){is HostedResult.Success->HostedStaffUiState(snapshot=r.value,message="Server queue is authoritative for this seeded flow.");is HostedResult.Failure->uiState.copy(loading=false,error=true,message=r.message)};if(profile!=null)profileUiState=when(profile){is HostedResult.Success->HostedDoctorProfileUiState(workspace=profile.value,message=if(profile.value.pendingRevision==null)"Approved profile loaded." else "Profile revision is pending Admin review.");is HostedResult.Failure->profileUiState.copy(loading=false,error=true,message=profile.message)};if(schedule!=null)scheduleUiState=when(schedule){is HostedResult.Success->HostedClinicScheduleUiState(schedule=schedule.value,message="Hosted Patient booking schedule loaded.");is HostedResult.Failure->scheduleUiState.copy(loading=false,error=true,message=schedule.message)}}}}
+ private fun execute(call:()->HostedResult<HostedStaffSnapshot>){if(uiState.loading)return;uiState=uiState.copy(loading=true,error=false,message="Synchronizing authoritative hosted queue...");executor.execute{val r=call();val profile=if(r is HostedResult.Success&&r.value.role==HostedStaffRole.DOCTOR)api.loadDoctorProfile() else null;val schedule=if(r is HostedResult.Success&&r.value.role==HostedStaffRole.DOCTOR)api.loadClinicSchedule(r.value.clinic.id) else null;main.post{uiState=when(r){is HostedResult.Success->HostedStaffUiState(snapshot=r.value,message=api.authorityFreshness().message());is HostedResult.Failure->uiState.copy(loading=false,error=true,message=r.message)};if(profile!=null)profileUiState=when(profile){is HostedResult.Success->HostedDoctorProfileUiState(workspace=profile.value,message=if(profile.value.pendingRevision==null)"Approved profile loaded." else "Profile revision is pending Admin review.");is HostedResult.Failure->profileUiState.copy(loading=false,error=true,message=profile.message)};if(schedule!=null)scheduleUiState=when(schedule){is HostedResult.Success->HostedClinicScheduleUiState(schedule=schedule.value,message="Hosted Patient booking schedule loaded.");is HostedResult.Failure->scheduleUiState.copy(loading=false,error=true,message=schedule.message)}}}}
  private fun executeSchedule(call:()->HostedResult<HostedClinicSchedule>){if(scheduleUiState.loading)return;scheduleUiState=scheduleUiState.copy(loading=true,error=false,message="Updating authoritative hosted schedule...");executor.execute{val r=call();main.post{scheduleUiState=when(r){is HostedResult.Success->HostedClinicScheduleUiState(schedule=r.value,message="Hosted schedule saved. Patient availability will refresh from the server.");is HostedResult.Failure->scheduleUiState.copy(loading=false,error=true,message=r.message)}}}}
  private fun executeProfile(call:()->HostedResult<HostedDoctorProfileWorkspace>){if(profileUiState.loading)return;profileUiState=profileUiState.copy(loading=true,error=false,message="Loading reviewed Doctor profile...");executor.execute{val r=call();main.post{profileUiState=when(r){is HostedResult.Success->HostedDoctorProfileUiState(workspace=r.value,message=if(r.value.pendingRevision==null)"Approved profile loaded." else "Profile revision submitted for Admin review.");is HostedResult.Failure->profileUiState.copy(loading=false,error=true,message=r.message)}}}}
  override fun onCleared(){executor.shutdownNow();super.onCleared()}

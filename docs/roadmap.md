@@ -224,3 +224,15 @@ Patient phone data and internal UUIDs are not displayed. External providers rema
 ## Stages 52-64 - production-capable ecosystem roadmap
 
 The cross-app production sequence, dependencies and completion rules are maintained in docs/ecosystem-roadmap-52-64.md. App-specific implementation and acceptance checkpoints will be added here as each stage reaches this repository.
+
+
+## Stage 61B-P - authoritative cache rehearsal
+
+- [x] Android Keystore-encrypted hosted read cache with 24-hour maximum
+- [x] visible live, cached-fresh and cached-stale status
+- [x] one retry only for transient idempotent commands
+- [x] HTTP 409 refresh-required recovery without overwrite
+- [x] hosted cache purge on logout; Doctor cache also purges on role change
+- [x] local prototype data remains separate and is never uploaded
+- [x] version 0.26.0-stage61bp
+- [ ] GitHub Actions and stable APK physical-device acceptance

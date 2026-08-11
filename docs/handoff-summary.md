@@ -388,3 +388,7 @@ Build after the API deployment and follow the API repository's `docs/stage44ab-d
 ## Stage 44AB acceptance
 
 Doctor App `0.25.0-stage44b` and Platform API `0.35.0-stage44ab` passed GitHub Actions, Render deployment, stable APK upgrade and the complete device checklist. SELF and family booking-account labels, queue persistence, Doctor/Assistant role boundaries, restart/offline safety and privacy constraints are accepted.
+
+## Stage 61B-P implementation checkpoint
+
+Version 0.26.0-stage61bp adds the controlled encrypted hosted-read cache, explicit freshness, bounded idempotent retry and refresh-required conflict handling. It does not upload local demo data or activate production. Run GitHub Actions, install over the accepted app and follow docs/stage61bp-device-test.md.
