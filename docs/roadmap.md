@@ -272,7 +272,7 @@ On 11 August 2026, Doctor App `0.27.0-stage62b` passed the complete physical-dev
 - [x] preserve Today, Appointments, Clinic and More information architecture
 - [x] preserve Doctor/Assistant permissions, queue, sessions, receipts, reports and hosted synchronization
 - [x] version 0.28.0-stage62f (version code 41)
-- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [x] GitHub Actions compile, lint, unit tests and stable APK (run 31507289180)
 - [ ] stable APK in-place upgrade and Stage 62F physical-device acceptance
 
 The accepted Patient visual system is now the canonical baseline for Patient, Doctor and future Admin modernization. This stage changes presentation only; no database, API, provider or business-workflow contract changed.
