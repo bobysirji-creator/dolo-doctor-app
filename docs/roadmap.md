@@ -236,3 +236,7 @@ The cross-app production sequence, dependencies and completion rules are maintai
 - [x] local prototype data remains separate and is never uploaded
 - [x] version 0.26.0-stage61bp
 - [ ] GitHub Actions and stable APK physical-device acceptance
+
+## Stage 61B-P physical-device acceptance
+
+On 11 August 2026, the complete Stage 61B-P device checklist passed across Patient, Doctor and Admin apps. Encrypted hosted-cache fallback, freshness labels, one bounded retry, conflict refresh, logout/role cache isolation and local-data separation are accepted for the controlled prototype.
