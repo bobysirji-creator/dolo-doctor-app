@@ -155,7 +155,7 @@ import java.time.LocalDate
                 }
             }
             item {
-                val todayAppointments = state.appointments.count { it.date == state.queueDate }
+                val todayAppointments = state.appointments.count { it.appointmentDate == state.queueDate }
                 ElevatedSection("Today's appointments", "$todayAppointments bookings across both sessions") {
                     Text("Confirm clinic fee, generate the required receipt and admit each Patient to the correct session queue.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     PrimaryAction("Open appointments", onAppointments, enabled = canViewAppointments, icon = Icons.Outlined.CalendarMonth)
