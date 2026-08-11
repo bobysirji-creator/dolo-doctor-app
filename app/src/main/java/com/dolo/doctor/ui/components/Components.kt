@@ -1,7 +1,5 @@
 package com.dolo.doctor.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -10,11 +8,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.stateDescription
@@ -23,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dolo.doctor.ui.theme.LocalDoloDoctorDarkTheme
 
 @Composable fun DoctorBrand(modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
@@ -37,7 +33,11 @@ import androidx.compose.ui.unit.sp
     val colors = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().heightIn(min = 58.dp), verticalAlignment = Alignment.CenterVertically) {
         if (onBack != null) {
-            Surface(shape = RoundedCornerShape(15.dp), color = colors.surface, shadowElevation = 7.dp) {
+            Surface(
+                shape = MaterialTheme.shapes.small,
+                color = colors.surface,
+                shadowElevation = if (LocalDoloDoctorDarkTheme.current) 3.dp else 0.dp
+            ) {
                 IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, "Back from $title") }
             }
             Spacer(Modifier.width(14.dp))
@@ -47,27 +47,28 @@ import androidx.compose.ui.unit.sp
 }
 
 @Composable fun PrimaryAction(label: String, onClick: () -> Unit, enabled: Boolean = true, icon: ImageVector = Icons.Outlined.ArrowForward) {
-    val colors = MaterialTheme.colorScheme
-    val gradient = if (enabled) Brush.horizontalGradient(listOf(colors.primary, colors.secondary)) else Brush.horizontalGradient(listOf(colors.outline, colors.outline))
-    val contentColor = if (enabled) colors.onPrimary else colors.onSurface
-    Box(
-        Modifier.fillMaxWidth().heightIn(min = 58.dp).shadow(9.dp, RoundedCornerShape(22.dp))
-            .background(gradient, RoundedCornerShape(22.dp))
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).semantics { contentDescription = label },
+        shape = MaterialTheme.shapes.medium,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = if (LocalDoloDoctorDarkTheme.current) 3.dp else 0.dp,
+            pressedElevation = if (LocalDoloDoctorDarkTheme.current) 1.dp else 0.dp
+        )
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = contentColor)
-            Spacer(Modifier.width(10.dp))
-            Text(label, color = contentColor, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        }
+        Icon(icon, null)
+        Spacer(Modifier.width(10.dp))
+        Text(label, fontWeight = FontWeight.Bold, fontSize = 16.sp)
     }
 }
-
 @Composable fun MetricTile(label: String, value: String, modifier: Modifier = Modifier, accent: Color? = null) {
     val colors = MaterialTheme.colorScheme
-    Card(modifier.semantics(mergeDescendants = true) { contentDescription = label + ": " + value }.shadow(8.dp, RoundedCornerShape(22.dp)), colors = CardDefaults.cardColors(containerColor = colors.surface), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
+    Card(modifier.semantics(mergeDescendants = true) { contentDescription = label + ": " + value }, colors = CardDefaults.cardColors(containerColor = colors.surface), elevation = CardDefaults.cardElevation(if (LocalDoloDoctorDarkTheme.current) 4.dp else 0.dp), shape = MaterialTheme.shapes.large) {
         Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(value, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = accent ?: colors.primary)
             Text(label, fontSize = 12.sp, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
@@ -77,7 +78,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable fun ElevatedSection(title: String, subtitle: String? = null, content: @Composable ColumnScope.() -> Unit) {
     val colors = MaterialTheme.colorScheme
-    Card(Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(22.dp)), colors = CardDefaults.cardColors(containerColor = colors.surface), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = colors.surface), elevation = CardDefaults.cardElevation(if (LocalDoloDoctorDarkTheme.current) 4.dp else 0.dp), shape = MaterialTheme.shapes.large) {
         Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             if (subtitle != null) Text(subtitle, color = colors.onSurfaceVariant, fontSize = 13.sp)
@@ -110,23 +111,46 @@ enum class DoctorBottomDestination { TODAY, APPOINTMENTS, CLINIC, MORE }
     onMore: () -> Unit,
     clinicEnabled: Boolean = true
 ) {
-    Surface(modifier = Modifier.navigationBarsPadding(), color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), shadowElevation = 14.dp) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            BottomItem(Icons.Outlined.Today, "Today", selected == DoctorBottomDestination.TODAY, onToday)
-            BottomItem(Icons.Outlined.CalendarMonth, "Appointments", selected == DoctorBottomDestination.APPOINTMENTS, onAppointments)
-            BottomItem(Icons.Outlined.Business, "Clinic", selected == DoctorBottomDestination.CLINIC, onClinic, clinicEnabled)
-            BottomItem(Icons.Outlined.MoreHoriz, "More", selected == DoctorBottomDestination.MORE, onMore)
-        }
+    NavigationBar(
+        modifier = Modifier.navigationBarsPadding(),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = if (LocalDoloDoctorDarkTheme.current) 4.dp else 0.dp
+    ) {
+        BottomItem(Icons.Outlined.Today, "Today", selected == DoctorBottomDestination.TODAY, onToday)
+        BottomItem(Icons.Outlined.CalendarMonth, "Appointments", selected == DoctorBottomDestination.APPOINTMENTS, onAppointments)
+        BottomItem(Icons.Outlined.Business, "Clinic", selected == DoctorBottomDestination.CLINIC, onClinic, clinicEnabled)
+        BottomItem(Icons.Outlined.MoreHoriz, "More", selected == DoctorBottomDestination.MORE, onMore)
     }
 }
 
-@Composable private fun BottomItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit, enabled: Boolean = true) {
-    val colors = MaterialTheme.colorScheme
-    Column(Modifier.sizeIn(minWidth = 72.dp, minHeight = 54.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = label + if (enabled) "" else ", unavailable" }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        val color = if (!enabled) colors.outline else if (selected) colors.primary else colors.onSurfaceVariant
-        Icon(icon, null, tint = color)
-        Text(label, fontSize = 9.sp, color = color)
-    }
+@Composable
+private fun RowScope.BottomItem(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean = true
+) {
+    NavigationBarItem(
+        selected = selected,
+        onClick = onClick,
+        enabled = enabled,
+        icon = { Icon(icon, contentDescription = null) },
+        label = { Text(label, maxLines = 1) },
+        colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = MaterialTheme.colorScheme.primary,
+            selectedTextColor = MaterialTheme.colorScheme.primary,
+            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            disabledIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+            disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+        ),
+        modifier = Modifier.semantics {
+            contentDescription = label + if (enabled) "" else ", unavailable"
+            stateDescription = if (selected) "Selected" else "Not selected"
+        }
+    )
 }
 @Composable fun DateRangeSelector(
     fromDate: java.time.LocalDate,

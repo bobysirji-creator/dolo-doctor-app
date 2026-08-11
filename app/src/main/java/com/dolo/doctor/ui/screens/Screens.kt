@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.dolo.doctor.auth.AuthUiState
 import com.dolo.doctor.data.model.*
 import com.dolo.doctor.ui.components.*
+import com.dolo.doctor.ui.theme.LocalDoloDoctorDarkTheme
 import com.dolo.doctor.printing.AndroidTokenReceiptPrinter
 import kotlinx.coroutines.delay
 import java.time.DayOfWeek
@@ -40,7 +41,7 @@ import java.time.LocalDate
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             DoctorBrand()
             Spacer(Modifier.height(30.dp))
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, shadowElevation = 12.dp, modifier = Modifier.size(150.dp)) {
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, shadowElevation = if (LocalDoloDoctorDarkTheme.current) 6.dp else 0.dp, modifier = Modifier.size(150.dp)) {
                 Icon(Icons.Outlined.MedicalServices, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(38.dp))
             }
             Spacer(Modifier.height(28.dp))
@@ -247,10 +248,10 @@ import java.time.LocalDate
                 item {
                     ElevatedSection(selectedSession + " queue controls", if (weeklyClosed) "Recurring weekly day off" else "Independent status: ${queue.state.name.lowercase().replaceFirstChar(Char::uppercase)}") {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Button({ onToggleQueue(selectedSession) }, Modifier.weight(1f), enabled = canUpdate && queue.state != QueueState.CLOSED && (!weeklyClosed || queue.state == QueueState.ACTIVE), elevation = ButtonDefaults.buttonElevation(7.dp)) {
+                            Button({ onToggleQueue(selectedSession) }, Modifier.weight(1f), enabled = canUpdate && queue.state != QueueState.CLOSED && (!weeklyClosed || queue.state == QueueState.ACTIVE), elevation = ButtonDefaults.buttonElevation(if (LocalDoloDoctorDarkTheme.current) 3.dp else 0.dp)) {
                                 Text(if (weeklyClosed && queue.state != QueueState.ACTIVE) "Weekly day off" else when (queue.state) { QueueState.ACTIVE -> "Pause"; QueueState.NOT_STARTED -> "Start queue"; QueueState.PAUSED -> "Resume"; QueueState.CLOSED -> "Session closed" })
                             }
-                            Button({ onCallNext(selectedSession) }, Modifier.weight(1f), enabled = queue.state == QueueState.ACTIVE && canCallNext && (hasNextPatient || hasCurrentConsultation), elevation = ButtonDefaults.buttonElevation(7.dp)) {
+                            Button({ onCallNext(selectedSession) }, Modifier.weight(1f), enabled = queue.state == QueueState.ACTIVE && canCallNext && (hasNextPatient || hasCurrentConsultation), elevation = ButtonDefaults.buttonElevation(if (LocalDoloDoctorDarkTheme.current) 3.dp else 0.dp)) {
                                 Text(if (hasNextPatient) "Call next" else "Complete consultation")
                             }
                         }

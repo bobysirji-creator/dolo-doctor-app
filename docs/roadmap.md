@@ -261,3 +261,18 @@ Stage 62C will finish remaining Patient navigation and shared cross-app accessib
 ## Stage 62B physical-device acceptance
 
 On 11 August 2026, Doctor App `0.27.0-stage62b` passed the complete physical-device checklist. Today, Appointments, Clinic and role-aware More navigation, Doctor/Assistant visibility rules, queue and appointment workflows, dark theme, notification access, restart persistence and local-data safety are accepted.
+## Stage 62F - Doctor shared visual-system foundation
+
+- [x] adopt the accepted Patient App day and night palette as the DO-LO ecosystem baseline
+- [x] align Doctor typography and rounded shape tokens with the Patient App
+- [x] replace teal/green primary actions with accessible DO-LO blue actions
+- [x] flatten shared cards, fields, back controls and buttons in Day mode
+- [x] retain layered elevation and high-contrast surfaces in Night mode
+- [x] replace the custom Doctor bottom bar with accessible Material 3 navigation items
+- [x] preserve Today, Appointments, Clinic and More information architecture
+- [x] preserve Doctor/Assistant permissions, queue, sessions, receipts, reports and hosted synchronization
+- [x] version 0.28.0-stage62f (version code 41)
+- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [ ] stable APK in-place upgrade and Stage 62F physical-device acceptance
+
+The accepted Patient visual system is now the canonical baseline for Patient, Doctor and future Admin modernization. This stage changes presentation only; no database, API, provider or business-workflow contract changed.

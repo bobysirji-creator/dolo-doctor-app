@@ -399,3 +399,8 @@ Doctor App 0.27.0-stage62b (version code 40) introduces four stable operational 
 ## Stage 62B acceptance checkpoint
 
 Doctor App `0.27.0-stage62b` passed GitHub Actions, stable APK upgrade and every `docs/stage62b-device-test.md` check on 11 August 2026. The four-destination operational information architecture and Doctor/Assistant permission-aware More workspace are accepted. Existing queue, clinic, receipt, persistence and hosted boundaries remain intact.
+## Stage 62F implementation checkpoint
+
+Doctor App `0.28.0-stage62f` (version code 41) adopts the accepted Patient App visual language: ice-blue/white Day surfaces, accessible blue actions, deep-navy layered Night surfaces, shared typography and rounded shape tokens. Shared cards and controls are flat in Day mode and retain restrained elevation in Night mode. The Today, Appointments, Clinic and More destinations now use Material 3 navigation items with an explicit selected indicator and disabled Clinic semantics.
+
+Doctor and Assistant roles, permissions, queue ordering, independent sessions, appointment intake, clinic-direct fee confirmation, compulsory receipts, reports, notifications, backup and hosted synchronization are unchanged. GitHub Actions is the Android build authority; install the stable artifact over the accepted Doctor App and follow `docs/stage62f-device-test.md`.
