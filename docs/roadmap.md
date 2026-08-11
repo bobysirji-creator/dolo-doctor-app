@@ -258,3 +258,6 @@ The full Stage 61B-P device checklist passed on 11 August 2026.
 - [ ] GitHub Actions and stable APK physical-device acceptance
 
 Stage 62C will finish remaining Patient navigation and shared cross-app accessibility polish.
+## Stage 62B physical-device acceptance
+
+On 11 August 2026, Doctor App `0.27.0-stage62b` passed the complete physical-device checklist. Today, Appointments, Clinic and role-aware More navigation, Doctor/Assistant visibility rules, queue and appointment workflows, dark theme, notification access, restart persistence and local-data safety are accepted.

@@ -396,3 +396,6 @@ Version 0.26.0-stage61bp adds the controlled encrypted hosted-read cache, explic
 ## Stage 62B implementation checkpoint
 
 Doctor App 0.27.0-stage62b (version code 40) introduces four stable operational destinations: Today, Appointments, Clinic and More. Today prioritizes live queue and same-day intake; More groups account, clinic-management, reporting and data tools. A pure navigation policy hides Doctor-only actions from Assistants and shows permission-backed Reports or Announcements only when allowed. Existing queue, receipt, clinic-fee, hosted, persistence and permission behavior remains unchanged. Build the stable APK through GitHub Actions, upgrade the accepted app and follow docs/stage62b-device-test.md.
+## Stage 62B acceptance checkpoint
+
+Doctor App `0.27.0-stage62b` passed GitHub Actions, stable APK upgrade and every `docs/stage62b-device-test.md` check on 11 August 2026. The four-destination operational information architecture and Doctor/Assistant permission-aware More workspace are accepted. Existing queue, clinic, receipt, persistence and hosted boundaries remain intact.
