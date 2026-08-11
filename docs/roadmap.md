@@ -240,3 +240,21 @@ The cross-app production sequence, dependencies and completion rules are maintai
 ## Stage 61B-P physical-device acceptance
 
 On 11 August 2026, the complete Stage 61B-P device checklist passed across Patient, Doctor and Admin apps. Encrypted hosted-cache fallback, freshness labels, one bounded retry, conflict refresh, logout/role cache isolation and local-data separation are accepted for the controlled prototype.
+## Stage 61B-P physical-device acceptance
+
+The full Stage 61B-P device checklist passed on 11 August 2026.
+
+## Stage 62B - Doctor information architecture
+
+- [x] replace Home/Queue/Appointments/Profile navigation with Today/Appointments/Clinic/More
+- [x] make queue control and current-day appointment intake the focus of Today
+- [x] add a dedicated role-aware More workspace grouped into Account, Clinic management, and Insights and data
+- [x] keep Assistant destinations hidden unless explicitly permitted
+- [x] preserve Doctor-only profile, Assistant management, audit, backup and local-sync controls
+- [x] keep queue, appointment, clinic-fee, receipt, session and hosted behavior unchanged
+- [x] retain dark theme, notification access, safe logout and responsive bottom navigation
+- [x] add pure navigation-policy regression tests
+- [x] version 0.27.0-stage62b (version code 40)
+- [ ] GitHub Actions and stable APK physical-device acceptance
+
+Stage 62C will finish remaining Patient navigation and shared cross-app accessibility polish.

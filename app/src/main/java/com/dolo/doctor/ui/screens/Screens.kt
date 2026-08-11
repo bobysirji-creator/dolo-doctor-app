@@ -93,19 +93,10 @@ import java.time.LocalDate
     onToggleTheme: () -> Unit,
     onQueue: () -> Unit,
     onAppointments: () -> Unit,
-    onHistory: () -> Unit,
     onClinic: () -> Unit,
-    onActivity: () -> Unit,
-    onReports: () -> Unit,
-    onSync: () -> Unit,
     onHostedSync: () -> Unit,
-    onBackup: () -> Unit,
-    onChangePin: () -> Unit,
-    onAvailability: () -> Unit,
-    onAnnouncements: () -> Unit,
-    onAssistants: () -> Unit,
-    onProfile: () -> Unit,
     onNotifications: () -> Unit,
+    onMore: () -> Unit,
     onLogout: () -> Unit
 ) {
     val doctorMode = state.role == UserRole.DOCTOR
@@ -113,58 +104,76 @@ import java.time.LocalDate
     val canViewQueue = doctorMode || Permission.VIEW_QUEUE in permissions
     val canViewAppointments = doctorMode || Permission.VIEW_TODAY_APPOINTMENTS in permissions
     val canViewClinic = doctorMode || Permission.VIEW_CLINIC in permissions || Permission.MANAGE_CLINIC_AVAILABILITY in permissions
-    val canViewReports = doctorMode || Permission.VIEW_REPORTS in permissions || Permission.VIEW_PATIENT_FEEDBACK in permissions || Permission.SEND_QUEUE_DELAY_NOTICE in permissions
     val canHostedQueue = doctorMode || state.activeAssistantId == "staff-1"
     val morningQueue = state.sessionQueues.firstOrNull { it.session == "Morning" } ?: ConsultationQueue("Morning", state.queueState, state.currentToken)
     val eveningQueue = state.sessionQueues.firstOrNull { it.session == "Evening" } ?: ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
-    var confirmLogout by remember { mutableStateOf(false) }
     val unreadNotifications = state.auditEvents.count { it.sequence > state.notificationReadThrough } + hostedUnreadNotifications
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.HOME, {}, onQueue, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
-        LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    var confirmLogout by remember { mutableStateOf(false) }
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            DoctorBottomBar(
+                selected = DoctorBottomDestination.TODAY,
+                onToday = {},
+                onAppointments = onAppointments,
+                onClinic = onClinic,
+                onMore = onMore,
+                clinicEnabled = canViewClinic
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
             item {
-                Column(Modifier.fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.Top) {
-                        IconButton(onToggleTheme) { Icon(if (darkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (darkTheme) "Use light theme" else "Use dark theme") }
-                        BadgedBox(badge = { if (unreadNotifications > 0) Badge { Text(unreadNotifications.coerceAtMost(99).toString()) } }) {
-                            IconButton(onNotifications) { Icon(Icons.Outlined.Notifications, "Notifications") }
-                        }
-                        IconButton(onClick = { confirmLogout = true }) { Icon(Icons.Outlined.Logout, "Logout") }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        DoctorBrand()
+                        Text(if (doctorMode) state.profile.name else assistantName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                        Text(if (doctorMode) state.profile.specialty else "Assistant • ${permissions.size} permissions", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    DoctorBrand()
-                    Text(if (doctorMode) state.profile.name else assistantName, Modifier.fillMaxWidth(), fontSize = 23.sp, lineHeight = 29.sp, fontWeight = FontWeight.ExtraBold)
-                    Text(if (doctorMode) state.profile.specialty else "Assistant • ${permissions.size} permissions", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    IconButton(onToggleTheme) { Icon(if (darkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (darkTheme) "Use light theme" else "Use dark theme") }
+                    BadgedBox(badge = { if (unreadNotifications > 0) Badge { Text(unreadNotifications.coerceAtMost(99).toString()) } }) {
+                        IconButton(onNotifications) { Icon(Icons.Outlined.Notifications, "Notifications") }
+                    }
+                    IconButton(onClick = { confirmLogout = true }) { Icon(Icons.Outlined.Logout, "Logout") }
                 }
             }
-            item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("Morning token", morningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Evening token", eveningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
-            item { ElevatedSection("Today's queue", state.clinics.first().name + " • " + state.queueDate) { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { Row { Text("Morning", Modifier.weight(1f)); StatusPill(morningQueue.state.name.replace("_", " "), morningQueue.state == QueueState.ACTIVE) }; Row { Text("Evening", Modifier.weight(1f)); StatusPill(eveningQueue.state.name.replace("_", " "), eveningQueue.state == QueueState.ACTIVE) } }; PrimaryAction("Open live queue", onQueue, enabled = canViewQueue, icon = Icons.Outlined.FormatListNumbered) } }
-            item { Text("Clinic tools", style = MaterialTheme.typography.titleLarge) }
-            if (canHostedQueue) { item { ElevatedSection("Hosted Stage 16F queue", "Seeded dummy cross-device prototype") { Text("Server appointments and queue controls are isolated from local clinic data.", color = MaterialTheme.colorScheme.onSurfaceVariant); PrimaryAction("Open hosted staff queue", onHostedSync, icon = Icons.Outlined.CloudSync) } } }
-            item { ToolRow(onAppointments, if (doctorMode) onHistory else onClinic, canViewAppointments, if (doctorMode) true else canViewClinic, secondLabel = if (doctorMode) "Queue history" else "Clinic", secondIcon = if (doctorMode) Icons.Outlined.History else Icons.Outlined.Business) }
-            if (doctorMode) {
-                item { ToolRow(onClinic, onReports, true, true, "Clinic", "Reports", Icons.Outlined.Business, Icons.Outlined.Insights) }
+            item { Text("Today", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold) }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MetricTile("Morning token", morningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error)
+                    MetricTile("Evening token", eveningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary)
+                }
+            }
+            item {
+                ElevatedSection("Live queue", state.clinics.first().name + " • " + state.queueDate) {
+                    Row { Text("Morning", Modifier.weight(1f)); StatusPill(morningQueue.state.name.replace("_", " "), morningQueue.state == QueueState.ACTIVE) }
+                    Row { Text("Evening", Modifier.weight(1f)); StatusPill(eveningQueue.state.name.replace("_", " "), eveningQueue.state == QueueState.ACTIVE) }
+                    PrimaryAction("Open queue control", onQueue, enabled = canViewQueue, icon = Icons.Outlined.FormatListNumbered)
+                }
+            }
+            item {
+                val todayAppointments = state.appointments.count { it.date == state.queueDate }
+                ElevatedSection("Today's appointments", "$todayAppointments bookings across both sessions") {
+                    Text("Confirm clinic fee, generate the required receipt and admit each Patient to the correct session queue.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    PrimaryAction("Open appointments", onAppointments, enabled = canViewAppointments, icon = Icons.Outlined.CalendarMonth)
+                }
+            }
+            if (canHostedQueue) {
                 item {
-                    ElevatedSection("Shared Patient App integration", state.syncMessage) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            StatusPill(state.syncStatus.name.replace("_", " "), state.syncStatus == SyncStatus.SYNCED)
-                            Spacer(Modifier.weight(1f))
-                            Text("Revision " + state.syncRevision, fontWeight = FontWeight.Bold)
-                        }
-                        PrimaryAction("Open sync center", onSync, icon = Icons.Outlined.CloudSync)
+                    ElevatedSection("Hosted clinic workspace", "Authoritative prototype appointments and queue") {
+                        Text("Server appointments remain isolated from local clinic data.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        PrimaryAction("Open hosted staff workspace", onHostedSync, icon = Icons.Outlined.CloudSync)
                     }
                 }
-                item { ToolRow(onActivity, onAvailability, true, true, "Activity log", "Availability", Icons.Outlined.FactCheck, Icons.Outlined.EventBusy) }
-                item { ToolRow(onAnnouncements, onAssistants, true, true, "Updates", "Assistants", Icons.Outlined.Campaign, Icons.Outlined.Groups) }
-                item { ElevatedSection("Data protection", "Encrypted portable clinic backup") { PrimaryAction("Backup & recovery", onBackup, icon = Icons.Outlined.Backup) } }
-            } else {
-                if (canViewReports || Permission.MANAGE_ANNOUNCEMENTS in permissions) {
-                    item { ToolRow(onReports, onAnnouncements, canViewReports, Permission.MANAGE_ANNOUNCEMENTS in permissions, "Reports", "Updates", Icons.Outlined.Insights, Icons.Outlined.Campaign) }
-                }
-                item { ElevatedSection("Assistant access") { permissions.sortedBy { it.name }.forEach { Text("• ${it.name.replace("_", " ").lowercase().replaceFirstChar(Char::uppercase)}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) } } }
             }
-            item { ElevatedSection("Account security", "Protect this device login") { PrimaryAction("Change login PIN", onChangePin, icon = Icons.Outlined.LockReset) } }
             if (doctorMode || Permission.MANAGE_ANNOUNCEMENTS in permissions) {
-                item { Text("Active doctor updates", style = MaterialTheme.typography.titleLarge) }
-                items(state.announcements.filter { it.active && state.queueDate >= it.startsOn && state.queueDate <= it.endsOn }.take(2), key = { it.id }) { AnnouncementCard(it, null) }
+                val active = state.announcements.filter { it.active && state.queueDate >= it.startsOn && state.queueDate <= it.endsOn }.take(2)
+                item { Text("Active Doctor updates", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+                if (active.isEmpty()) item { ElevatedSection("No active update") { Text("Announcements are managed from More.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+                else items(active, key = { it.id }) { AnnouncementCard(it, null) }
             }
         }
     }
@@ -179,25 +188,14 @@ import java.time.LocalDate
         )
     }
 }
-@Composable private fun ToolRow(first: () -> Unit, second: () -> Unit, firstEnabled: Boolean, secondEnabled: Boolean, firstLabel: String = "Appointments", secondLabel: String = "Clinic", firstIcon: ImageVector = Icons.Outlined.CalendarMonth, secondIcon: ImageVector = Icons.Outlined.Business) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        ToolCard(firstIcon, firstLabel, first, Modifier.weight(1f), firstEnabled)
-        ToolCard(secondIcon, secondLabel, second, Modifier.weight(1f), secondEnabled)
-    }
-}
-@Composable private fun ToolCard(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier, enabled: Boolean) {
-    Card(modifier.height(112.dp).shadow(8.dp, RoundedCornerShape(22.dp)).clickable(enabled = enabled, onClick = onClick), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(5.dp), shape = RoundedCornerShape(22.dp)) {
-        Column(Modifier.fillMaxSize().padding(15.dp), verticalArrangement = Arrangement.SpaceBetween) { Icon(icon, null, tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(32.dp)); Text(label, fontWeight = FontWeight.Bold) }
-    }
-}
-
 @Composable fun QueueScreen(
     state: DoctorUiState,
     permissions: Set<Permission>,
     onBack: () -> Unit,
     onHome: () -> Unit,
     onAppointments: () -> Unit,
-    onProfile: () -> Unit,
+    onClinic: () -> Unit,
+    onMore: () -> Unit,
     onSelectSession: (String) -> Unit,
     isRecurringSessionClosed: (String) -> Boolean,
     onToggleQueue: (String) -> Unit,
@@ -226,7 +224,7 @@ import java.time.LocalDate
     val hasCurrentConsultation = sessionAppointments.any { it.token == queue.currentToken && it.status == AppointmentStatus.IN_CONSULTATION }
     val progressedOrder = sessionAppointments.filter { it.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED) }.maxOfOrNull { it.queueOrder } ?: 0
     var confirmCloseSession by remember { mutableStateOf(false) }
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.QUEUE, onHome, {}, onAppointments, onProfile, profileEnabled = doctorMode) }) { padding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.TODAY, onHome, onAppointments, onClinic, onMore, clinicEnabled = doctorMode || Permission.VIEW_CLINIC in permissions || Permission.MANAGE_CLINIC_AVAILABILITY in permissions) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Live queue", onBack) }
             item {
@@ -366,8 +364,8 @@ import java.time.LocalDate
     permissions: Set<Permission>,
     onBack: () -> Unit,
     onHome: () -> Unit,
-    onQueue: () -> Unit,
-    onProfile: () -> Unit,
+    onClinic: () -> Unit,
+    onMore: () -> Unit,
     onBookWalkIn: (WalkInBookingRequest) -> WalkInBookingResult,
     onReceipt: (String) -> TokenReceipt?,
     onConfirmFee: (String, Int, PaymentMethod) -> FeeConfirmationResult,
@@ -398,7 +396,7 @@ import java.time.LocalDate
     var showWalkInBooking by remember { mutableStateOf(false) }
     var activeReceipt by remember { mutableStateOf<TokenReceipt?>(null) }
     var activeFeeAppointment by remember { mutableStateOf<Appointment?>(null) }
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.APPOINTMENTS, onHome, onQueue, {}, onProfile, profileEnabled = doctorMode) }) { padding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.APPOINTMENTS, onHome, {}, onClinic, onMore, clinicEnabled = doctorMode || Permission.VIEW_CLINIC in permissions || Permission.MANAGE_CLINIC_AVAILABILITY in permissions) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Today's appointments", onBack) }
             if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_TODAY_APPOINTMENTS permission.", color = MaterialTheme.colorScheme.error) } }
@@ -781,35 +779,62 @@ private fun updateWeeklyClosure(
     }
 }
 
-@Composable fun ClinicScreen(state: DoctorUiState, canEdit: Boolean, onBack: () -> Unit, onSaveClinic: (Clinic) -> String?) {
+@Composable fun ClinicScreen(
+    state: DoctorUiState,
+    canEdit: Boolean,
+    onBack: () -> Unit,
+    onToday: () -> Unit,
+    onAppointments: () -> Unit,
+    onMore: () -> Unit,
+    onSaveClinic: (Clinic) -> String?
+) {
     var editingClinic by remember { mutableStateOf<Clinic?>(null) }
-    LazyColumn(page().padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
-        item { PageHeader("Clinic & schedule", onBack) }
-        item { ElevatedSection("Consultation setup", if (canEdit) "Update clinic contact details, sessions, capacity and consultation time." else "View the clinic schedule and consultation settings allowed by your Doctor.") { Text(if (canEdit) "Changes are stored locally and will later sync through the shared backend." else "Assistant access is read-only. Only the Doctor can edit clinic settings.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-        items(state.clinics, key = { it.id }) { clinic ->
-            ElevatedSection(clinic.name, clinic.address) {
-                DetailLine(Icons.Outlined.Phone, clinic.phone)
-                DetailLine(Icons.Outlined.LightMode, "Morning: " + clinic.morningSession)
-                DetailLine(Icons.Outlined.DarkMode, "Evening: " + clinic.eveningSession)
-                DetailLine(Icons.Outlined.ConfirmationNumber, clinic.maxTokensPerSession.toString() + " tokens per session")
-                DetailLine(Icons.Outlined.Schedule, "Average consultation: " + clinic.averageConsultationMinutes + " minutes")
-                DetailLine(
-                    Icons.Outlined.DateRange,
-                    if (clinic.futureBookingEnabled) {
-                        "Patient App future booking: Up to " + clinic.advanceBookingDays + " days"
-                    } else {
-                        "Patient App booking: Current day only"
-                    }
-                )
-                DetailLine(Icons.Outlined.Storefront, "Clinic walk-ins: Current day only")
-                if (clinic.weeklyClosures.isEmpty()) {
-                    DetailLine(Icons.Outlined.EventAvailable, "Weekly schedule: Open both sessions every day")
-                } else {
-                    clinic.weeklyClosures.entries.sortedBy { it.key.value }.forEach { (day, scope) ->
-                        DetailLine(Icons.Outlined.EventBusy, weeklyClosureLabel(day, scope))
-                    }
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            DoctorBottomBar(
+                DoctorBottomDestination.CLINIC,
+                onToday,
+                onAppointments,
+                {},
+                onMore
+            )
+        }
+    ) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+            item { PageHeader("Clinic & schedule", onBack) }
+            item {
+                ElevatedSection(
+                    "Consultation setup",
+                    if (canEdit) "Update clinic contact details, sessions, capacity and consultation time." else "View the clinic schedule and consultation settings allowed by your Doctor."
+                ) {
+                    Text(
+                        if (canEdit) "Changes are stored locally and will later sync through the shared backend." else "Assistant access is read-only. Only the Doctor can edit clinic settings.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                if (canEdit) PrimaryAction("Edit clinic & schedule", { editingClinic = clinic }, icon = Icons.Outlined.CalendarMonth)
+            }
+            items(state.clinics, key = { it.id }) { clinic ->
+                ElevatedSection(clinic.name, clinic.address) {
+                    DetailLine(Icons.Outlined.Phone, clinic.phone)
+                    DetailLine(Icons.Outlined.LightMode, "Morning: " + clinic.morningSession)
+                    DetailLine(Icons.Outlined.DarkMode, "Evening: " + clinic.eveningSession)
+                    DetailLine(Icons.Outlined.ConfirmationNumber, clinic.maxTokensPerSession.toString() + " tokens per session")
+                    DetailLine(Icons.Outlined.Schedule, "Average consultation: " + clinic.averageConsultationMinutes + " minutes")
+                    DetailLine(
+                        Icons.Outlined.DateRange,
+                        if (clinic.futureBookingEnabled) "Patient App future booking: Up to " + clinic.advanceBookingDays + " days" else "Patient App booking: Current day only"
+                    )
+                    DetailLine(Icons.Outlined.Storefront, "Clinic walk-ins: Current day only")
+                    if (clinic.weeklyClosures.isEmpty()) {
+                        DetailLine(Icons.Outlined.EventAvailable, "Weekly schedule: Open both sessions every day")
+                    } else {
+                        clinic.weeklyClosures.entries.sortedBy { it.key.value }.forEach { (day, scope) ->
+                            DetailLine(Icons.Outlined.EventBusy, weeklyClosureLabel(day, scope))
+                        }
+                    }
+                    if (canEdit) PrimaryAction("Edit clinic & schedule", { editingClinic = clinic }, icon = Icons.Outlined.CalendarMonth)
+                }
             }
         }
     }
@@ -821,7 +846,6 @@ private fun updateWeeklyClosure(
         )
     }
 }
-
 @Composable private fun ClinicEditDialog(clinic: Clinic, onDismiss: () -> Unit, onSave: (Clinic) -> String?) {
     var name by remember(clinic.id) { mutableStateOf(clinic.name) }
     var address by remember(clinic.id) { mutableStateOf(clinic.address) }
@@ -1121,10 +1145,10 @@ private fun updateWeeklyClosure(
 private fun permissionLabel(permission: Permission): String =
     permission.name.replace("_", " ").lowercase().replaceFirstChar(Char::uppercase)
 
-@Composable fun ProfileScreen(state: DoctorUiState, onBack: () -> Unit, onHome: () -> Unit, onQueue: () -> Unit, onAppointments: () -> Unit, onSaveProfile: (DoctorProfile) -> String?) {
+@Composable fun ProfileScreen(state: DoctorUiState, onBack: () -> Unit, onHome: () -> Unit, onAppointments: () -> Unit, onClinic: () -> Unit, onMore: () -> Unit, onSaveProfile: (DoctorProfile) -> String?) {
     var editingProfile by remember { mutableStateOf(false) }
     val pendingReview = state.profile.reviewStatus == ProfileReviewStatus.PENDING_REVIEW
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.PROFILE, onHome, onQueue, onAppointments, {}) }) { padding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.MORE, onHome, onAppointments, onClinic, onMore) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
             item { PageHeader("Doctor profile", onBack) }
             item {

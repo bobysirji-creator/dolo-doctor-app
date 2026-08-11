@@ -14,6 +14,8 @@ import com.dolo.doctor.data.DoctorStateStore
 import com.dolo.doctor.data.DoctorViewModel
 import com.dolo.doctor.data.DoctorViewModelFactory
 import com.dolo.doctor.data.model.UserRole
+import com.dolo.doctor.data.model.Permission
+import com.dolo.doctor.ui.navigation.DoctorMoreDestination
 import com.dolo.doctor.data.model.AssistantCreationResult
 import com.dolo.doctor.hosted.HostedStaffViewModel
 import com.dolo.doctor.hosted.HostedStaffViewModelFactory
@@ -40,6 +42,7 @@ private object Routes {
     const val ASSISTANTS = "assistants"
     const val PROFILE = "profile"
     const val NOTIFICATIONS = "notifications"
+    const val MORE = "more"
 }
 
 @Composable fun DoloDoctorApp(
@@ -77,6 +80,7 @@ private object Routes {
     fun home() = nav.navigate(Routes.HOME) { launchSingleTop = true }
     fun queue() = nav.navigate(Routes.QUEUE) { launchSingleTop = true }
     fun appointments() = nav.navigate(Routes.APPOINTMENTS) { launchSingleTop = true }
+    fun more() = nav.navigate(Routes.MORE) { launchSingleTop = true }
     fun profile() {
         if (state.role == UserRole.DOCTOR) nav.navigate(Routes.PROFILE) { launchSingleTop = true }
     }
@@ -100,6 +104,15 @@ private object Routes {
         if (state.role == UserRole.DOCTOR || state.activeAssistantId == "staff-1") nav.navigate(Routes.HOSTED_SYNC) { launchSingleTop = true }
     }
 
+    fun announcements() {
+        if (state.role == UserRole.DOCTOR || Permission.MANAGE_ANNOUNCEMENTS in permissions) nav.navigate(Routes.ANNOUNCEMENTS) { launchSingleTop = true }
+    }
+    fun logout() {
+        hostedViewModel.localLogout()
+        authViewModel.logout()
+        doctorViewModel.logout(authRepository.removedAssistantIds())
+        nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
+    }
     NavHost(navController = nav, startDestination = startDestination) {
         composable(Routes.SPLASH) {
             SplashScreen {
@@ -119,32 +132,18 @@ private object Routes {
                 if (authState.session?.mustChangePin == true) nav.navigate(Routes.CHANGE_PIN) { popUpTo(Routes.HOME) { inclusive = true } }
             }
             DashboardScreen(
-                state,
-                permissions,
-                darkTheme,
-                hostedUnread,
-                onToggleTheme,
-                ::queue,
-                ::appointments,
-                { protectedDoctorRoute(Routes.HISTORY) },
-                ::clinic,
-                { protectedDoctorRoute(Routes.ACTIVITY) },
-                ::reports,
-                ::sync,
-                ::hostedSync,
-                ::backup,
-                ::changePin,
-                { protectedDoctorRoute(Routes.AVAILABILITY) },
-                { protectedDoctorRoute(Routes.ANNOUNCEMENTS) },
-                { protectedDoctorRoute(Routes.ASSISTANTS) },
-                ::profile,
-                { nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } },
-                {
-                    hostedViewModel.localLogout()
-                    authViewModel.logout()
-                    doctorViewModel.logout(authRepository.removedAssistantIds())
-                    nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
-                }
+                state = state,
+                permissions = permissions,
+                darkTheme = darkTheme,
+                hostedUnreadNotifications = hostedUnread,
+                onToggleTheme = onToggleTheme,
+                onQueue = ::queue,
+                onAppointments = ::appointments,
+                onClinic = ::clinic,
+                onHostedSync = ::hostedSync,
+                onNotifications = { nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } },
+                onMore = ::more,
+                onLogout = ::logout
             )
         }
         composable(Routes.QUEUE) {
@@ -154,7 +153,8 @@ private object Routes {
                 nav::popBackStack,
                 ::home,
                 ::appointments,
-                ::profile,
+                ::clinic,
+                ::more,
                 doctorViewModel::selectSession,
                 doctorViewModel::recurringSessionClosed,
                 doctorViewModel::toggleQueue,
@@ -165,7 +165,7 @@ private object Routes {
                 doctorViewModel::closeSession
             )
         }
-        composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::queue, ::profile, doctorViewModel::bookWalkIn, doctorViewModel::receiptFor, doctorViewModel::confirmConsultationFee, doctorViewModel::sessionBookingOpen, doctorViewModel::selectSession, doctorViewModel::refreshDate) }
+        composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::clinic, ::more, doctorViewModel::bookWalkIn, doctorViewModel::receiptFor, doctorViewModel::confirmConsultationFee, doctorViewModel::sessionBookingOpen, doctorViewModel::selectSession, doctorViewModel::refreshDate) }
         composable(Routes.HISTORY) { QueueHistoryScreen(state, nav::popBackStack) }
         composable(Routes.ACTIVITY) { QueueActivityScreen(state, nav::popBackStack) }
         composable(Routes.REPORTS) { ReportsScreen(state, permissions, doctorViewModel::operationalReport, nav::popBackStack, doctorViewModel::acknowledgeFeedback, doctorViewModel::sendQueueDelayNotice) }
@@ -194,7 +194,7 @@ private object Routes {
                 }
             )
         }
-        composable(Routes.CLINIC) { ClinicScreen(state, state.role == UserRole.DOCTOR, nav::popBackStack, doctorViewModel::updateClinic) }
+        composable(Routes.CLINIC) { ClinicScreen(state, state.role == UserRole.DOCTOR, nav::popBackStack, ::home, ::appointments, ::more, doctorViewModel::updateClinic) }
         composable(Routes.AVAILABILITY) { AvailabilityManagementScreen(state, nav::popBackStack, doctorViewModel::saveAvailabilityBlock, doctorViewModel::setAvailabilityAppointmentsEnabled, doctorViewModel::deleteAvailabilityBlock, doctorViewModel::updateAffectedPatientStatus) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementManagementScreen(state, nav::popBackStack, doctorViewModel::saveAnnouncement, doctorViewModel::setAnnouncementActive, doctorViewModel::deleteAnnouncement) }
         composable(Routes.ASSISTANTS) {
@@ -225,7 +225,36 @@ private object Routes {
                 }
             )
         }
-        composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::queue, ::appointments, doctorViewModel::updateProfile) }
+        composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::appointments, ::clinic, ::more, doctorViewModel::updateProfile) }
         composable(Routes.NOTIFICATIONS) { NotificationsScreen(state, hostedViewModel.uiState.copy(snapshot=hostedSnapshot), nav::popBackStack, doctorViewModel::markNotificationRead, doctorViewModel::markAllNotificationsRead, hostedViewModel::markHostedNotificationsRead) }
+        composable(Routes.MORE) {
+            DoctorMoreScreen(
+                state = state,
+                permissions = permissions,
+                darkTheme = darkTheme,
+                unreadNotifications = state.auditEvents.count { it.sequence > state.notificationReadThrough } + hostedUnread,
+                onToggleTheme = onToggleTheme,
+                onToday = ::home,
+                onAppointments = ::appointments,
+                onClinic = ::clinic,
+                onOpen = { destination ->
+                    when (destination) {
+                        DoctorMoreDestination.NOTIFICATIONS -> nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true }
+                        DoctorMoreDestination.PROFILE -> profile()
+                        DoctorMoreDestination.CHANGE_PIN -> changePin()
+                        DoctorMoreDestination.AVAILABILITY -> protectedDoctorRoute(Routes.AVAILABILITY)
+                        DoctorMoreDestination.ANNOUNCEMENTS -> announcements()
+                        DoctorMoreDestination.ASSISTANTS -> protectedDoctorRoute(Routes.ASSISTANTS)
+                        DoctorMoreDestination.REPORTS -> reports()
+                        DoctorMoreDestination.HISTORY -> protectedDoctorRoute(Routes.HISTORY)
+                        DoctorMoreDestination.ACTIVITY -> protectedDoctorRoute(Routes.ACTIVITY)
+                        DoctorMoreDestination.HOSTED_SYNC -> hostedSync()
+                        DoctorMoreDestination.SYNC -> sync()
+                        DoctorMoreDestination.BACKUP -> backup()
+                    }
+                },
+                onLogout = ::logout
+            )
+        }
     }
 }

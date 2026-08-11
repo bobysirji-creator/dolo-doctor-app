@@ -392,3 +392,7 @@ Doctor App `0.25.0-stage44b` and Platform API `0.35.0-stage44ab` passed GitHub A
 ## Stage 61B-P implementation checkpoint
 
 Version 0.26.0-stage61bp adds the controlled encrypted hosted-read cache, explicit freshness, bounded idempotent retry and refresh-required conflict handling. It does not upload local demo data or activate production. Run GitHub Actions, install over the accepted app and follow docs/stage61bp-device-test.md.
+
+## Stage 62B implementation checkpoint
+
+Doctor App 0.27.0-stage62b (version code 40) introduces four stable operational destinations: Today, Appointments, Clinic and More. Today prioritizes live queue and same-day intake; More groups account, clinic-management, reporting and data tools. A pure navigation policy hides Doctor-only actions from Assistants and shows permission-backed Reports or Announcements only when allowed. Existing queue, receipt, clinic-fee, hosted, persistence and permission behavior remains unchanged. Build the stable APK through GitHub Actions, upgrade the accepted app and follow docs/stage62b-device-test.md.

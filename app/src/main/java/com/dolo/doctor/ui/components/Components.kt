@@ -100,15 +100,22 @@ import androidx.compose.ui.unit.sp
     }
 }
 
-enum class DoctorBottomDestination { HOME, QUEUE, APPOINTMENTS, PROFILE }
+enum class DoctorBottomDestination { TODAY, APPOINTMENTS, CLINIC, MORE }
 
-@Composable fun DoctorBottomBar(selected: DoctorBottomDestination, onHome: () -> Unit, onQueue: () -> Unit, onAppointments: () -> Unit, onProfile: () -> Unit, profileEnabled: Boolean = true) {
+@Composable fun DoctorBottomBar(
+    selected: DoctorBottomDestination,
+    onToday: () -> Unit,
+    onAppointments: () -> Unit,
+    onClinic: () -> Unit,
+    onMore: () -> Unit,
+    clinicEnabled: Boolean = true
+) {
     Surface(modifier = Modifier.navigationBarsPadding(), color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), shadowElevation = 14.dp) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            BottomItem(Icons.Outlined.Home, "Home", selected == DoctorBottomDestination.HOME, onHome)
-            BottomItem(Icons.Outlined.FormatListNumbered, "Queue", selected == DoctorBottomDestination.QUEUE, onQueue)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+            BottomItem(Icons.Outlined.Today, "Today", selected == DoctorBottomDestination.TODAY, onToday)
             BottomItem(Icons.Outlined.CalendarMonth, "Appointments", selected == DoctorBottomDestination.APPOINTMENTS, onAppointments)
-            BottomItem(Icons.Outlined.Person, "Profile", selected == DoctorBottomDestination.PROFILE, onProfile, profileEnabled)
+            BottomItem(Icons.Outlined.Business, "Clinic", selected == DoctorBottomDestination.CLINIC, onClinic, clinicEnabled)
+            BottomItem(Icons.Outlined.MoreHoriz, "More", selected == DoctorBottomDestination.MORE, onMore)
         }
     }
 }
