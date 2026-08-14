@@ -295,7 +295,7 @@ On 14 August 2026, Doctor App `0.28.0-stage62f` passed the complete physical-dev
 - [x] add regression coverage for late token 6 after progress token 15
 - [x] preserve Assistant permissions, independent sessions, queue ordering, receipts and hosted/local isolation
 - [x] version 0.29.0-stage62g (version code 42)
-- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [x] GitHub Actions compile, lint, unit tests and stable APK (run 31809548353)
 - [ ] stable APK in-place upgrade and Stage 62G physical-device acceptance
 
 `Last token` is now the public progress marker, not necessarily the token currently in consultation. The queue list remains the source for the actual active Patient. No API or persisted-schema migration was required.
