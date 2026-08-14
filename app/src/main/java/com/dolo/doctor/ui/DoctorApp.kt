@@ -2,6 +2,7 @@ package com.dolo.doctor.ui
 
 import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
@@ -62,7 +63,7 @@ private object Routes {
     val nav = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val activity = LocalContext.current as? Activity
+    val activity = LocalActivity.current
     val state = doctorViewModel.uiState
     val authState = authViewModel.uiState
     val permissions = doctorViewModel.permissions()
