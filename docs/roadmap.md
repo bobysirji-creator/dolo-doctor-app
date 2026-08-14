@@ -313,7 +313,7 @@ On 14 August 2026, Doctor App `0.28.0-stage62f` passed the complete physical-dev
 - [x] make Android Back close the app from Home while retaining normal back behavior elsewhere
 - [x] preserve Stage 62G monotonic queue progress and all persisted data
 - [x] version 0.30.0-stage62h (version code 43)
-- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [x] GitHub Actions compile, lint, unit tests and stable APK (run 31823774406)
 - [ ] stable APK in-place upgrade and Stage 62H physical-device acceptance
 
 The drawer uses the existing role and permission policy, so Doctor-only destinations remain hidden from Assistants. No database, API or persisted-state migration is required.

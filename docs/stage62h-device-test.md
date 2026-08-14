@@ -4,7 +4,7 @@ Build: Doctor App `0.30.0-stage62h` (version code 43)
 
 ## Upgrade and persistence
 
-- [ ] GitHub Actions is green and the stable APK artifact is produced.
+- [x] GitHub Actions is green and the stable APK artifact is produced (run 31823774406).
 - [ ] The stable APK installs over the existing Doctor App.
 - [ ] Existing login, clinic, assistants, permissions, appointments, queues, history, theme and hosted data remain present.
 
