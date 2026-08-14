@@ -17,7 +17,7 @@ enum class DoctorMoreGroup(val label: String) {
 }
 
 enum class DoctorMoreDestination(val group: DoctorMoreGroup, val label: String, val description: String) {
-    NOTIFICATIONS(DoctorMoreGroup.ACCOUNT, "Notifications", "Queue and hosted activity alerts"),
+    NOTIFICATIONS(DoctorMoreGroup.ACCOUNT, "Notifications", "Important clinic and hosted service messages"),
     PROFILE(DoctorMoreGroup.ACCOUNT, "Doctor profile", "Professional information and verification"),
     CHANGE_PIN(DoctorMoreGroup.ACCOUNT, "Change login PIN", "Protect this device login"),
     AVAILABILITY(DoctorMoreGroup.CLINIC_MANAGEMENT, "Availability", "Date blocks and appointment availability"),

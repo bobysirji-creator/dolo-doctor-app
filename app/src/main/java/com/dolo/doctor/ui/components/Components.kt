@@ -23,9 +23,9 @@ import com.dolo.doctor.ui.theme.LocalDoloDoctorDarkTheme
 @Composable fun DoctorBrand(modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     Row(modifier.semantics(mergeDescendants = true) { contentDescription = "DO-LO Doctor" }, verticalAlignment = Alignment.CenterVertically) {
-        Text("DO-", color = colors.onSurface, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
-        Text("LO", color = colors.primary, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
-        Text(" DOCTOR", color = colors.tertiary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text("DO-", color = colors.onSurface, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+        Text("LO", color = colors.primary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+        Text(" DOCTOR", color = colors.tertiary, fontSize = 8.sp, fontWeight = FontWeight.Bold)
     }
 }
 

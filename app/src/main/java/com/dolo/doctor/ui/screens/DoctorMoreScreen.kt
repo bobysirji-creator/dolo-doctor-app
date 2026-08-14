@@ -16,23 +16,18 @@ import androidx.compose.ui.unit.dp
 import com.dolo.doctor.data.model.DoctorUiState
 import com.dolo.doctor.data.model.Permission
 import com.dolo.doctor.data.model.UserRole
-import com.dolo.doctor.ui.components.DoctorBottomBar
 import com.dolo.doctor.ui.components.DoctorBrand
-import com.dolo.doctor.ui.components.DoctorBottomDestination
 import com.dolo.doctor.ui.navigation.DoctorMoreDestination
 import com.dolo.doctor.ui.navigation.DoctorMoreGroup
 import com.dolo.doctor.ui.navigation.DoctorNavigationPolicy
 
 @Composable
-fun DoctorMoreScreen(
+fun DoctorMoreDrawerContent(
     state: DoctorUiState,
     permissions: Set<Permission>,
     darkTheme: Boolean,
     unreadNotifications: Int,
     onToggleTheme: () -> Unit,
-    onToday: () -> Unit,
-    onAppointments: () -> Unit,
-    onClinic: () -> Unit,
     onOpen: (DoctorMoreDestination) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -40,40 +35,54 @@ fun DoctorMoreScreen(
     val assistantName = state.assistants.firstOrNull { it.id == state.activeAssistantId }?.name ?: "Assistant"
     val destinations = DoctorNavigationPolicy.visibleMoreDestinations(state.role, permissions, state.activeAssistantId)
     var confirmLogout by remember { mutableStateOf(false) }
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            DoctorBottomBar(
-                selected = DoctorBottomDestination.MORE,
-                onHome = onToday,
-                onAppointments = onAppointments,
-                onClinic = onClinic,
-                clinicEnabled = DoctorNavigationPolicy.canOpenClinic(state.role, permissions)
-            )
-        }
-    ) { padding ->
+
+    ModalDrawerSheet(
+        modifier = Modifier.fillMaxHeight().widthIn(max = 340.dp),
+        drawerContainerColor = MaterialTheme.colorScheme.background
+    ) {
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)
         ) {
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         DoctorBrand()
-                        Text(if (doctorMode) state.profile.name else assistantName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-                        Text(if (doctorMode) "Doctor account" else "Assistant • ${permissions.size} permissions", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            if (doctorMode) state.profile.name else assistantName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 1
+                        )
+                        Text(
+                            if (doctorMode) "Doctor account" else "Assistant • ${permissions.size} permissions",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     IconButton(onToggleTheme) {
-                        Icon(if (darkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (darkTheme) "Use light theme" else "Use dark theme")
+                        Icon(
+                            if (darkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                            if (darkTheme) "Use light theme" else "Use dark theme"
+                        )
                     }
                 }
+                HorizontalDivider(Modifier.padding(top = 10.dp))
             }
             DoctorMoreGroup.entries.forEach { group ->
                 val groupItems = destinations.filter { it.group == group }
                 if (groupItems.isNotEmpty()) {
-                    item(group.name) { Text(group.label, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+                    item(group.name) {
+                        Text(
+                            group.label,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 5.dp)
+                        )
+                    }
                     items(groupItems, key = { it.name }) { destination ->
-                        DoctorMoreRow(
+                        DoctorDrawerRow(
                             destination = destination,
                             badge = if (destination == DoctorMoreDestination.NOTIFICATIONS) unreadNotifications else 0,
                             onClick = { onOpen(destination) }
@@ -83,13 +92,12 @@ fun DoctorMoreScreen(
             }
             if (!doctorMode) {
                 item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                        Text(
-                            "Only actions allowed by this Assistant account are shown. Doctor-only profile, staff, backup and audit controls remain hidden.",
-                            Modifier.padding(16.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        "Only actions allowed by this Assistant account are shown.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 6.dp)
+                    )
                 }
             }
             item {
@@ -101,6 +109,7 @@ fun DoctorMoreScreen(
             }
         }
     }
+
     if (confirmLogout) {
         AlertDialog(
             onDismissRequest = { confirmLogout = false },
@@ -114,7 +123,7 @@ fun DoctorMoreScreen(
 }
 
 @Composable
-private fun DoctorMoreRow(destination: DoctorMoreDestination, badge: Int, onClick: () -> Unit) {
+private fun DoctorDrawerRow(destination: DoctorMoreDestination, badge: Int, onClick: () -> Unit) {
     val icon: ImageVector = when (destination) {
         DoctorMoreDestination.NOTIFICATIONS -> Icons.Outlined.Notifications
         DoctorMoreDestination.PROFILE -> Icons.Outlined.Person
@@ -129,17 +138,17 @@ private fun DoctorMoreRow(destination: DoctorMoreDestination, badge: Int, onClic
         DoctorMoreDestination.SYNC -> Icons.Outlined.CloudSync
         DoctorMoreDestination.BACKUP -> Icons.Outlined.Backup
     }
-    ElevatedCard(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        ListItem(
-            headlineContent = { Text(destination.label, fontWeight = FontWeight.Bold) },
-            supportingContent = { Text(destination.description) },
-            leadingContent = { Icon(icon, null, tint = MaterialTheme.colorScheme.primary) },
-            trailingContent = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (badge > 0) Badge { Text(badge.coerceAtMost(99).toString()) }
-                    Icon(Icons.Outlined.ChevronRight, null)
-                }
+    ListItem(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+        headlineContent = { Text(destination.label, fontWeight = FontWeight.SemiBold) },
+        supportingContent = { Text(destination.description, style = MaterialTheme.typography.bodySmall) },
+        leadingContent = { Icon(icon, null, tint = MaterialTheme.colorScheme.primary) },
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (badge > 0) Badge { Text(badge.coerceAtMost(99).toString()) }
+                Icon(Icons.Outlined.ChevronRight, null)
             }
-        )
-    }
+        }
+    )
 }

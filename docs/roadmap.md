@@ -299,3 +299,21 @@ On 14 August 2026, Doctor App `0.28.0-stage62f` passed the complete physical-dev
 - [ ] stable APK in-place upgrade and Stage 62G physical-device acceptance
 
 `Last token` is now the public progress marker, not necessarily the token currently in consultation. The queue list remains the source for the actual active Patient. No API or persisted-schema migration was required.
+## Stage 62H - Doctor drawer, notification separation and back-stack safety
+
+- [x] restore the compact DO-LO Doctor logo above the Home identity
+- [x] use the same compact logo component across Home, page headers, login, splash and the navigation drawer
+- [x] enlarge the circular Doctor/Assistant profile-image placeholder
+- [x] replace the full More page with a permission-aware overlay navigation drawer
+- [x] retain Day/Night and Logout actions inside the drawer
+- [x] keep the notification bell at the top of Home
+- [x] exclude local audit events from notification counts and the Notifications screen
+- [x] retain queue, fee, receipt, session and configuration actions exclusively in Activity log
+- [x] clear the complete authenticated navigation graph on logout
+- [x] make Android Back close the app from Home while retaining normal back behavior elsewhere
+- [x] preserve Stage 62G monotonic queue progress and all persisted data
+- [x] version 0.30.0-stage62h (version code 43)
+- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [ ] stable APK in-place upgrade and Stage 62H physical-device acceptance
+
+The drawer uses the existing role and permission policy, so Doctor-only destinations remain hidden from Assistants. No database, API or persisted-state migration is required.

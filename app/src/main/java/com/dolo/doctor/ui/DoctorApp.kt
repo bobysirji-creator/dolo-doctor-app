@@ -1,8 +1,12 @@
 package com.dolo.doctor.ui
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -22,6 +26,7 @@ import com.dolo.doctor.hosted.HostedStaffViewModelFactory
 import com.dolo.doctor.hosted.HttpHostedStaffApi
 import com.dolo.doctor.ui.screens.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private object Routes {
     const val SPLASH = "splash"
@@ -42,7 +47,6 @@ private object Routes {
     const val ASSISTANTS = "assistants"
     const val PROFILE = "profile"
     const val NOTIFICATIONS = "notifications"
-    const val MORE = "more"
 }
 
 @Composable fun DoloDoctorApp(
@@ -56,6 +60,9 @@ private object Routes {
     hostedViewModel: HostedStaffViewModel = viewModel(factory = HostedStaffViewModelFactory(hostedStaffApi))
 ) {
     val nav = rememberNavController()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val activity = LocalContext.current as? Activity
     val state = doctorViewModel.uiState
     val authState = authViewModel.uiState
     val permissions = doctorViewModel.permissions()
@@ -77,10 +84,13 @@ private object Routes {
     val hostedSnapshot = hostedViewModel.uiState.snapshot?.takeIf { snapshot -> state.role?.let { com.dolo.doctor.hosted.HostedRoleBoundary.allows(it,snapshot.role) } == true }
     LaunchedEffect(hostedSnapshot?.role) { if(hostedSnapshot!=null) while(true){ delay(15_000);hostedViewModel.refresh() } }
     val hostedUnread = hostedSnapshot?.notifications?.count{!it.read} ?: 0
-    fun home() = nav.navigate(Routes.HOME) { launchSingleTop = true }
+    fun home() = nav.navigate(Routes.HOME) {
+        popUpTo(Routes.HOME) { inclusive = false }
+        launchSingleTop = true
+    }
     fun queue() = nav.navigate(Routes.QUEUE) { launchSingleTop = true }
     fun appointments() = nav.navigate(Routes.APPOINTMENTS) { launchSingleTop = true }
-    fun more() = nav.navigate(Routes.MORE) { launchSingleTop = true }
+    fun more() { scope.launch { drawerState.open() } }
     fun profile() {
         if (state.role == UserRole.DOCTOR) nav.navigate(Routes.PROFILE) { launchSingleTop = true }
     }
@@ -111,9 +121,48 @@ private object Routes {
         hostedViewModel.localLogout()
         authViewModel.logout()
         doctorViewModel.logout(authRepository.removedAssistantIds())
-        nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
+        nav.navigate(Routes.LOGIN) {
+            popUpTo(nav.graph.id) { inclusive = true }
+            launchSingleTop = true
+        }
     }
-    NavHost(navController = nav, startDestination = startDestination) {
+    fun openDrawerDestination(destination: DoctorMoreDestination) {
+        scope.launch { drawerState.close() }
+        when (destination) {
+            DoctorMoreDestination.NOTIFICATIONS -> nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true }
+            DoctorMoreDestination.PROFILE -> profile()
+            DoctorMoreDestination.CHANGE_PIN -> changePin()
+            DoctorMoreDestination.AVAILABILITY -> protectedDoctorRoute(Routes.AVAILABILITY)
+            DoctorMoreDestination.ANNOUNCEMENTS -> announcements()
+            DoctorMoreDestination.ASSISTANTS -> protectedDoctorRoute(Routes.ASSISTANTS)
+            DoctorMoreDestination.REPORTS -> reports()
+            DoctorMoreDestination.HISTORY -> protectedDoctorRoute(Routes.HISTORY)
+            DoctorMoreDestination.ACTIVITY -> protectedDoctorRoute(Routes.ACTIVITY)
+            DoctorMoreDestination.HOSTED_SYNC -> hostedSync()
+            DoctorMoreDestination.SYNC -> sync()
+            DoctorMoreDestination.BACKUP -> backup()
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = drawerState.isOpen,
+        drawerContent = {
+            DoctorMoreDrawerContent(
+                state = state,
+                permissions = permissions,
+                darkTheme = darkTheme,
+                unreadNotifications = hostedUnread,
+                onToggleTheme = onToggleTheme,
+                onOpen = ::openDrawerDestination,
+                onLogout = {
+                    scope.launch { drawerState.close() }
+                    logout()
+                }
+            )
+        }
+    ) {
+        NavHost(navController = nav, startDestination = startDestination) {
         composable(Routes.SPLASH) {
             SplashScreen {
                 nav.navigate(Routes.LOGIN) { popUpTo(Routes.SPLASH) { inclusive = true } }
@@ -128,6 +177,7 @@ private object Routes {
             LoginScreen(authState, authViewModel::selectRole, authViewModel::updatePhone, authViewModel::updatePin, authViewModel::login)
         }
         composable(Routes.HOME) {
+            BackHandler(enabled = drawerState.isClosed) { activity?.finish() }
             LaunchedEffect(authState.session?.mustChangePin) {
                 if (authState.session?.mustChangePin == true) nav.navigate(Routes.CHANGE_PIN) { popUpTo(Routes.HOME) { inclusive = true } }
             }
@@ -177,11 +227,7 @@ private object Routes {
                 isDoctor = authState.session?.role == UserRole.DOCTOR,
                 message = authState.pinChangeMessage,
                 onBack = nav::popBackStack,
-                onLogout = {
-                    authViewModel.logout()
-                    doctorViewModel.logout(authRepository.removedAssistantIds())
-                    nav.navigate(Routes.LOGIN) { popUpTo(Routes.CHANGE_PIN) { inclusive = true } }
-                },
+                onLogout = ::logout,
                 onClearMessage = authViewModel::clearPinChangeMessage,
                 onSubmit = { currentPin, newPin, confirmation ->
                     authViewModel.changePin(currentPin, newPin, confirmation).also { changed ->
@@ -222,35 +268,7 @@ private object Routes {
             )
         }
         composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::appointments, ::clinic, doctorViewModel::updateProfile) }
-        composable(Routes.NOTIFICATIONS) { NotificationsScreen(state, hostedViewModel.uiState.copy(snapshot=hostedSnapshot), nav::popBackStack, doctorViewModel::markNotificationRead, doctorViewModel::markAllNotificationsRead, hostedViewModel::markHostedNotificationsRead) }
-        composable(Routes.MORE) {
-            DoctorMoreScreen(
-                state = state,
-                permissions = permissions,
-                darkTheme = darkTheme,
-                unreadNotifications = state.auditEvents.count { it.sequence > state.notificationReadThrough } + hostedUnread,
-                onToggleTheme = onToggleTheme,
-                onToday = ::home,
-                onAppointments = ::appointments,
-                onClinic = ::clinic,
-                onOpen = { destination ->
-                    when (destination) {
-                        DoctorMoreDestination.NOTIFICATIONS -> nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true }
-                        DoctorMoreDestination.PROFILE -> profile()
-                        DoctorMoreDestination.CHANGE_PIN -> changePin()
-                        DoctorMoreDestination.AVAILABILITY -> protectedDoctorRoute(Routes.AVAILABILITY)
-                        DoctorMoreDestination.ANNOUNCEMENTS -> announcements()
-                        DoctorMoreDestination.ASSISTANTS -> protectedDoctorRoute(Routes.ASSISTANTS)
-                        DoctorMoreDestination.REPORTS -> reports()
-                        DoctorMoreDestination.HISTORY -> protectedDoctorRoute(Routes.HISTORY)
-                        DoctorMoreDestination.ACTIVITY -> protectedDoctorRoute(Routes.ACTIVITY)
-                        DoctorMoreDestination.HOSTED_SYNC -> hostedSync()
-                        DoctorMoreDestination.SYNC -> sync()
-                        DoctorMoreDestination.BACKUP -> backup()
-                    }
-                },
-                onLogout = ::logout
-            )
-        }
+        composable(Routes.NOTIFICATIONS) { NotificationsScreen(hostedViewModel.uiState.copy(snapshot=hostedSnapshot), nav::popBackStack, hostedViewModel::markHostedNotificationsRead) }
     }
+}
 }

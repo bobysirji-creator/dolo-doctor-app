@@ -107,7 +107,7 @@ import java.time.LocalDate
     val eveningQueue = state.sessionQueues.firstOrNull { it.session == "Evening" } ?: ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
     val morningAppointments = state.appointments.count { it.session == "Morning" }
     val eveningAppointments = state.appointments.count { it.session == "Evening" }
-    val unreadNotifications = state.auditEvents.count { it.sequence > state.notificationReadThrough } + hostedUnreadNotifications
+    val unreadNotifications = hostedUnreadNotifications
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -132,6 +132,7 @@ import java.time.LocalDate
                         Icon(Icons.Outlined.Menu, "Open More menu")
                     }
                     Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
+                        DoctorBrand()
                         Text(
                             if (doctorMode) state.profile.name else assistantName,
                             style = MaterialTheme.typography.titleMedium,
@@ -146,7 +147,7 @@ import java.time.LocalDate
                         )
                     }
                     Surface(
-                        modifier = Modifier.size(56.dp),
+                        modifier = Modifier.size(66.dp),
                         shape = CircleShape,
                         color = Color.White,
                         shadowElevation = if (LocalDoloDoctorDarkTheme.current) 3.dp else 0.dp
@@ -155,7 +156,7 @@ import java.time.LocalDate
                             Icons.Outlined.Person,
                             contentDescription = if (doctorMode) "Doctor profile image placeholder" else "Assistant profile image placeholder",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(10.dp)
+                            modifier = Modifier.padding(11.dp)
                         )
                     }
                     BadgedBox(
