@@ -76,12 +76,20 @@ import com.dolo.doctor.ui.theme.LocalDoloDoctorDarkTheme
     }
 }
 
-@Composable fun ElevatedSection(title: String, subtitle: String? = null, content: @Composable ColumnScope.() -> Unit) {
+@Composable fun ElevatedSection(
+    title: String,
+    subtitle: String? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
     val colors = MaterialTheme.colorScheme
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = colors.surface), elevation = CardDefaults.cardElevation(if (LocalDoloDoctorDarkTheme.current) 4.dp else 0.dp), shape = MaterialTheme.shapes.large) {
-        Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(title, Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            if (subtitle != null) Text(subtitle, color = colors.onSurfaceVariant, fontSize = 13.sp)
+        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(title, Modifier.weight(1f).semantics { heading() }, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                trailing?.invoke()
+            }
+            if (subtitle != null) Text(subtitle, color = colors.onSurfaceVariant, fontSize = 12.sp)
             content()
         }
     }
@@ -101,14 +109,13 @@ import com.dolo.doctor.ui.theme.LocalDoloDoctorDarkTheme
     }
 }
 
-enum class DoctorBottomDestination { TODAY, APPOINTMENTS, CLINIC, MORE }
+enum class DoctorBottomDestination { HOME, APPOINTMENTS, CLINIC, MORE }
 
 @Composable fun DoctorBottomBar(
     selected: DoctorBottomDestination,
-    onToday: () -> Unit,
+    onHome: () -> Unit,
     onAppointments: () -> Unit,
     onClinic: () -> Unit,
-    onMore: () -> Unit,
     clinicEnabled: Boolean = true
 ) {
     NavigationBar(
@@ -116,10 +123,9 @@ enum class DoctorBottomDestination { TODAY, APPOINTMENTS, CLINIC, MORE }
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = if (LocalDoloDoctorDarkTheme.current) 4.dp else 0.dp
     ) {
-        BottomItem(Icons.Outlined.Today, "Today", selected == DoctorBottomDestination.TODAY, onToday)
+        BottomItem(Icons.Outlined.Home, "Home", selected == DoctorBottomDestination.HOME, onHome)
         BottomItem(Icons.Outlined.CalendarMonth, "Appointments", selected == DoctorBottomDestination.APPOINTMENTS, onAppointments)
         BottomItem(Icons.Outlined.Business, "Clinic", selected == DoctorBottomDestination.CLINIC, onClinic, clinicEnabled)
-        BottomItem(Icons.Outlined.MoreHoriz, "More", selected == DoctorBottomDestination.MORE, onMore)
     }
 }
 

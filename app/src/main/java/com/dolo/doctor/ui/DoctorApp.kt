@@ -134,16 +134,13 @@ private object Routes {
             DashboardScreen(
                 state = state,
                 permissions = permissions,
-                darkTheme = darkTheme,
                 hostedUnreadNotifications = hostedUnread,
-                onToggleTheme = onToggleTheme,
                 onQueue = ::queue,
                 onAppointments = ::appointments,
                 onClinic = ::clinic,
                 onHostedSync = ::hostedSync,
                 onNotifications = { nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } },
-                onMore = ::more,
-                onLogout = ::logout
+                onMore = ::more
             )
         }
         composable(Routes.QUEUE) {
@@ -154,7 +151,6 @@ private object Routes {
                 ::home,
                 ::appointments,
                 ::clinic,
-                ::more,
                 doctorViewModel::selectSession,
                 doctorViewModel::recurringSessionClosed,
                 doctorViewModel::toggleQueue,
@@ -165,7 +161,7 @@ private object Routes {
                 doctorViewModel::closeSession
             )
         }
-        composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::clinic, ::more, doctorViewModel::bookWalkIn, doctorViewModel::receiptFor, doctorViewModel::confirmConsultationFee, doctorViewModel::sessionBookingOpen, doctorViewModel::selectSession, doctorViewModel::refreshDate) }
+        composable(Routes.APPOINTMENTS) { AppointmentsScreen(state, permissions, nav::popBackStack, ::home, ::clinic, doctorViewModel::bookWalkIn, doctorViewModel::receiptFor, doctorViewModel::confirmConsultationFee, doctorViewModel::sessionBookingOpen, doctorViewModel::selectSession, doctorViewModel::refreshDate) }
         composable(Routes.HISTORY) { QueueHistoryScreen(state, nav::popBackStack) }
         composable(Routes.ACTIVITY) { QueueActivityScreen(state, nav::popBackStack) }
         composable(Routes.REPORTS) { ReportsScreen(state, permissions, doctorViewModel::operationalReport, nav::popBackStack, doctorViewModel::acknowledgeFeedback, doctorViewModel::sendQueueDelayNotice) }
@@ -194,7 +190,7 @@ private object Routes {
                 }
             )
         }
-        composable(Routes.CLINIC) { ClinicScreen(state, state.role == UserRole.DOCTOR, nav::popBackStack, ::home, ::appointments, ::more, doctorViewModel::updateClinic) }
+        composable(Routes.CLINIC) { ClinicScreen(state, state.role == UserRole.DOCTOR, nav::popBackStack, ::home, ::appointments, doctorViewModel::updateClinic) }
         composable(Routes.AVAILABILITY) { AvailabilityManagementScreen(state, nav::popBackStack, doctorViewModel::saveAvailabilityBlock, doctorViewModel::setAvailabilityAppointmentsEnabled, doctorViewModel::deleteAvailabilityBlock, doctorViewModel::updateAffectedPatientStatus) }
         composable(Routes.ANNOUNCEMENTS) { AnnouncementManagementScreen(state, nav::popBackStack, doctorViewModel::saveAnnouncement, doctorViewModel::setAnnouncementActive, doctorViewModel::deleteAnnouncement) }
         composable(Routes.ASSISTANTS) {
@@ -225,7 +221,7 @@ private object Routes {
                 }
             )
         }
-        composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::appointments, ::clinic, ::more, doctorViewModel::updateProfile) }
+        composable(Routes.PROFILE) { ProfileScreen(state, nav::popBackStack, ::home, ::appointments, ::clinic, doctorViewModel::updateProfile) }
         composable(Routes.NOTIFICATIONS) { NotificationsScreen(state, hostedViewModel.uiState.copy(snapshot=hostedSnapshot), nav::popBackStack, doctorViewModel::markNotificationRead, doctorViewModel::markAllNotificationsRead, hostedViewModel::markHostedNotificationsRead) }
         composable(Routes.MORE) {
             DoctorMoreScreen(

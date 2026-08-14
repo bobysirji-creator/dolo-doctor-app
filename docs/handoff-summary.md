@@ -404,3 +404,11 @@ Doctor App `0.27.0-stage62b` passed GitHub Actions, stable APK upgrade and every
 Doctor App `0.28.0-stage62f` (version code 41) adopts the accepted Patient App visual language: ice-blue/white Day surfaces, accessible blue actions, deep-navy layered Night surfaces, shared typography and rounded shape tokens. Shared cards and controls are flat in Day mode and retain restrained elevation in Night mode. The Today, Appointments, Clinic and More destinations now use Material 3 navigation items with an explicit selected indicator and disabled Clinic semantics.
 
 Doctor and Assistant roles, permissions, queue ordering, independent sessions, appointment intake, clinic-direct fee confirmation, compulsory receipts, reports, notifications, backup and hosted synchronization are unchanged. GitHub Actions run 31507289180 passed compile, lint, unit tests, signing verification and stable APK generation. Install that artifact over the accepted Doctor App and follow `docs/stage62f-device-test.md`.
+## Stage 62F physical-device acceptance
+
+The full Stage 62F Doctor visual-system checklist passed on 14 August 2026. Theme persistence, role-aware navigation, queue and receipt workflows, hosted access and local-data safety are accepted.
+## Stage 62G implementation checkpoint
+
+Doctor App `0.29.0-stage62g` (version code 42) makes Home compact and operationally focused. The page draws behind the status area with safe content padding, opens More from a top-left hamburger, retains Notifications at the top, shows a circular profile-image placeholder and moves theme/logout actions exclusively to More. The persistent bottom bar now contains Home, Appointments and Clinic only. Morning/Evening cards show appointment totals, Live queue uses a compact View action and the duplicate appointment card is removed.
+
+Queue progress is now monotonic. `Last token` is a public progress marker and is updated with `max(previous progress, called token)`. An active consultation is identified by appointment status rather than equality with the progress token, so a late token 6 served after token 15 cannot move the display or Patient tracking backward. The queue list still identifies token 6 as the active Patient. Existing persistence remains compatible. Build through GitHub Actions and follow `docs/stage62g-device-test.md`.

@@ -35,6 +35,8 @@ class MainActivity : ComponentActivity() {
         val hostedPreferences = getSharedPreferences("dolo_doctor_hosted", MODE_PRIVATE)
         val hostedStaffApi = HttpHostedStaffApi(BuildConfig.DOLO_API_BASE_URL, HostedStaffTokenStore(hostedPreferences), hostedPreferences)
 
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         setContent {
             var darkTheme by remember { mutableStateOf(appPreferences.isDarkTheme()) }
             DoloDoctorTheme(darkTheme = darkTheme) {

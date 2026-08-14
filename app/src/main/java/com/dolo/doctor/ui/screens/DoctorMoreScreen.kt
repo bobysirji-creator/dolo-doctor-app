@@ -45,10 +45,9 @@ fun DoctorMoreScreen(
         bottomBar = {
             DoctorBottomBar(
                 selected = DoctorBottomDestination.MORE,
-                onToday = onToday,
+                onHome = onToday,
                 onAppointments = onAppointments,
                 onClinic = onClinic,
-                onMore = {},
                 clinicEnabled = DoctorNavigationPolicy.canOpenClinic(state.role, permissions)
             )
         }

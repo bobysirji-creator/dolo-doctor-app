@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -89,104 +90,120 @@ import java.time.LocalDate
 @Composable fun DashboardScreen(
     state: DoctorUiState,
     permissions: Set<Permission>,
-    darkTheme: Boolean,
     hostedUnreadNotifications: Int,
-    onToggleTheme: () -> Unit,
     onQueue: () -> Unit,
     onAppointments: () -> Unit,
     onClinic: () -> Unit,
     onHostedSync: () -> Unit,
     onNotifications: () -> Unit,
-    onMore: () -> Unit,
-    onLogout: () -> Unit
+    onMore: () -> Unit
 ) {
     val doctorMode = state.role == UserRole.DOCTOR
     val assistantName = state.assistants.firstOrNull { it.id == state.activeAssistantId }?.name ?: "Assistant"
     val canViewQueue = doctorMode || Permission.VIEW_QUEUE in permissions
-    val canViewAppointments = doctorMode || Permission.VIEW_TODAY_APPOINTMENTS in permissions
     val canViewClinic = doctorMode || Permission.VIEW_CLINIC in permissions || Permission.MANAGE_CLINIC_AVAILABILITY in permissions
     val canHostedQueue = doctorMode || state.activeAssistantId == "staff-1"
     val morningQueue = state.sessionQueues.firstOrNull { it.session == "Morning" } ?: ConsultationQueue("Morning", state.queueState, state.currentToken)
     val eveningQueue = state.sessionQueues.firstOrNull { it.session == "Evening" } ?: ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+    val morningAppointments = state.appointments.count { it.session == "Morning" }
+    val eveningAppointments = state.appointments.count { it.session == "Evening" }
     val unreadNotifications = state.auditEvents.count { it.sequence > state.notificationReadThrough } + hostedUnreadNotifications
-    var confirmLogout by remember { mutableStateOf(false) }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             DoctorBottomBar(
-                selected = DoctorBottomDestination.TODAY,
-                onToday = {},
+                selected = DoctorBottomDestination.HOME,
+                onHome = {},
                 onAppointments = onAppointments,
                 onClinic = onClinic,
-                onMore = onMore,
                 clinicEnabled = canViewClinic
             )
         }
     ) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            Modifier.fillMaxSize().padding(padding).statusBarsPadding().padding(horizontal = 14.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
+            contentPadding = PaddingValues(bottom = 8.dp)
         ) {
             item {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                    Column(Modifier.weight(1f)) {
-                        DoctorBrand()
-                        Text(if (doctorMode) state.profile.name else assistantName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, maxLines = 1)
-                        Text(if (doctorMode) state.profile.specialty else "Assistant • ${permissions.size} permissions", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onMore, modifier = Modifier.size(42.dp)) {
+                        Icon(Icons.Outlined.Menu, "Open More menu")
                     }
-                    IconButton(onToggleTheme) { Icon(if (darkTheme) Icons.Outlined.LightMode else Icons.Outlined.DarkMode, if (darkTheme) "Use light theme" else "Use dark theme") }
-                    BadgedBox(badge = { if (unreadNotifications > 0) Badge { Text(unreadNotifications.coerceAtMost(99).toString()) } }) {
-                        IconButton(onNotifications) { Icon(Icons.Outlined.Notifications, "Notifications") }
+                    Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
+                        Text(
+                            if (doctorMode) state.profile.name else assistantName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                        Text(
+                            if (doctorMode) state.profile.specialty else "Assistant • ${permissions.size} permissions",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
                     }
-                    IconButton(onClick = { confirmLogout = true }) { Icon(Icons.Outlined.Logout, "Logout") }
+                    Surface(
+                        modifier = Modifier.size(56.dp),
+                        shape = CircleShape,
+                        color = Color.White,
+                        shadowElevation = if (LocalDoloDoctorDarkTheme.current) 3.dp else 0.dp
+                    ) {
+                        Icon(
+                            Icons.Outlined.Person,
+                            contentDescription = if (doctorMode) "Doctor profile image placeholder" else "Assistant profile image placeholder",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
+                    BadgedBox(
+                        badge = { if (unreadNotifications > 0) Badge { Text(unreadNotifications.coerceAtMost(99).toString()) } },
+                        modifier = Modifier.padding(start = 4.dp)
+                    ) {
+                        IconButton(onNotifications, modifier = Modifier.size(42.dp)) {
+                            Icon(Icons.Outlined.Notifications, "Notifications")
+                        }
+                    }
                 }
             }
-            item { Text("Today", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold) }
+            item { Text("Today", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MetricTile("Morning token", morningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error)
-                    MetricTile("Evening token", eveningQueue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MetricTile("Morning appointments", morningAppointments.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.primary)
+                    MetricTile("Evening appointments", eveningAppointments.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.secondary)
                 }
             }
             item {
-                ElevatedSection("Live queue", state.clinics.first().name + " • " + state.queueDate) {
+                ElevatedSection(
+                    title = "Live queue",
+                    subtitle = state.clinics.first().name + " • " + state.queueDate,
+                    trailing = {
+                        TextButton(onClick = onQueue, enabled = canViewQueue) {
+                            Text("View", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                ) {
                     Row { Text("Morning", Modifier.weight(1f)); StatusPill(morningQueue.state.name.replace("_", " "), morningQueue.state == QueueState.ACTIVE) }
                     Row { Text("Evening", Modifier.weight(1f)); StatusPill(eveningQueue.state.name.replace("_", " "), eveningQueue.state == QueueState.ACTIVE) }
-                    PrimaryAction("Open queue control", onQueue, enabled = canViewQueue, icon = Icons.Outlined.FormatListNumbered)
-                }
-            }
-            item {
-                val todayAppointments = state.appointments.size
-                ElevatedSection("Today's appointments", "$todayAppointments bookings across both sessions") {
-                    Text("Confirm clinic fee, generate the required receipt and admit each Patient to the correct session queue.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    PrimaryAction("Open appointments", onAppointments, enabled = canViewAppointments, icon = Icons.Outlined.CalendarMonth)
                 }
             }
             if (canHostedQueue) {
                 item {
                     ElevatedSection("Hosted clinic workspace", "Authoritative prototype appointments and queue") {
-                        Text("Server appointments remain isolated from local clinic data.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Server appointments remain isolated from local clinic data.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         PrimaryAction("Open hosted staff workspace", onHostedSync, icon = Icons.Outlined.CloudSync)
                     }
                 }
             }
             if (doctorMode || Permission.MANAGE_ANNOUNCEMENTS in permissions) {
                 val active = state.announcements.filter { it.active && state.queueDate >= it.startsOn && state.queueDate <= it.endsOn }.take(2)
-                item { Text("Active Doctor updates", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-                if (active.isEmpty()) item { ElevatedSection("No active update") { Text("Announcements are managed from More.", color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+                item { Text("Active Doctor updates", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                if (active.isEmpty()) item { ElevatedSection("No active update") { Text("Announcements are managed from More.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                 else items(active, key = { it.id }) { AnnouncementCard(it, null) }
             }
         }
-    }
-    if (confirmLogout) {
-        AlertDialog(
-            onDismissRequest = { confirmLogout = false },
-            icon = { Icon(Icons.Outlined.Logout, null) },
-            title = { Text("Logout from DO-LO Doctor?") },
-            text = { Text("Your saved session will be cleared only after you confirm logout.") },
-            confirmButton = { TextButton(onClick = { confirmLogout = false; onLogout() }) { Text("Logout") } },
-            dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text("Stay logged in") } }
-        )
     }
 }
 @Composable fun QueueScreen(
@@ -196,7 +213,6 @@ import java.time.LocalDate
     onHome: () -> Unit,
     onAppointments: () -> Unit,
     onClinic: () -> Unit,
-    onMore: () -> Unit,
     onSelectSession: (String) -> Unit,
     isRecurringSessionClosed: (String) -> Boolean,
     onToggleQueue: (String) -> Unit,
@@ -222,10 +238,10 @@ import java.time.LocalDate
         it.availabilityImpactStatus in setOf(AvailabilityImpactStatus.NONE, AvailabilityImpactStatus.RESOLVED) &&
             it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING)
     }
-    val hasCurrentConsultation = sessionAppointments.any { it.token == queue.currentToken && it.status == AppointmentStatus.IN_CONSULTATION }
+    val hasCurrentConsultation = sessionAppointments.any { it.status == AppointmentStatus.IN_CONSULTATION }
     val progressedOrder = sessionAppointments.filter { it.status in setOf(AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED, AppointmentStatus.SKIPPED) }.maxOfOrNull { it.queueOrder } ?: 0
     var confirmCloseSession by remember { mutableStateOf(false) }
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.TODAY, onHome, onAppointments, onClinic, onMore, clinicEnabled = doctorMode || Permission.VIEW_CLINIC in permissions || Permission.MANAGE_CLINIC_AVAILABILITY in permissions) }) { padding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.HOME, onHome, onAppointments, onClinic, clinicEnabled = doctorMode || Permission.VIEW_CLINIC in permissions || Permission.MANAGE_CLINIC_AVAILABILITY in permissions) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Live queue", onBack) }
             item {
@@ -244,15 +260,15 @@ import java.time.LocalDate
             }
             if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_QUEUE permission.", color = MaterialTheme.colorScheme.error) } }
             else {
-                item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile(if (hasCurrentConsultation) "In consultation" else "Last token", queue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.error); MetricTile("Remaining", sessionAppointments.count { it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
+                item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { MetricTile("Last token", queue.currentToken.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.primary); MetricTile("Remaining", sessionAppointments.count { it.status in setOf(AppointmentStatus.BOOKED, AppointmentStatus.ARRIVED, AppointmentStatus.WAITING) }.toString(), Modifier.weight(1f), MaterialTheme.colorScheme.tertiary) } }
                 item {
                     ElevatedSection(selectedSession + " queue controls", if (weeklyClosed) "Recurring weekly day off" else "Independent status: ${queue.state.name.lowercase().replaceFirstChar(Char::uppercase)}") {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Button({ onToggleQueue(selectedSession) }, Modifier.weight(1f), enabled = canUpdate && queue.state != QueueState.CLOSED && (!weeklyClosed || queue.state == QueueState.ACTIVE), elevation = ButtonDefaults.buttonElevation(if (LocalDoloDoctorDarkTheme.current) 3.dp else 0.dp)) {
-                                Text(if (weeklyClosed && queue.state != QueueState.ACTIVE) "Weekly day off" else when (queue.state) { QueueState.ACTIVE -> "Pause"; QueueState.NOT_STARTED -> "Start queue"; QueueState.PAUSED -> "Resume"; QueueState.CLOSED -> "Session closed" })
+                                Text(if (weeklyClosed && queue.state != QueueState.ACTIVE) "Weekly day off" else when (queue.state) { QueueState.ACTIVE -> "Pause"; QueueState.NOT_STARTED -> "Start"; QueueState.PAUSED -> "Resume"; QueueState.CLOSED -> "Session closed" })
                             }
                             Button({ onCallNext(selectedSession) }, Modifier.weight(1f), enabled = queue.state == QueueState.ACTIVE && canCallNext && (hasNextPatient || hasCurrentConsultation), elevation = ButtonDefaults.buttonElevation(if (LocalDoloDoctorDarkTheme.current) 3.dp else 0.dp)) {
-                                Text(if (hasNextPatient) "Call next" else "Complete consultation")
+                                Text(if (hasNextPatient) "Call next" else "Complete")
                             }
                         }
                         if (doctorMode) {
@@ -366,7 +382,6 @@ import java.time.LocalDate
     onBack: () -> Unit,
     onHome: () -> Unit,
     onClinic: () -> Unit,
-    onMore: () -> Unit,
     onBookWalkIn: (WalkInBookingRequest) -> WalkInBookingResult,
     onReceipt: (String) -> TokenReceipt?,
     onConfirmFee: (String, Int, PaymentMethod) -> FeeConfirmationResult,
@@ -397,7 +412,7 @@ import java.time.LocalDate
     var showWalkInBooking by remember { mutableStateOf(false) }
     var activeReceipt by remember { mutableStateOf<TokenReceipt?>(null) }
     var activeFeeAppointment by remember { mutableStateOf<Appointment?>(null) }
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.APPOINTMENTS, onHome, {}, onClinic, onMore, clinicEnabled = doctorMode || Permission.VIEW_CLINIC in permissions || Permission.MANAGE_CLINIC_AVAILABILITY in permissions) }) { padding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.APPOINTMENTS, onHome, {}, onClinic, clinicEnabled = doctorMode || Permission.VIEW_CLINIC in permissions || Permission.MANAGE_CLINIC_AVAILABILITY in permissions) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item { PageHeader("Today's appointments", onBack) }
             if (!canView) item { ElevatedSection("Access restricted") { Text("This assistant account does not have VIEW_TODAY_APPOINTMENTS permission.", color = MaterialTheme.colorScheme.error) } }
@@ -786,7 +801,6 @@ private fun updateWeeklyClosure(
     onBack: () -> Unit,
     onToday: () -> Unit,
     onAppointments: () -> Unit,
-    onMore: () -> Unit,
     onSaveClinic: (Clinic) -> String?
 ) {
     var editingClinic by remember { mutableStateOf<Clinic?>(null) }
@@ -797,8 +811,7 @@ private fun updateWeeklyClosure(
                 DoctorBottomDestination.CLINIC,
                 onToday,
                 onAppointments,
-                {},
-                onMore
+                {}
             )
         }
     ) { padding ->
@@ -1146,10 +1159,10 @@ private fun updateWeeklyClosure(
 private fun permissionLabel(permission: Permission): String =
     permission.name.replace("_", " ").lowercase().replaceFirstChar(Char::uppercase)
 
-@Composable fun ProfileScreen(state: DoctorUiState, onBack: () -> Unit, onHome: () -> Unit, onAppointments: () -> Unit, onClinic: () -> Unit, onMore: () -> Unit, onSaveProfile: (DoctorProfile) -> String?) {
+@Composable fun ProfileScreen(state: DoctorUiState, onBack: () -> Unit, onHome: () -> Unit, onAppointments: () -> Unit, onClinic: () -> Unit, onSaveProfile: (DoctorProfile) -> String?) {
     var editingProfile by remember { mutableStateOf(false) }
     val pendingReview = state.profile.reviewStatus == ProfileReviewStatus.PENDING_REVIEW
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.MORE, onHome, onAppointments, onClinic, onMore) }) { padding ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, bottomBar = { DoctorBottomBar(DoctorBottomDestination.MORE, onHome, onAppointments, onClinic) }) { padding ->
         LazyColumn(Modifier.padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
             item { PageHeader("Doctor profile", onBack) }
             item {

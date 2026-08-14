@@ -273,6 +273,29 @@ On 11 August 2026, Doctor App `0.27.0-stage62b` passed the complete physical-dev
 - [x] preserve Doctor/Assistant permissions, queue, sessions, receipts, reports and hosted synchronization
 - [x] version 0.28.0-stage62f (version code 41)
 - [x] GitHub Actions compile, lint, unit tests and stable APK (run 31507289180)
-- [ ] stable APK in-place upgrade and Stage 62F physical-device acceptance
+- [x] stable APK in-place upgrade and Stage 62F physical-device acceptance
 
 The accepted Patient visual system is now the canonical baseline for Patient, Doctor and future Admin modernization. This stage changes presentation only; no database, API, provider or business-workflow contract changed.
+## Stage 62F physical-device acceptance
+
+On 14 August 2026, Doctor App `0.28.0-stage62f` passed the complete physical-device checklist. Shared Patient-theme adoption, Day/Night contrast, navigation semantics, role boundaries, queue/session/receipt workflows and persisted local data are accepted.
+## Stage 62G - compact Doctor Home and monotonic queue progress
+
+- [x] draw the Home background edge-to-edge behind the status area while retaining safe content insets
+- [x] move theme and logout controls out of Home and retain them in More
+- [x] add a top-left hamburger entry to More and keep Notifications at the top
+- [x] add a white circular Doctor/Assistant image placeholder beside compact identity text
+- [x] reduce Home padding, spacing and heading sizes for better first-screen information density
+- [x] show Morning and Evening appointment totals instead of current tokens
+- [x] replace the Live queue button with a top-right View action
+- [x] remove the duplicate Today appointments card
+- [x] use Home, Appointments and Clinic as the three persistent bottom destinations
+- [x] shorten Start queue to Start and Complete consultation to Complete
+- [x] keep Last token monotonic when a lower late/rejoined token is consulted
+- [x] add regression coverage for late token 6 after progress token 15
+- [x] preserve Assistant permissions, independent sessions, queue ordering, receipts and hosted/local isolation
+- [x] version 0.29.0-stage62g (version code 42)
+- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [ ] stable APK in-place upgrade and Stage 62G physical-device acceptance
+
+`Last token` is now the public progress marker, not necessarily the token currently in consultation. The queue list remains the source for the actual active Patient. No API or persisted-schema migration was required.

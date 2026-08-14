@@ -282,7 +282,7 @@ class DoctorViewModel(
         val queue = queueFor(session)
         if (queue.state != QueueState.ACTIVE || !hasPermission(Permission.CALL_NEXT_PATIENT)) return
         val current = uiState.appointments.firstOrNull {
-            it.session == session && admittedToQueue(it) && it.token == queue.currentToken && it.status == AppointmentStatus.IN_CONSULTATION
+            it.session == session && admittedToQueue(it) && it.status == AppointmentStatus.IN_CONSULTATION
         }
         val next = uiState.appointments
             .filter {
@@ -307,7 +307,7 @@ class DoctorViewModel(
                 else -> appointment
             }
         }
-        var updated = withSessionQueue(uiState.copy(appointments = appointments), queue.copy(currentToken = next.token))
+        var updated = withSessionQueue(uiState.copy(appointments = appointments), queue.copy(currentToken = maxOf(queue.currentToken, next.token)))
         if (current != null) {
             updated = withAudit(updated, AuditAction.CONSULTATION_COMPLETED, "Completed " + session.lowercase() + " consultation before calling the next token", current, AppointmentStatus.IN_CONSULTATION, AppointmentStatus.COMPLETED)
         }
@@ -366,7 +366,7 @@ class DoctorViewModel(
         val resumed = appointment.copy(status = AppointmentStatus.IN_CONSULTATION)
         val updated = withSessionQueue(
             uiState.copy(appointments = uiState.appointments.map { if (it.id == id) resumed else it }),
-            queue.copy(currentToken = appointment.token)
+            queue.copy(currentToken = maxOf(queue.currentToken, appointment.token))
         )
         persist(withAudit(updated, AuditAction.PATIENT_REJOINED, "Immediately resumed skipped " + appointment.session.lowercase() + " token " + appointment.token + " in consultation", appointment, AppointmentStatus.SKIPPED, AppointmentStatus.IN_CONSULTATION))
         return true

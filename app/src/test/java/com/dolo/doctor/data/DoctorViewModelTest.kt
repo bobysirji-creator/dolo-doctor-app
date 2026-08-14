@@ -452,7 +452,7 @@ class DoctorViewModelTest {
         assertEquals(AppointmentStatus.WAITING, rejoined.status)
         assertTrue(rejoined.queueOrder > 3)
         model.callNext()
-        assertEquals(2, model.uiState.currentToken)
+        assertEquals(3, model.uiState.currentToken)
         assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.id == "a2" }.status)
     }
     @Test fun unpaidOnlineAppointmentStaysOutUntilFeeConfirmation() {
@@ -1235,6 +1235,33 @@ class DoctorViewModelTest {
         assertEquals(8, model.uiState.appointments.single { it.token == 6 }.lateArrivalAnchorToken)
     }
 
+    @Test fun latePatientConsultationDoesNotMoveProgressTokenBackward() {
+        val appointments = buildList {
+            (10..15).forEach { token -> add(queuePatient(token, AppointmentStatus.COMPLETED, token)) }
+            add(queuePatient(6, AppointmentStatus.WAITING, 16))
+        }
+        val initial = DummyData.initialState("2026-07-17").copy(
+            appointments = appointments,
+            sessionQueues = listOf(
+                ConsultationQueue("Morning", QueueState.ACTIVE, 15),
+                ConsultationQueue("Evening", QueueState.NOT_STARTED, 0)
+            ),
+            currentToken = 15
+        )
+        val model = DoctorViewModel(MemoryDoctorStateStore(initial), currentDate = { LocalDate.parse("2026-07-17") })
+        model.login(UserRole.DOCTOR)
+
+        model.callNext("Morning")
+
+        assertEquals(15, model.queueFor("Morning").currentToken)
+        assertEquals(15, model.uiState.currentToken)
+        assertEquals(AppointmentStatus.IN_CONSULTATION, model.uiState.appointments.single { it.token == 6 }.status)
+
+        model.callNext("Morning")
+
+        assertEquals(15, model.queueFor("Morning").currentToken)
+        assertEquals(AppointmentStatus.COMPLETED, model.uiState.appointments.single { it.token == 6 }.status)
+    }
     @Test fun operationalReportUsesInclusiveDateRangeWithoutDuplicatingCurrentArchive() {
         val archivedAppointments = listOf(
             queuePatient(1, AppointmentStatus.COMPLETED, 1),
