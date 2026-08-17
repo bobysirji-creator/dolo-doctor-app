@@ -29,10 +29,12 @@ data class AuthUiState(
 
 class AuthViewModel(
     private val repository: AuthRepository,
-    private val hostedApi: HttpHostedStaffApi? = null
+    private val hostedApi: HttpHostedStaffApi? = null,
+    private val postToMain: ((() -> Unit) -> Unit) = { action ->
+        Handler(Looper.getMainLooper()).post { action() }
+    }
 ) : ViewModel() {
     private val executor = Executors.newSingleThreadExecutor()
-    private val main = Handler(Looper.getMainLooper())
 
     var uiState by mutableStateOf(AuthUiState(session = repository.restoredSession()))
         private set
@@ -75,7 +77,7 @@ class AuthViewModel(
         uiState = uiState.copy(pilotLoading = true, error = null)
         executor.execute {
             val result = if (uiState.pilotActivation) api.activatePilot(uiState.pilotInviteCode, credential) else api.connectPilot(doloId, credential)
-            main.post {
+            postToMain {
                 when (result) {
                     is HostedResult.Success -> when (val adopted = repository.adoptPilotDoctor(result.value.doloId, result.value.displayName)) {
                         is AuthResult.Success -> uiState = uiState.copy(session = adopted.session, pilotCredential = "", pilotInviteCode = "", pilotLoading = false, error = null)
