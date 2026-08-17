@@ -10,7 +10,7 @@ import java.util.Base64
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-data class AuthSession(val role: UserRole, val userId: String, val displayName: String, val phone: String, val mustChangePin: Boolean = false)
+data class AuthSession(val role: UserRole, val userId: String, val displayName: String, val phone: String, val mustChangePin: Boolean = false,val controlledPilot:Boolean=false)
 
 sealed interface AuthResult {
     data class Success(val session: AuthSession) : AuthResult
@@ -109,6 +109,7 @@ sealed interface PinChangeResult {
 interface AuthRepository {
     fun restoredSession(): AuthSession?
     fun login(role: UserRole, phone: String, pin: String): AuthResult
+    fun adoptPilotDoctor(doloId:String,displayName:String):AuthResult
     fun changePin(session: AuthSession, currentPin: String, newPin: String): PinChangeResult
     fun logout()
     fun removedAssistantIds(): Set<String>
@@ -156,6 +157,12 @@ class LocalAuthRepository(
         if (session.role != UserRole.ASSISTANT) return true
         if (session.userId in removedAssistantIds()) return false
         return credentialRecords().firstOrNull { it.assistantId == session.userId }?.active ?: true
+    }
+
+    override fun adoptPilotDoctor(doloId:String,displayName:String):AuthResult {
+        if(!doloId.matches(Regex("^DLO-DOC-[0-9]{6}$"))||displayName.isBlank())return AuthResult.Failure("Invalid controlled pilot Doctor identity.")
+        val session=AuthSession(UserRole.DOCTOR,doloId,displayName.trim(),"0000000000",controlledPilot=true)
+        return if(saveSession(session))AuthResult.Success(session) else AuthResult.Failure("Unable to save the pilot session.")
     }
 
     override fun login(role: UserRole, phone: String, pin: String): AuthResult {

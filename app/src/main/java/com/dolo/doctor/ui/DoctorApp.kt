@@ -57,7 +57,7 @@ private object Routes {
     darkTheme: Boolean,
     onToggleTheme: () -> Unit,
     doctorViewModel: DoctorViewModel = viewModel(factory = DoctorViewModelFactory(doctorStateStore)),
-    authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(authRepository)),
+    authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(authRepository, hostedStaffApi)),
     hostedViewModel: HostedStaffViewModel = viewModel(factory = HostedStaffViewModelFactory(hostedStaffApi))
 ) {
     val nav = rememberNavController()
@@ -78,7 +78,10 @@ private object Routes {
     LaunchedEffect(authState.session) {
         val session = authState.session
         if (session == null) doctorViewModel.logout(authRepository.removedAssistantIds())
-        else doctorViewModel.login(session.role, session.userId.takeIf { session.role == UserRole.ASSISTANT }, authRepository.removedAssistantIds())
+        else {
+            doctorViewModel.login(session.role, session.userId.takeIf { session.role == UserRole.ASSISTANT }, authRepository.removedAssistantIds())
+            if (session.controlledPilot) hostedViewModel.refresh()
+        }
     }
 
     LaunchedEffect(state.role) { state.role?.let(hostedViewModel::bindLocalRole) }
@@ -175,24 +178,38 @@ private object Routes {
                     nav.navigate(if (session.mustChangePin) Routes.CHANGE_PIN else Routes.HOME) { popUpTo(Routes.LOGIN) { inclusive = true } }
                 }
             }
-            LoginScreen(authState, authViewModel::selectRole, authViewModel::updatePhone, authViewModel::updatePin, authViewModel::login)
+            LoginScreen(authState, authViewModel::selectLoginMode, authViewModel::selectRole, authViewModel::updatePhone, authViewModel::updatePin, authViewModel::selectPilotAction, authViewModel::updatePilotDoloId, authViewModel::updatePilotInviteCode, authViewModel::updatePilotCredential, authViewModel::login, authViewModel::loginPilot)
         }
         composable(Routes.HOME) {
             BackHandler(enabled = drawerState.isClosed) { activity?.finish() }
             LaunchedEffect(authState.session?.mustChangePin) {
                 if (authState.session?.mustChangePin == true) nav.navigate(Routes.CHANGE_PIN) { popUpTo(Routes.HOME) { inclusive = true } }
             }
-            DashboardScreen(
-                state = state,
-                permissions = permissions,
-                hostedUnreadNotifications = hostedUnread,
-                onQueue = ::queue,
-                onAppointments = ::appointments,
-                onClinic = ::clinic,
-                onHostedSync = ::hostedSync,
-                onNotifications = { nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } },
-                onMore = ::more
-            )
+            val pilotSession = authState.session?.takeIf { it.controlledPilot }
+            if (pilotSession != null) {
+                PilotDoctorHomeScreen(
+                    displayName = pilotSession.displayName,
+                    doloId = pilotSession.userId,
+                    hostedMessage = hostedViewModel.uiState.message,
+                    loading = hostedViewModel.uiState.loading,
+                    workspaceReady = hostedViewModel.uiState.snapshot != null,
+                    onRefresh = hostedViewModel::refresh,
+                    onHostedWorkspace = ::hostedSync,
+                    onLogout = ::logout
+                )
+            } else {
+                DashboardScreen(
+                    state = state,
+                    permissions = permissions,
+                    hostedUnreadNotifications = hostedUnread,
+                    onQueue = ::queue,
+                    onAppointments = ::appointments,
+                    onClinic = ::clinic,
+                    onHostedSync = ::hostedSync,
+                    onNotifications = { nav.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } },
+                    onMore = ::more
+                )
+            }
         }
         composable(Routes.QUEUE) {
             QueueScreen(

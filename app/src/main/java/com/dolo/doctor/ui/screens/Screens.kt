@@ -56,35 +56,131 @@ import java.time.LocalDate
 
 @Composable fun LoginScreen(
     state: AuthUiState,
+    onMode: (Boolean) -> Unit,
     onRole: (UserRole) -> Unit,
     onPhone: (String) -> Unit,
     onPin: (String) -> Unit,
-    onLogin: () -> Unit
+    onPilotAction: (Boolean) -> Unit,
+    onPilotDoloId: (String) -> Unit,
+    onPilotInviteCode: (String) -> Unit,
+    onPilotCredential: (String) -> Unit,
+    onLogin: () -> Unit,
+    onPilotLogin: () -> Unit
 ) {
     Column(page().imePadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.Center) {
         DoctorBrand()
         Spacer(Modifier.height(24.dp))
         Text("Secure clinic access", style = MaterialTheme.typography.headlineLarge)
-        Text("Use your individual Doctor or Assistant credentials.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            if (state.controlledPilot) "Use the Doctor DO-LO ID and credential issued through the controlled pilot."
+            else "Use your individual Doctor or Assistant prototype credentials.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(Modifier.height(20.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FilterChip(state.selectedRole == UserRole.DOCTOR, { onRole(UserRole.DOCTOR) }, { Text("Doctor") }, leadingIcon = { Icon(Icons.Outlined.MedicalServices, null) }, modifier = Modifier.weight(1f))
-            FilterChip(state.selectedRole == UserRole.ASSISTANT, { onRole(UserRole.ASSISTANT) }, { Text("Assistant") }, leadingIcon = { Icon(Icons.Outlined.Badge, null) }, modifier = Modifier.weight(1f))
+            FilterChip(!state.controlledPilot, { onMode(false) }, { Text("Prototype") }, modifier = Modifier.weight(1f))
+            FilterChip(state.controlledPilot, { onMode(true) }, { Text("Controlled pilot") }, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(16.dp))
-        OutlinedTextField(state.phone, onPhone, Modifier.fillMaxWidth(), label = { Text("Mobile number") }, prefix = { Text("+91 ") }, leadingIcon = { Icon(Icons.Outlined.Phone, null) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), singleLine = true, shape = RoundedCornerShape(18.dp))
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(state.pin, onPin, Modifier.fillMaxWidth(), label = { Text("4-digit PIN") }, leadingIcon = { Icon(Icons.Outlined.Lock, null) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword), visualTransformation = PasswordVisualTransformation(), singleLine = true, shape = RoundedCornerShape(18.dp))
-        Spacer(Modifier.height(16.dp))
-        PrimaryAction("Login as ${state.selectedRole.name.lowercase().replaceFirstChar(Char::uppercase)}", onLogin, enabled = state.phone.length == 10 && state.pin.length == 4, icon = Icons.Outlined.Login)
+        if (state.controlledPilot) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(!state.pilotActivation, { onPilotAction(false) }, { Text("Sign in") }, modifier = Modifier.weight(1f))
+                FilterChip(state.pilotActivation, { onPilotAction(true) }, { Text("Activate invite") }, modifier = Modifier.weight(1f))
+            }
+            if (state.pilotActivation) {
+                OutlinedTextField(
+                    state.pilotInviteCode,
+                    onPilotInviteCode,
+                    Modifier.fillMaxWidth(),
+                    label = { Text("32-character invitation code") },
+                    leadingIcon = { Icon(Icons.Outlined.VpnKey, null) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(18.dp)
+                )
+            } else {
+                OutlinedTextField(
+                    state.pilotDoloId,
+                    onPilotDoloId,
+                    Modifier.fillMaxWidth(),
+                    label = { Text("Doctor DO-LO ID") },
+                    placeholder = { Text("DLO-DOC-000001") },
+                    leadingIcon = { Icon(Icons.Outlined.Badge, null) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(18.dp)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                state.pilotCredential,
+                onPilotCredential,
+                Modifier.fillMaxWidth(),
+                label = { Text("Pilot credential") },
+                leadingIcon = { Icon(Icons.Outlined.Lock, null) },
+                visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
+                shape = RoundedCornerShape(18.dp)
+            )
+            Spacer(Modifier.height(16.dp))
+            PrimaryAction(
+                if (state.pilotLoading) "Connecting…" else if (state.pilotActivation) "Activate Doctor account" else "Sign in to controlled pilot",
+                onPilotLogin,
+                enabled = !state.pilotLoading && (if (state.pilotActivation) state.pilotInviteCode.matches(Regex("^[A-Za-z0-9_-]{32}$")) else state.pilotDoloId.matches(Regex("^DLO-DOC-[0-9]{6}$"))) && state.pilotCredential.length >= 8,
+                icon = Icons.Outlined.Login
+            )
+            if (state.pilotLoading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 10.dp))
+            Text(
+                "Assistant pilot accounts are intentionally unavailable in this stage.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+        } else {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FilterChip(state.selectedRole == UserRole.DOCTOR, { onRole(UserRole.DOCTOR) }, { Text("Doctor") }, leadingIcon = { Icon(Icons.Outlined.MedicalServices, null) }, modifier = Modifier.weight(1f))
+                FilterChip(state.selectedRole == UserRole.ASSISTANT, { onRole(UserRole.ASSISTANT) }, { Text("Assistant") }, leadingIcon = { Icon(Icons.Outlined.Badge, null) }, modifier = Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(state.phone, onPhone, Modifier.fillMaxWidth(), label = { Text("Mobile number") }, prefix = { Text("+91 ") }, leadingIcon = { Icon(Icons.Outlined.Phone, null) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), singleLine = true, shape = RoundedCornerShape(18.dp))
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(state.pin, onPin, Modifier.fillMaxWidth(), label = { Text("4-digit PIN") }, leadingIcon = { Icon(Icons.Outlined.Lock, null) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword), visualTransformation = PasswordVisualTransformation(), singleLine = true, shape = RoundedCornerShape(18.dp))
+            Spacer(Modifier.height(16.dp))
+            PrimaryAction("Login as ${state.selectedRole.name.lowercase().replaceFirstChar(Char::uppercase)}", onLogin, enabled = state.phone.length == 10 && state.pin.length == 4, icon = Icons.Outlined.Login)
+        }
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
-        Spacer(Modifier.height(16.dp))
-        ElevatedSection("Initial prototype credentials") {
-            Text("Doctor (until changed): 9999999999 • PIN 1234", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Assistant (queue controls): 9876543210 • PIN 1234", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Assistant (view only): 9876501234 • PIN 1234", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("If a PIN was changed, use its replacement. New assistants use the mobile number and temporary PIN generated by the Doctor.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (!state.controlledPilot) {
+            Spacer(Modifier.height(16.dp))
+            ElevatedSection("Initial prototype credentials") {
+                Text("Doctor (until changed): 9999999999 • PIN 1234", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Assistant (queue controls): 9876543210 • PIN 1234", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Assistant (view only): 9876501234 • PIN 1234", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
+    }
+}
+@Composable fun PilotDoctorHomeScreen(
+    displayName: String,
+    doloId: String,
+    hostedMessage: String,
+    loading: Boolean,
+    workspaceReady: Boolean,
+    onRefresh: () -> Unit,
+    onHostedWorkspace: () -> Unit,
+    onLogout: () -> Unit
+) {
+    Column(page().padding(20.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        DoctorBrand()
+        Text(displayName, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(doloId, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+        ElevatedSection(if (workspaceReady) "Controlled pilot clinic" else "Clinic setup required") {
+            Text(hostedMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                if (workspaceReady) "This workspace reads and writes only server-authoritative pilot data."
+                else "Your identity is active and securely retained. No demo Doctor, clinic, appointment or queue data has been attached to this account.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        PrimaryAction(if (loading) "Checking…" else if (workspaceReady) "Open hosted clinic" else "Check setup status", if (workspaceReady) onHostedWorkspace else onRefresh, enabled = !loading, icon = Icons.Outlined.CloudSync)
+        OutlinedButton(onClick = onLogout, enabled = !loading, modifier = Modifier.fillMaxWidth()) { Text("Sign out") }
     }
 }
 @Composable fun DashboardScreen(

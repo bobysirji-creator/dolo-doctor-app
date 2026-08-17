@@ -13,16 +13,18 @@ object SessionCodec {
         session.userId,
         session.displayName,
         session.phone,
-        session.mustChangePin.toString()
+        session.mustChangePin.toString(),
+        session.controlledPilot.toString()
     ).joinToString(SEPARATOR)
 
     fun decode(value: String): AuthSession? {
         val parts = value.trim().split(SEPARATOR)
-        if (parts.size !in setOf(4, 5)) return null
+        if (parts.size !in setOf(4, 5, 6)) return null
         val role = runCatching { UserRole.valueOf(parts[0]) }.getOrNull() ?: return null
         if (parts[1].isBlank() || parts[2].isBlank() || !CredentialValidator.isValidPhone(parts[3])) return null
-        val mustChangePin = if (parts.size == 5) parts[4].toBooleanStrictOrNull() ?: return null else false
-        return AuthSession(role, parts[1], parts[2], CredentialValidator.normalizePhone(parts[3]), mustChangePin)
+        val mustChangePin = if (parts.size >= 5) parts[4].toBooleanStrictOrNull() ?: return null else false
+        val controlledPilot = if (parts.size == 6) parts[5].toBooleanStrictOrNull() ?: return null else false
+        return AuthSession(role, parts[1], parts[2], CredentialValidator.normalizePhone(parts[3]), mustChangePin, controlledPilot)
     }
 }
 

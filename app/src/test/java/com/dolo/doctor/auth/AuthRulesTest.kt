@@ -50,6 +50,9 @@ class AuthRulesTest {
         val session = AuthSession(UserRole.ASSISTANT, "staff-temp", "Temporary User", "9876508888", true)
         assertEquals(session, SessionCodec.decode(SessionCodec.encode(session)))
         assertFalse(SessionCodec.decode("DOCTOR\tdoctor-1\tDoctor\t9999999999")?.mustChangePin == true)
+
+        val pilot = AuthSession(UserRole.DOCTOR, "DLO-DOC-000001", "Pilot Doctor", "0000000000", controlledPilot = true)
+        assertEquals(pilot, SessionCodec.decode(SessionCodec.encode(pilot)))
     }
 
     @Test fun predictableReplacementPinsAreBlocked() {

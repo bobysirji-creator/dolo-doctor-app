@@ -34,6 +34,7 @@ class AuthViewModelTest {
     private class FakeAuthRepository(private var session: AuthSession?) : AuthRepository {
         override fun restoredSession(): AuthSession? = session
         override fun login(role: UserRole, phone: String, pin: String): AuthResult = AuthResult.Failure("Not used")
+        override fun adoptPilotDoctor(doloId: String, displayName: String): AuthResult = AuthResult.Failure("Not used")
         override fun changePin(session: AuthSession, currentPin: String, newPin: String): PinChangeResult {
             if (currentPin != "4826") return PinChangeResult.Failure("Incorrect")
             val updated = session.copy(mustChangePin = false)

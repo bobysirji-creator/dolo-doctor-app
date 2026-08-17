@@ -4,6 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val doloApiBaseUrl = providers.environmentVariable("DOLO_API_BASE_URL").map { it.trim().ifEmpty { "https://dolo-platform-api-prototype.onrender.com" } }.orElse("https://dolo-platform-api-prototype.onrender.com").get()
 val prototypeSigningStore = providers.environmentVariable("DOLO_SIGNING_STORE_FILE").orNull
 val prototypeSigningStorePassword = providers.environmentVariable("DOLO_SIGNING_STORE_PASSWORD").orNull
 val prototypeSigningKeyAlias = providers.environmentVariable("DOLO_SIGNING_KEY_ALIAS").orNull
@@ -23,9 +24,9 @@ android {
         applicationId = "com.dolo.doctor"
         minSdk = 26
         targetSdk = 35
-        versionCode = 43
-        versionName = "0.30.0-stage62h"
-        buildConfigField("String", "DOLO_API_BASE_URL", "\"https://dolo-platform-api-prototype.onrender.com\"")
+        versionCode = 44
+        versionName = "0.31.0-stage63pb"
+        buildConfigField("String", "DOLO_API_BASE_URL", "\"${doloApiBaseUrl}\"")
     }
     signingConfigs {
         if (prototypeSigningAvailable) {

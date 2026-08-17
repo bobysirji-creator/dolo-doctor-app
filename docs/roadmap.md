@@ -317,3 +317,17 @@ On 14 August 2026, Doctor App `0.28.0-stage62f` passed the complete physical-dev
 - [ ] stable APK in-place upgrade and Stage 62H physical-device acceptance
 
 The drawer uses the existing role and permission policy, so Doctor-only destinations remain hidden from Assistants. No database, API or persisted-state migration is required.
+## Stage 63P-B — Android controlled-pilot identity integration
+
+- [x] configurable pilot API origin for all three Android CI builds
+- [x] Admin pilot login and one-time Patient/Doctor invitation UI
+- [x] Patient and Doctor invitation activation and DO-LO ID login
+- [x] encrypted session restoration and role validation
+- [x] role-bound invitation consumption before account creation
+- [x] ordinary API authorization no longer depends on seeded UUIDs
+- [x] unprovisioned Doctor fails safely without inheriting demo clinic data
+- [x] combined deployment and physical-device checklist
+- [ ] four GitHub Actions checks and pilot Render deployment
+- [ ] three stable APK upgrades and Stage 63P-B device acceptance
+
+Stage 63P-C will add authoritative Doctor profile/clinic onboarding and Admin verification so an invited Doctor can create the first real pilot clinic workspace. Open registration, Assistant pilot enrollment, real OTP, payments, and production traffic remain deferred.
