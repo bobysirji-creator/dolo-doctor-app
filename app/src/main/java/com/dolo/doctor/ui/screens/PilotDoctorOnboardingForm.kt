@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dolo.doctor.hosted.*
+import com.dolo.doctor.ui.components.ElevatedSection
 
 @Composable
 fun PilotDoctorSetupContent(
