@@ -331,3 +331,15 @@ The drawer uses the existing role and permission policy, so Doctor-only destinat
 - [ ] three stable APK upgrades and Stage 63P-B device acceptance
 
 Stage 63P-C will add authoritative Doctor profile/clinic onboarding and Admin verification so an invited Doctor can create the first real pilot clinic workspace. Open registration, Assistant pilot enrollment, real OTP, payments, and production traffic remain deferred.
+## Stage 63P-C - Admin-reviewed first clinic onboarding
+
+- [x] replace the controlled-pilot Doctor setup dead end with a complete first-profile and clinic form
+- [x] collect bounded Doctor registration, specialty, qualification, experience and profile information
+- [x] collect clinic identity, address, contact, fee, booking policy and weekly Morning/Evening sessions
+- [x] preserve pending submissions as read-only and reopen rejected submissions with the Admin note
+- [x] refresh an approved setup into the server-authoritative hosted clinic workspace
+- [x] retain encrypted pilot session restoration and prohibit seeded clinic inheritance
+- [x] add onboarding JSON contract coverage
+- [x] version 0.32.0-stage63pc (version code 45)
+- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [ ] stable APK upgrade and Stage 63P-C physical-device acceptance

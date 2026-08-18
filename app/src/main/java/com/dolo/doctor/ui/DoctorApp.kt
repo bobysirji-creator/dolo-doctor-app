@@ -193,7 +193,9 @@ private object Routes {
                     hostedMessage = hostedViewModel.uiState.message,
                     loading = hostedViewModel.uiState.loading,
                     workspaceReady = hostedViewModel.uiState.snapshot != null,
+                    onboardingState = hostedViewModel.onboardingUiState,
                     onRefresh = hostedViewModel::refresh,
+                    onSubmitOnboarding = hostedViewModel::submitDoctorOnboarding,
                     onHostedWorkspace = ::hostedSync,
                     onLogout = ::logout
                 )

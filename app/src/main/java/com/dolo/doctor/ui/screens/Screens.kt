@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dolo.doctor.auth.AuthUiState
 import com.dolo.doctor.data.model.*
+import com.dolo.doctor.hosted.HostedDoctorOnboardingDraft
+import com.dolo.doctor.hosted.HostedDoctorOnboardingUiState
 import com.dolo.doctor.ui.components.*
 import com.dolo.doctor.ui.theme.LocalDoloDoctorDarkTheme
 import com.dolo.doctor.printing.AndroidTokenReceiptPrinter
@@ -163,7 +165,9 @@ import java.time.LocalDate
     hostedMessage: String,
     loading: Boolean,
     workspaceReady: Boolean,
+    onboardingState: HostedDoctorOnboardingUiState,
     onRefresh: () -> Unit,
+    onSubmitOnboarding: (HostedDoctorOnboardingDraft) -> Unit,
     onHostedWorkspace: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -171,16 +175,16 @@ import java.time.LocalDate
         DoctorBrand()
         Text(displayName, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text(doloId, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-        ElevatedSection(if (workspaceReady) "Controlled pilot clinic" else "Clinic setup required") {
-            Text(hostedMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(
-                if (workspaceReady) "This workspace reads and writes only server-authoritative pilot data."
-                else "Your identity is active and securely retained. No demo Doctor, clinic, appointment or queue data has been attached to this account.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        if (workspaceReady) {
+            ElevatedSection("Controlled pilot clinic") {
+                Text(hostedMessage, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("This workspace reads and writes only server-authoritative pilot data.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            PrimaryAction(if (loading) "Checking…" else "Open hosted clinic", onHostedWorkspace, enabled = !loading, icon = Icons.Outlined.CloudSync)
+        } else {
+            PilotDoctorSetupContent(displayName, onboardingState, !loading, onSubmitOnboarding, onRefresh)
         }
-        PrimaryAction(if (loading) "Checking…" else if (workspaceReady) "Open hosted clinic" else "Check setup status", if (workspaceReady) onHostedWorkspace else onRefresh, enabled = !loading, icon = Icons.Outlined.CloudSync)
-        OutlinedButton(onClick = onLogout, enabled = !loading, modifier = Modifier.fillMaxWidth()) { Text("Sign out") }
+        OutlinedButton(onClick = onLogout, enabled = !loading && !onboardingState.loading, modifier = Modifier.fillMaxWidth()) { Text("Sign out") }
     }
 }
 @Composable fun DashboardScreen(

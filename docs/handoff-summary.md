@@ -424,3 +424,15 @@ Platform API `0.59.0-stage63pb` and the three Android apps now implement role-sc
 A newly activated Patient receives an owner-scoped SELF profile and can enter the existing authoritative Patient boundary. A newly activated Doctor is intentionally stopped at a clear clinic-setup-required screen; no seeded Doctor, clinic, appointment, queue, or local demo record is assigned. Stage 63P-C must implement Doctor profile/clinic onboarding before the real multi-role workflow pilot begins.
 
 Local API validation passes 241 tests. Android compilation, lint, unit tests, stable signing, pilot deployment, and physical-device acceptance remain GitHub/device checkpoints because this low-resource PC has no local Android SDK/Gradle runtime.
+## Stage 63P-C - Admin-reviewed first clinic onboarding
+
+- [x] replace the controlled-pilot Doctor setup dead end with a complete first-profile and clinic form
+- [x] collect bounded Doctor registration, specialty, qualification, experience and profile information
+- [x] collect clinic identity, address, contact, fee, booking policy and weekly Morning/Evening sessions
+- [x] preserve pending submissions as read-only and reopen rejected submissions with the Admin note
+- [x] refresh an approved setup into the server-authoritative hosted clinic workspace
+- [x] retain encrypted pilot session restoration and prohibit seeded clinic inheritance
+- [x] add onboarding JSON contract coverage
+- [x] version 0.32.0-stage63pc (version code 45)
+- [ ] GitHub Actions compile, lint, unit tests and stable APK
+- [ ] stable APK upgrade and Stage 63P-C physical-device acceptance
