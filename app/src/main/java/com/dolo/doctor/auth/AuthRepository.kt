@@ -109,7 +109,7 @@ sealed interface PinChangeResult {
 interface AuthRepository {
     fun restoredSession(): AuthSession?
     fun login(role: UserRole, phone: String, pin: String): AuthResult
-    fun adoptPilotDoctor(doloId:String,displayName:String):AuthResult
+    fun adoptPilotIdentity(role:UserRole,doloId:String,displayName:String):AuthResult
     fun changePin(session: AuthSession, currentPin: String, newPin: String): PinChangeResult
     fun logout()
     fun removedAssistantIds(): Set<String>
@@ -159,9 +159,10 @@ class LocalAuthRepository(
         return credentialRecords().firstOrNull { it.assistantId == session.userId }?.active ?: true
     }
 
-    override fun adoptPilotDoctor(doloId:String,displayName:String):AuthResult {
-        if(!doloId.matches(Regex("^DLO-DOC-[0-9]{6}$"))||displayName.isBlank())return AuthResult.Failure("Invalid controlled pilot Doctor identity.")
-        val session=AuthSession(UserRole.DOCTOR,doloId,displayName.trim(),"0000000000",controlledPilot=true)
+    override fun adoptPilotIdentity(role:UserRole,doloId:String,displayName:String):AuthResult {
+        val expected=if(role==UserRole.DOCTOR)Regex("^DLO-DOC-[0-9]{6}$") else Regex("^DLO-AST-[0-9]{6}$")
+        if(!doloId.matches(expected)||displayName.isBlank())return AuthResult.Failure("Invalid controlled pilot ${role.name.lowercase()} identity.")
+        val session=AuthSession(role,doloId,displayName.trim(),"0000000000",controlledPilot=true)
         return if(saveSession(session))AuthResult.Success(session) else AuthResult.Failure("Unable to save the pilot session.")
     }
 

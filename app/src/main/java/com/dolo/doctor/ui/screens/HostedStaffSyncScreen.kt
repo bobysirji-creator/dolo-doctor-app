@@ -7,6 +7,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -21,14 +23,15 @@ import kotlinx.coroutines.delay
 import java.time.LocalDate
 
 @Composable fun HostedStaffSyncScreen(localRole:UserRole,onBack:()->Unit,viewModel:HostedStaffViewModel){
- val state=viewModel.uiState;val profileState=viewModel.profileUiState;val scheduleState=viewModel.scheduleUiState;val visibleSnapshot=state.snapshot?.takeIf{HostedRoleBoundary.allows(localRole,it.role)};var pin by remember{mutableStateOf("")};var selectedSessionId by remember{mutableStateOf<String?>(null)}
+ val state=viewModel.uiState;val profileState=viewModel.profileUiState;val scheduleState=viewModel.scheduleUiState;val visibleSnapshot=state.snapshot?.takeIf{HostedRoleBoundary.allows(localRole,it.role)};val hasHostedSession=viewModel.hasHostedSession();var pin by remember{mutableStateOf("")};var selectedSessionId by remember{mutableStateOf<String?>(null)}
  LaunchedEffect(localRole){viewModel.bindLocalRole(localRole)}
  LaunchedEffect(visibleSnapshot?.sessions){if(selectedSessionId==null)selectedSessionId=visibleSnapshot?.sessions?.firstOrNull()?.id}
  LaunchedEffect(visibleSnapshot!=null){if(visibleSnapshot!=null)while(true){delay(15_000);viewModel.refresh()}}
  LazyColumn(Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
   item{PageHeader("Hosted staff queue",onBack)}
-  item{ElevatedSection("Stage 61B-P hosted authority",state.message){StatusPill(if(state.error)"Needs attention" else if(visibleSnapshot!=null)"Connected" else "Not connected",visibleSnapshot!=null&&!state.error);Text("Local Doctor/Assistant data remains separate and is never uploaded.",color=MaterialTheme.colorScheme.onSurfaceVariant)}}
-  if(visibleSnapshot==null){item{ElevatedSection("Connect hosted identity",if(localRole==UserRole.DOCTOR)"Seeded Doctor" else "Seeded queue Assistant"){OutlinedTextField(pin,{pin=it.filter(Char::isDigit).take(4)},Modifier.fillMaxWidth(),label={Text("Demo PIN")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.NumberPassword),visualTransformation=PasswordVisualTransformation(),singleLine=true);Text("Use demo PIN 1234. No real credential is sent.",color=MaterialTheme.colorScheme.onSurfaceVariant);PrimaryAction(if(state.loading)"Connecting..." else "Connect to hosted prototype",{viewModel.connect(if(localRole==UserRole.DOCTOR)HostedStaffRole.DOCTOR else HostedStaffRole.ASSISTANT,pin)},enabled=pin.length==4&&!state.loading)}}}
+  item{ElevatedSection("Stage 63P-D hosted authority",state.message){StatusPill(if(state.error)"Needs attention" else if(visibleSnapshot!=null)"Connected" else "Not connected",visibleSnapshot!=null&&!state.error);Text("Local Doctor/Assistant data remains separate and is never uploaded.",color=MaterialTheme.colorScheme.onSurfaceVariant)}}
+  if(visibleSnapshot==null&&hasHostedSession){item{ElevatedSection("Hosted session available",state.message){PrimaryAction(if(state.loading)"Refreshing..." else "Retry hosted clinic",viewModel::refresh,enabled=!state.loading)}}}
+  if(visibleSnapshot==null&&!hasHostedSession){item{ElevatedSection("Connect hosted prototype",if(localRole==UserRole.DOCTOR)"Seeded Doctor" else "Seeded queue Assistant"){OutlinedTextField(pin,{pin=it.filter(Char::isDigit).take(4)},Modifier.fillMaxWidth(),label={Text("Demo PIN")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.NumberPassword),visualTransformation=PasswordVisualTransformation(),singleLine=true);Text("Use demo PIN 1234 only for prototype mode.",color=MaterialTheme.colorScheme.onSurfaceVariant);PrimaryAction(if(state.loading)"Connecting..." else "Connect to hosted prototype",{viewModel.connect(if(localRole==UserRole.DOCTOR)HostedStaffRole.DOCTOR else HostedStaffRole.ASSISTANT,pin)},enabled=pin.length==4&&!state.loading)}}}
   visibleSnapshot?.let{snapshot->
    item{ElevatedSection(snapshot.clinic.name,"${snapshot.clinic.doctorName} • ${snapshot.clinic.city}"){Text("Identity: ${snapshot.role.name}",fontWeight=FontWeight.Bold);snapshot.publicIdentity?.let{identity->Text(identity.doloId,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.ExtraBold,color=MaterialTheme.colorScheme.primary);Text("${identity.displayName} | Server-owned self identity",color=MaterialTheme.colorScheme.onSurfaceVariant)};Text("Permissions: ${snapshot.permissions.sorted().joinToString()}",color=MaterialTheme.colorScheme.onSurfaceVariant);Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button({viewModel.refresh()},enabled=!state.loading){Text("Refresh")};OutlinedButton({viewModel.logout()}){Text("Disconnect hosted")}}}}
    if(snapshot.role==HostedStaffRole.DOCTOR){
@@ -36,7 +39,7 @@ import java.time.LocalDate
     if(snapshot.campaigns.isEmpty())item{Text("No active Admin-approved in-app message targets this Doctor.",color=MaterialTheme.colorScheme.onSurfaceVariant)}
     else items(snapshot.campaigns,key={"campaign-${it.id}"}){campaign->ElevatedSection(campaign.title,"${campaign.messageType.replace('_',' ')} | In-app only"){Text(campaign.message);Text("Active ${campaign.startsOn} to ${campaign.endsOn}",color=MaterialTheme.colorScheme.onSurfaceVariant)}}
    }
-   if(snapshot.role==HostedStaffRole.DOCTOR){item{HostedClinicScheduleEditor(scheduleState,state.loading,viewModel::refreshClinicSchedule,viewModel::saveClinicSchedule,viewModel::saveScheduleException)};item{HostedDoctorProfileEditor(profileState,state.loading,viewModel::refreshDoctorProfile,viewModel::submitDoctorProfile)};item{HostedAnnouncementEditor(snapshot.clinic.id,snapshot.announcements,state.loading,viewModel::saveAnnouncement)};item{HostedPublishedReviewSection(snapshot.patientReviews)};item{Text("Hosted Assistant access",style=MaterialTheme.typography.titleLarge)};if(snapshot.assistants.isEmpty())item{Text("No hosted Assistants assigned.",color=MaterialTheme.colorScheme.onSurfaceVariant)}else items(snapshot.assistants,key={"assistant-${it.id}"}){assistant->HostedAssistantAccessCard(assistant,state.loading,viewModel::updateAssistant)}}
+    if(snapshot.role==HostedStaffRole.DOCTOR){item{HostedClinicScheduleEditor(scheduleState,state.loading,viewModel::refreshClinicSchedule,viewModel::saveClinicSchedule,viewModel::saveScheduleException)};item{HostedDoctorProfileEditor(profileState,state.loading,viewModel::refreshDoctorProfile,viewModel::submitDoctorProfile)};item{HostedAnnouncementEditor(snapshot.clinic.id,snapshot.announcements,state.loading,viewModel::saveAnnouncement)};item{HostedPublishedReviewSection(snapshot.patientReviews)};item{HostedAssistantInvitationCard(snapshot.clinic.id,state,viewModel::createAssistantInvitation)};item{Text("Hosted Assistant access",style=MaterialTheme.typography.titleLarge)};if(snapshot.assistants.isEmpty())item{Text("No hosted Assistants assigned.",color=MaterialTheme.colorScheme.onSurfaceVariant)}else items(snapshot.assistants,key={"assistant-${it.id}"}){assistant->HostedAssistantAccessCard(assistant,state.loading,viewModel::updateAssistant)}}
    item{Text("Clinic sessions",style=MaterialTheme.typography.titleLarge)}
    items(snapshot.sessions,key={it.id}){session->FilterChip(selected=selectedSessionId==session.id,onClick={selectedSessionId=session.id},label={Text("${session.date} • ${session.name} • ${session.available} available")},modifier=Modifier.fillMaxWidth())}
    val session= snapshot.sessions.firstOrNull{it.id==selectedSessionId};val queue=snapshot.queues.firstOrNull{it.sessionId==selectedSessionId};val appointments=snapshot.appointments.filter{it.sessionId==selectedSessionId}
@@ -58,6 +61,26 @@ import java.time.LocalDate
   }
  }
 }
+@Composable private fun HostedAssistantInvitationCard(clinicId:String,state:HostedStaffUiState,onCreate:(String,String,String,Set<String>)->Unit){
+ val clipboard=LocalClipboardManager.current
+ var name by remember{mutableStateOf("")};var phone by remember{mutableStateOf("")};var queue by remember{mutableStateOf(true)};var fee by remember{mutableStateOf(true)};var copied by remember{mutableStateOf(false)}
+ ElevatedSection("Invite a hosted Assistant","Doctor-owned, assigned only to this clinic"){
+  OutlinedTextField(name,{name=it.take(80)},Modifier.fillMaxWidth(),label={Text("Assistant full name")},singleLine=true)
+  OutlinedTextField(phone,{phone=it.filter(Char::isDigit).take(10)},Modifier.fillMaxWidth(),label={Text("Indian mobile number")},prefix={Text("+91 ")},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Phone),singleLine=true)
+  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Manage queue");Switch(queue,{queue=it})}
+  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Confirm clinic fee");Switch(fee,{fee=it})}
+  PrimaryAction("Create one-time invitation",{onCreate(clinicId,name,phone,buildSet{if(queue)add("MANAGE_QUEUE");if(fee)add("CONFIRM_CLINIC_FEE")})},enabled=!state.loading&&name.trim().length>=2&&phone.length==10)
+  state.assistantInvitation?.let{invite->
+   HorizontalDivider()
+   Text("One-time invitation code",fontWeight=FontWeight.Bold)
+   Text(invite.inviteCode,style=MaterialTheme.typography.bodyLarge)
+   Button({clipboard.setText(AnnotatedString(invite.inviteCode));copied=true},Modifier.fillMaxWidth()){Text(if(copied)"Copied" else "Copy code")}
+   Text(if(copied)"Copied. Share it privately with ${invite.displayName}." else "Case-sensitive • expires ${invite.expiresAt}",style=MaterialTheme.typography.bodySmall)
+  }
+  Text("The Assistant chooses a private credential during activation. Existing local demo Assistant data is not uploaded.",color=MaterialTheme.colorScheme.onSurfaceVariant)
+ }
+}
+
 @Composable private fun HostedAssistantAccessCard(assistant:HostedAssistant,loading:Boolean,onSave:(HostedAssistant,Boolean,Set<String>)->Unit){
  var active by remember(assistant.id,assistant.active){mutableStateOf(assistant.active)}
  var queue by remember(assistant.id,assistant.permissions){mutableStateOf("MANAGE_QUEUE" in assistant.permissions)}

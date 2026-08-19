@@ -1,4 +1,5 @@
 # DO-LO Doctor App Roadmap
+- Stage 63P-D: controlled-pilot Assistant lifecycle implemented; device verification pending.
 
 - [x] Stage 1 - lightweight Compose project, Doctor/Assistant login, navigation and feature skeletons
 - [x] Stage 2 - process-safe authentication and workflow state, Patient-aligned light/dark themes, permission-aware assistant access and Doctor-only removal

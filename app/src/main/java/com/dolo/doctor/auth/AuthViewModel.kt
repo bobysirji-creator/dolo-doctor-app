@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.dolo.doctor.data.model.UserRole
 import com.dolo.doctor.hosted.HostedResult
 import com.dolo.doctor.hosted.HttpHostedStaffApi
+import com.dolo.doctor.hosted.HostedStaffRole
 import java.util.concurrent.Executors
 
 data class AuthUiState(
@@ -58,8 +59,10 @@ class AuthViewModel(
     fun loginPilot() {
         val doloId = uiState.pilotDoloId.trim().uppercase()
         val credential = uiState.pilotCredential
-        if (!uiState.pilotActivation && !doloId.matches(Regex("^DLO-DOC-[0-9]{6}$"))) {
-            uiState = uiState.copy(error = "Enter a valid Doctor DO-LO ID, for example DLO-DOC-000001.")
+        val hostedRole=if(uiState.selectedRole==UserRole.DOCTOR)HostedStaffRole.DOCTOR else HostedStaffRole.ASSISTANT
+        val expectedId=if(uiState.selectedRole==UserRole.DOCTOR)Regex("^DLO-DOC-[0-9]{6}$") else Regex("^DLO-AST-[0-9]{6}$")
+        if (!uiState.pilotActivation && !doloId.matches(expectedId)) {
+            uiState = uiState.copy(error = "Enter a valid ${uiState.selectedRole.name.lowercase()} DO-LO ID.")
             return
         }
         if (uiState.pilotActivation && !uiState.pilotInviteCode.matches(Regex("^[A-Za-z0-9_-]{32}$"))) {
@@ -76,10 +79,10 @@ class AuthViewModel(
         }
         uiState = uiState.copy(pilotLoading = true, error = null)
         executor.execute {
-            val result = if (uiState.pilotActivation) api.activatePilot(uiState.pilotInviteCode, credential) else api.connectPilot(doloId, credential)
+            val result = if (uiState.pilotActivation) api.activatePilot(hostedRole,uiState.pilotInviteCode, credential) else api.connectPilot(hostedRole,doloId, credential)
             postToMain {
                 when (result) {
-                    is HostedResult.Success -> when (val adopted = repository.adoptPilotDoctor(result.value.doloId, result.value.displayName)) {
+                    is HostedResult.Success -> when (val adopted = repository.adoptPilotIdentity(uiState.selectedRole,result.value.doloId, result.value.displayName)) {
                         is AuthResult.Success -> uiState = uiState.copy(session = adopted.session, pilotCredential = "", pilotInviteCode = "", pilotLoading = false, error = null)
                         is AuthResult.Failure -> {
                             api.logout()

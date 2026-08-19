@@ -1,4 +1,5 @@
 ## Stage 23A hosted fee testability correction
+Stage 63P-D adds Doctor-owned hosted Assistant invitation, copy, activation, DLO-AST login, and clinic-scoped permission enforcement. Version 0.33.0-stage63pd; device verification pending.
 
 Version 0.20.0-stage23a (version code 33) exposes both authoritative clinic-direct admission outcomes in the hosted staff queue: `Confirm paid fee and admit` and `Waive fee and admit`. The selected status is sent to the existing protected API contract and included in its idempotency fingerprint.
 

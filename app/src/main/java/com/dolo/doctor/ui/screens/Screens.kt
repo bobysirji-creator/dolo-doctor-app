@@ -74,7 +74,7 @@ import java.time.LocalDate
         Spacer(Modifier.height(24.dp))
         Text("Secure clinic access", style = MaterialTheme.typography.headlineLarge)
         Text(
-            if (state.controlledPilot) "Use the Doctor DO-LO ID and credential issued through the controlled pilot."
+            if (state.controlledPilot) "Use the Doctor or Assistant DO-LO ID and private credential issued through the controlled pilot."
             else "Use your individual Doctor or Assistant prototype credentials.",
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -85,6 +85,12 @@ import java.time.LocalDate
         }
         Spacer(Modifier.height(16.dp))
         if (state.controlledPilot) {
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                FilterChip(state.selectedRole==UserRole.DOCTOR,{onRole(UserRole.DOCTOR)},{Text("Doctor")},modifier=Modifier.weight(1f))
+                FilterChip(state.selectedRole==UserRole.ASSISTANT,{onRole(UserRole.ASSISTANT)},{Text("Assistant")},modifier=Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(10.dp))
+
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(!state.pilotActivation, { onPilotAction(false) }, { Text("Sign in") }, modifier = Modifier.weight(1f))
                 FilterChip(state.pilotActivation, { onPilotAction(true) }, { Text("Activate invite") }, modifier = Modifier.weight(1f))
@@ -104,8 +110,8 @@ import java.time.LocalDate
                     state.pilotDoloId,
                     onPilotDoloId,
                     Modifier.fillMaxWidth(),
-                    label = { Text("Doctor DO-LO ID") },
-                    placeholder = { Text("DLO-DOC-000001") },
+                    label = { Text("${if(state.selectedRole==UserRole.DOCTOR)"Doctor" else "Assistant"} DO-LO ID") },
+                    placeholder = { Text(if(state.selectedRole==UserRole.DOCTOR)"DLO-DOC-000001" else "DLO-AST-000001") },
                     leadingIcon = { Icon(Icons.Outlined.Badge, null) },
                     singleLine = true,
                     shape = RoundedCornerShape(18.dp)
@@ -124,18 +130,13 @@ import java.time.LocalDate
             )
             Spacer(Modifier.height(16.dp))
             PrimaryAction(
-                if (state.pilotLoading) "Connecting…" else if (state.pilotActivation) "Activate Doctor account" else "Sign in to controlled pilot",
+                if (state.pilotLoading) "Connecting…" else if (state.pilotActivation) "Activate ${if(state.selectedRole==UserRole.DOCTOR)"Doctor" else "Assistant"} account" else "Sign in to controlled pilot",
                 onPilotLogin,
-                enabled = !state.pilotLoading && (if (state.pilotActivation) state.pilotInviteCode.matches(Regex("^[A-Za-z0-9_-]{32}$")) else state.pilotDoloId.matches(Regex("^DLO-DOC-[0-9]{6}$"))) && state.pilotCredential.length >= 8,
+                enabled = !state.pilotLoading && (if (state.pilotActivation) state.pilotInviteCode.matches(Regex("^[A-Za-z0-9_-]{32}$")) else state.pilotDoloId.matches(if(state.selectedRole==UserRole.DOCTOR)Regex("^DLO-DOC-[0-9]{6}$") else Regex("^DLO-AST-[0-9]{6}$"))) && state.pilotCredential.length >= 8,
                 icon = Icons.Outlined.Login
             )
             if (state.pilotLoading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 10.dp))
-            Text(
-                "Assistant pilot accounts are intentionally unavailable in this stage.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 12.dp)
-            )
+            Text("Invitation codes are case-sensitive and expire after 48 hours.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=12.dp))
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FilterChip(state.selectedRole == UserRole.DOCTOR, { onRole(UserRole.DOCTOR) }, { Text("Doctor") }, leadingIcon = { Icon(Icons.Outlined.MedicalServices, null) }, modifier = Modifier.weight(1f))
