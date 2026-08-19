@@ -436,3 +436,7 @@ Local API validation passes 241 tests. Android compilation, lint, unit tests, st
 - [x] version 0.32.0-stage63pc (version code 45)
 - [ ] GitHub Actions compile, lint, unit tests and stable APK
 - [ ] stable APK upgrade and Stage 63P-C physical-device acceptance
+
+## Stage 63P-C hosted workflow synchronization correction
+
+Doctor App 0.32.1-stage63pc now refreshes controlled-pilot staff data every 15 seconds even before the first hosted snapshot is available. Access-token renewal accepts the identity-free refresh response, remains synchronized across Doctor requests, and no longer requires a fresh login to discover newly booked Patient appointments.

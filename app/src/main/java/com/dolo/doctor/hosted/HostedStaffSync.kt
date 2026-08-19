@@ -103,7 +103,7 @@ class HttpHostedStaffApi(baseUrl:String,private val store:HostedStaffTokenStore,
    throw error
   }
  }
- private fun accessToken():String?{val current=store.read()?:return null;if(usable(current.accessExpiresAt))return current.accessToken;if(!usable(current.refreshExpiresAt)){store.clear();return null};val refreshed=runCatching{requestRaw("POST","/api/v1/auth/refresh",JSONObject().put("refreshToken",current.refreshToken).toString())}.getOrNull()?:return null;val tokens=parseTokens(refreshed,current.role);store.save(tokens);return tokens.accessToken}
+ @Synchronized private fun accessToken():String?{val current=store.read()?:return null;if(usable(current.accessExpiresAt))return current.accessToken;if(!usable(current.refreshExpiresAt)){store.clear();return null};val refreshed=runCatching{requestRaw("POST","/api/v1/auth/refresh",JSONObject().put("refreshToken",current.refreshToken).toString())}.getOrNull()?:return null;val tokens=HostedStaffTokenJson.parseRefresh(refreshed,current.role);store.save(tokens);return tokens.accessToken}
  private fun requestRaw(method:String,path:String,body:String?,bearer:String?=null,headers:Map<String,String> = emptyMap()):String{
   val cacheable=method=="GET"||(method=="POST"&&path=="/api/v1/staff/sync/bootstrap")
   val cacheKey="$method:$path:${store.read()?.role?.name ?: "NO_ROLE"}"
@@ -137,6 +137,12 @@ class HttpHostedStaffApi(baseUrl:String,private val store:HostedStaffTokenStore,
 }
 
 
+object HostedStaffTokenJson {
+ fun parseRefresh(json:String,role:HostedStaffRole):HostedStaffTokens {
+  val value=JSONObject(json)
+  return HostedStaffTokens(value.getString("accessToken"),value.getString("accessExpiresAt"),value.getString("refreshToken"),value.getString("refreshExpiresAt"),role)
+ }
+}
 object HostedBookingAccountIdentityJson {
  fun relationship(item:JSONObject):String=item.getString("patientRelationship").also{require(it=="SELF"||it=="FAMILY")}
  fun doloId(item:JSONObject):String=item.getString("bookingAccountDoloId").also{require(it.matches(Regex("^DLO-PAT-[0-9]{6}$")))}

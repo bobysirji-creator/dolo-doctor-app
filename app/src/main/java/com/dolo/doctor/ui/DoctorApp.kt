@@ -86,7 +86,7 @@ private object Routes {
 
     LaunchedEffect(state.role) { state.role?.let(hostedViewModel::bindLocalRole) }
     val hostedSnapshot = hostedViewModel.uiState.snapshot?.takeIf { snapshot -> state.role?.let { com.dolo.doctor.hosted.HostedRoleBoundary.allows(it,snapshot.role) } == true }
-    LaunchedEffect(hostedSnapshot?.role) { if(hostedSnapshot!=null) while(true){ delay(15_000);hostedViewModel.refresh() } }
+    LaunchedEffect(authState.session?.controlledPilot, state.role) { if(authState.session?.controlledPilot==true && state.role!=null) while(true){ delay(15_000);hostedViewModel.refresh() } }
     val hostedUnread = hostedSnapshot?.notifications?.count{!it.read} ?: 0
     fun home() = nav.navigate(Routes.HOME) {
         popUpTo(Routes.HOME) { inclusive = false }
