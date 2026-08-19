@@ -192,9 +192,9 @@ private object Routes {
                     doloId = pilotSession.userId,
                     hostedMessage = hostedViewModel.uiState.message,
                     loading = hostedViewModel.uiState.loading,
-                    workspaceReady = hostedViewModel.uiState.snapshot != null,
+                    workspaceReady = hostedViewModel.uiState.snapshot != null || hostedViewModel.onboardingUiState.workspace?.workspaceReady == true,
                     onboardingState = hostedViewModel.onboardingUiState,
-                    onRefresh = hostedViewModel::refresh,
+                    onRefresh = hostedViewModel::refreshDoctorOnboarding,
                     onSubmitOnboarding = hostedViewModel::submitDoctorOnboarding,
                     onHostedWorkspace = ::hostedSync,
                     onLogout = ::logout
